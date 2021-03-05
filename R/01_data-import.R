@@ -5,6 +5,7 @@
 # install.packages("openxlsx")
 library(openxlsx)
 library(tidylog) # verbose version of tidyverse
+library(lubridate)
 # getwd() # Saving The Blue/Code/SavingTheBlue
 
 
@@ -59,8 +60,8 @@ shark$Muscle_isotopes <- as.logical(shark$Muscle_isotopes)
 
 # Depth has "<1" (& xxx)
 # PM: These depth relate to gill net sampling with BAMSI – Tristan can provide
-#TODO####
-shark$Depth_m <- as.numeric(shark$Depth_m) # NAs introduced by coercion because of the above
+shark$Depth_m[which(shark$Depth_m == "<1")] <- 0.5
+shark$Depth_m <- as.numeric(shark$Depth_m)
 
 # Factorial columns
 shark$Sex <- factor(shark$Sex,levels = c("F", "M"))
@@ -86,6 +87,11 @@ unique(shark$Site)
 unique(shark$Gear)
 # "Block-rig" "By-hand" "Polyball" "Handline" "Drumline-bottom" "Gillnet" "Drumline-top"
 
+write.csv(x = shark,
+          file = paste0("../../Data/", today(), "_shark_capture_data.csv"),
+          row.names = F)
+saveRDS(object = shark,
+        file = paste0("../../Data/", today(), "_shark_capture_data.rds"))
 
 
 # Drumline Data####
@@ -134,3 +140,9 @@ drumline$Bottom_top <- factor(drumline$Bottom_top, levels = c("Bottom", "Top"))
 # We should be able to autogenerate whatever this is, automatically in a simple script. LMK what it is and I'll do it.
 # Can thus also automate report elements like plots etc., in a markdown. I'd be keen to do this.
 # Same Q about Caribbean reef tab.
+
+write.csv(x = drumline,
+          file = paste0("../../Data/", today(), "_drumline_data.csv"),
+          row.names = F)
+saveRDS(object = drumline,
+        file = paste0("../../Data/", today(), "_drumline_data.rds"))
