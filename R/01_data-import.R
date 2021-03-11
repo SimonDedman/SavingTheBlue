@@ -8,9 +8,9 @@ library(tidylog) # verbose version of tidyverse
 library(lubridate)
 # getwd() # Saving The Blue/Code/SavingTheBlue
 
-
+latestdbase <- "../../Data/2021-03-10_Database.xlsx"
 # Shark Data####
-shark <- read.xlsx(xlsxFile = "../../Data/Shark capture data_NEW_Jan 2021_UPDATED.xlsx",
+shark <- read.xlsx(xlsxFile = latestdbase,
                    sheet = 1,
                    detectDates = TRUE, # fails
                    check.names = TRUE,
@@ -74,11 +74,18 @@ unique(shark$Species)
 # PM: pelagic vs inshore then size makes the most sense:
 levels_Species <- c("C. falciformis", "C. obscurus", # silky (Carcharhinus falciformis) and dusky (Carcharhinus obscurus)
                     "C. acronotus", "R. terraenovae", # blacknose (Carcharhinus acronotus) and sharpnose (Rhizoprionodon terraenovae)
-                    "C. limbatus", "C. perezi", "G. cirratum", # blacktip (Carcharhinus limbatus), reef (Carcharhinus perezi), and nurse (Ginglymostoma cirratum)
+                    "C. limbatus", "C. perezi", "G. cirratum", "N. brevirostris", # blacktip (Carcharhinus limbatus), reef (Carcharhinus perezi), and nurse (Ginglymostoma cirratum)
                     "G. cuvier", "C. leucas", "S. mokarran") # tiger (Galeocerdo cuvier), bull (Carcharhinus leucas), hammerhead (Sphyrna mokarran)
-
-
 shark$Species <- factor(shark$Species, levels = levels_Species)
+
+unique(shark$Common)
+levels_Common <- c("Silky", "Dusky", # silky (Carcharhinus falciformis) and dusky (Carcharhinus obscurus)
+                   "Blacknose", "Sharpnose", # blacknose (Carcharhinus acronotus) and sharpnose (Rhizoprionodon terraenovae)
+                   "Blacktip", "Caribbean reef", "Lemon", "Nurse", # blacktip (Carcharhinus limbatus), reef (Carcharhinus perezi), and nurse (Ginglymostoma cirratum)
+                   "Tiger", "Bull", "Great hammerhead") # tiger (Galeocerdo cuvier), bull (Carcharhinus leucas), hammerhead (Sphyrna mokarran)
+shark$Common <- factor(shark$Common, levels = levels_Common)
+
+
 
 unique(shark$Substrate)
 # PM: will be good to try and match with
@@ -105,12 +112,14 @@ shark[which(shark$Site2 %in% c("North Bight – Upper",
                                "Middle Bight",
                                "Middle Bight - MB4",
                                "Behring Point")), "Site2"] <- "North Bight"
+shark[which(shark$Site2 == "Gibson Channel"), "Site2"] <- "Gibson Cay"
 levels_Site2 <- c("Fresh Creek",
                   "Somerset",
                   "High Cay",
                   "Green Cay",
                   "Bristol Galley",
                   "AUTEC Channel",
+                  "Cargill Creek",
                   "North Bight",
                   "Shark Hole",
                   "Isla's Spot",
@@ -120,6 +129,8 @@ levels_Site2 <- c("Fresh Creek",
                   "Gibson Cay")
 shark$Site2 <- factor(shark$Site2, levels = levels_Site2)
 
+# toadd####
+# Cargill Creek, Gibson Channel
 
 
 unique(shark$Gear)
@@ -143,7 +154,7 @@ saveRDS(object = shark,
 
 # Drumline Data####
 
-drumline <- read.xlsx(xlsxFile = "../../Data/Shark capture data_NEW_Jan 2021_UPDATED.xlsx",
+drumline <- read.xlsx(xlsxFile = latestdbase,
                       sheet = 2,
                       detectDates = TRUE, # fails
                       check.names = TRUE,
@@ -200,6 +211,7 @@ drumline[which(drumline$Site2 %in% c("North Bight - Upper",
                                      "Middle Bight",
                                      "Middle Bight - MB4",
                                      "Behring Point")), "Site2"] <- "North Bight"
+drumline[which(drumline$Site2 == "Gibson Channel"), "Site2"] <- "Gibson Cay"
 drumline$Site2 <- factor(drumline$Site2, levels = levels_Site2)
 
 
@@ -218,3 +230,4 @@ write.csv(x = drumline,
           row.names = F)
 saveRDS(object = drumline,
         file = paste0("../../Data/", today(), "_drumline_data.rds"))
+rm(list = ls()) #remove all objects

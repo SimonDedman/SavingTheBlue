@@ -14,11 +14,6 @@
 # 1 better than other, could put those maps up to show people
 
 # Shiny for website.
-
-shark <- readRDS(file = paste0("../../Data/", today(), "_shark_capture_data.rds"))
-drumline <- readRDS(file = paste0("../../Data/", today(), "_drumline_data.rds"))
-
-
 library(ggmap)
 # Please cite ggmap if you use it! See citation("ggmap") for details.
 library(dplyr)
@@ -29,6 +24,11 @@ library(ggspatial)
 library(tidylog) # verbose version of tidyverse
 library(concaveman) # points to poly bounding box
 
+# shark <- readRDS(file = paste0("../../Data/", today(), "_shark_capture_data.rds"))
+shark <- readRDS(file = paste0("../../Data/", "2021-03-10", "_shark_capture_data.rds"))
+# drumline <- readRDS(file = paste0("../../Data/", today(), "_drumline_data.rds"))
+drumline <- readRDS(file = paste0("../../Data/", "2021-03-10", "_drumline_data.rds"))
+
 # bounding box lowerleftlon, lowerleftlat, upperrightlon, upperrightlat
 myLocation <- c(min(shark$Longitude), min(shark$Latitude), max(shark$Longitude), max(shark$Latitude))
 
@@ -38,30 +38,7 @@ myMap <- get_map(location = myLocation,
                  crop = FALSE)
 # zoom = 10) # default?
 
-ggmap(myMap) +
-  geom_point(aes(x = Longitude,
-                 y = Latitude),
-             data = shark,
-             alpha = 0.5,
-             color = "darkred",
-             size = 3) +
-  annotation_spatial(sf_sites_polys, col = "black", lwd = 0.05, fill = NA) +
-  # geom_polygon(data = polys) +
-  # geom_density_2d(data = shark, # doesn't work well / look good / help
-  #                 aes(x = Longitude,
-  #                     y = Latitude),
-  #                 colour = "black",
-  #                 size = 0.25) +
-  facet_wrap(.~Species) + # facet by species
-  labs(x = "Longitude",
-       y = "Latitude") +
-  ggtitle("Sharks caught off East Andros") +
-  ggsave(paste0(today(), "_Catches_Points_Facet_Species.png"),
-         plot = last_plot(), device = "png", path = "../../Maps & Surveys/R_Plot_Outputs", scale = 1.75, #changes how big lines & legend items & axes & titles are relative to basemap. Smaller number = bigger items
-         width = 4, # 8 for Med # 7 normal # 3.8 miwingWhotspot, 7 wholearea 6 gsl 5 gom 5.5 centralAtl
-         height = 6.3, #NA default; Then ggsave with defaults, changes from 7x7" to e.g.
-         units = "in", dpi = 600, limitsize = TRUE)
-# fixed dodgy point, ~lon -77.77 ~lat 24.625
+
 
 
 # Ideas / tasks
@@ -147,15 +124,129 @@ sf_sites_polys <- sf::st_as_sf(sites_polys, sf_column_name = "polygons") %>% # c
 
 # CPUE using ggplot and geom_count(). This would show CPUE across sampling sites per species.
 # (individual spreadsheets with) daily CPUEs for each site.
-#  calculate the CPUE of each species per site. Then have an excel with species ID, site name, lat/lon, and CPUE
-# CPUE (sharks per hook hour) for each day of fishing at each site for each species
+# calculate the CPUE of each species per site. Then have an excel with species ID, site name, lat/lon, and CPUE
+# CPUE (sharks per hook hour) for each day of fishing at each site for each species [drumline only?]
 
 # 0’s will need to be included for days that sharks of each species were not caught.
 # how to handle empty hooks – I don’t think it’s appropriate to consider these to be
 # fishing for the duration of the soak time since empty hooks don’t catch sharks.
 # I’ve used the precedent set by Mike that empty hooks constitute ½ of the soak time
 
+# 2021-03-08
+# Maps: for each main site, single circle with different colour based on CPUE. Blank circles if no catches.
+# Column for each species, 1 number for each site per species.
 
+
+# Count & CPUE stats####
+sites <- shark %>%
+  group_by(Site2) %>% # group by site2
+  summarise(Latitude = mean(Latitude, na.rm = TRUE), # summary stats
+            Longitude = mean(Longitude, na.rm = TRUE),
+            Depth_m = mean(Depth_m, na.rm = TRUE),
+            Temperature_C = mean(Temperature_C, na.rm = TRUE),
+            Salinity_ppt = mean(Salinity_ppt, na.rm = TRUE),
+            DO_mg_L = mean(DO_mg_L, na.rm = TRUE))
+
+# gear type? Filter by Gear2? group by Gear2?
+# Common = mean(Common, na.rm = TRUE) # number of rows per each Common
+SiteCounts <- shark %>%
+  group_by(Site2, Common) %>% # group by site2
+  summarise(Count = n()) %>%
+  left_join(sites) # add summaries from above
+
+
+# empty hooks constitute ½ of the soak time
+# if bait_present = FALSE, soak_time = (soak_time * 0.5)
+drumline$Soak_time2 <- drumline$Soak_time
+drumline[which(drumline$Bait_present == FALSE), "Soak_time2"] <- drumline[which(drumline$Bait_present == FALSE), "Soak_time2"] * 0.5
+
+
+# CPUE: per Site2, sharks per hook hour (Soak_time2)
+
+# per Site2, (total soak time2)
+soak_per_site <- drumline %>%
+  group_by(Site2) %>%
+  summarise(Total_Soak = sum(Soak_time2, na.rm = TRUE)) # within each site, need a column per shark species with their counts / total soaktime2# OR col1 commonname col2 count/soak. Split/wider/pivot_wider or whatever?
+# do 2-stage, count each per site, and sum soaktime
+# then divide each per soak
+sharks_per_site <- drumline %>%
+  group_by(Site2, Common) %>%
+  summarise(Count = n()) %>%
+  filter(Common %in% unique(shark$Common))
+
+CPUE <- sharks_per_site %>%
+  left_join(soak_per_site) %>% # Joining, by = "Site2"
+  mutate(CPUE = Count / Total_Soak) %>% # generate CPUE
+  left_join(sites) # Joining, by = "Site2"
+
+
+
+# count of each shark species (discard nonsharks or filter later)
+# divide count by total soaktime2
+
+ggmap(myMap) +
+  geom_point(aes(x = Longitude,
+                 y = Latitude,
+                 size = Count),
+             data = SiteCounts,
+             alpha = 0.5,
+             color = "darkred") +
+  scale_size_continuous() +
+  facet_wrap(.~Common) + # facet by species
+  labs(x = "Longitude",
+       y = "Latitude") +
+  ggtitle("Sharks caught off East Andros, all gear, counts") +
+  theme(legend.position = c(0.88, 0.15), #%dist (of middle? of legend box) from L to R, %dist from Bot to Top
+        legend.spacing.x = unit(0, 'cm'), #compress spacing between legend items, this is min
+        legend.background = element_blank(),
+        panel.background = element_rect(fill = "white", colour = "grey50"), # white background
+        legend.key = element_blank()) + # removed whitespace buffer around legend boxes which is nice
+  ggsave(paste0(today(), "_Counts_Sites_Facet_Species.png"),
+         plot = last_plot(), device = "png", path = "../../Maps & Surveys/R_Plot_Outputs", scale = 1.75, #changes how big lines & legend items & axes & titles are relative to basemap. Smaller number = bigger items
+         width = 4, # 8 for Med # 7 normal # 3.8 miwingWhotspot, 7 wholearea 6 gsl 5 gom 5.5 centralAtl
+         height = 6.4, #NA default; Then ggsave with defaults, changes from 7x7" to e.g.
+         units = "in", dpi = 600, limitsize = TRUE)
+
+ggmap(myMap) +
+  geom_point(aes(x = Longitude,
+                 y = Latitude,
+                 size = CPUE),
+             data = CPUE,
+             alpha = 0.5,
+             color = "darkred") +
+  scale_size_continuous() +
+  facet_wrap(.~Common) + # facet by species
+  labs(x = "Longitude",
+       y = "Latitude",
+       size = "CPUE (sharks per hook soak-hour)") +
+  ggtitle("Sharks caught off East Andros, drumlines, CPUE") +
+  theme(legend.position = c(0.88, 0.15), #%dist (of middle? of legend box) from L to R, %dist from Bot to Top
+        legend.spacing.x = unit(0, 'cm'), #compress spacing between legend items, this is min
+        legend.background = element_blank(),
+        panel.background = element_rect(fill = "white", colour = "grey50"), # white background
+        legend.key = element_blank()) + # removed whitespace buffer around legend boxes which is nice
+  ggsave(paste0(today(), "_CPUE_Sites_Facet_Species.png"),
+         plot = last_plot(), device = "png", path = "../../Maps & Surveys/R_Plot_Outputs", scale = 1.75, #changes how big lines & legend items & axes & titles are relative to basemap. Smaller number = bigger items
+         width = 4, # 8 for Med # 7 normal # 3.8 miwingWhotspot, 7 wholearea 6 gsl 5 gom 5.5 centralAtl
+         height = 6.4, #NA default; Then ggsave with defaults, changes from 7x7" to e.g.
+         units = "in", dpi = 600, limitsize = TRUE)
+# fixed dodgy point, ~lon -77.77 ~lat 24.625
+#
+# annotation_spatial(sf_sites_polys, col = "black", lwd = 0.05, fill = NA) +
+#
+# geom_polygon(data = polys) +
+# geom_density_2d(data = shark, # doesn't work well / look good / help
+#                 aes(x = Longitude,
+#                     y = Latitude),
+#                 colour = "black",
+#                 size = 0.25) +
+#
+
+
+
+
+# Website: preliminary insights page with maps. And also 2 female hammers giving a lot of data. (once we have drumline data?). Liaise with Annie & TG.
+# And can also do histograms and bar plots and such. Markdown.
 
 
 # Habitat: I finally got the new high res habitat data from The Nature Conservancy:
