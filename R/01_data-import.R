@@ -4,8 +4,11 @@
 
 # install.packages("openxlsx")
 library(openxlsx)
-library(tidylog) # verbose version of tidyverse
+library(stringr)
+library(magrittr)
+library(data.table)
 library(lubridate)
+library(tidylog) # verbose version of tidyverse
 # getwd() # Saving The Blue/Code/SavingTheBlue
 
 latestdbase <- "../../Data/2021-03-10_Database.xlsx"
@@ -214,16 +217,57 @@ drumline[which(drumline$Site2 %in% c("North Bight - Upper",
 drumline[which(drumline$Site2 == "Gibson Channel"), "Site2"] <- "Gibson Cay"
 drumline$Site2 <- factor(drumline$Site2, levels = levels_Site2)
 
-
-
-
 unique(drumline$Bottom_top)
 drumline$Bottom_top <- factor(drumline$Bottom_top, levels = c("Bottom", "Top"))
 
-# What is the point of "summary for reports" tab in dbase?
-# We should be able to autogenerate whatever this is, automatically in a simple script. LMK what it is and I'll do it.
-# Can thus also automate report elements like plots etc., in a markdown. I'd be keen to do this.
-# Same Q about Caribbean reef tab.
+# FROM HERE####
+unique(drumline$Pit_Tag_no)
+  sort(drumline$Pit_Tag_no)[which(duplicated(sort(drumline$Pit_Tag_no)))]
+# "B024" # nurses subsequent days 10/11 nov 19. Same full PIT in shark tab
+# "B05B" # both reefs, different years 15nov18 20jun19. No 15 nov 18 rows in shark dbase
+# "F084" # recap, is ok
+# "F087" # reef & hammerhead different 12mar20 12jul20. Same full PIT in shark tab
+# "F092" # reefs 2 days apart 11/13 mar 20. 13 mar should be F0A2 3DD.003D44F0A2 ?
+
+  # 13 mar:
+  # Caribbean reef	C. perezi	F084	3DD.003D44F084
+  # Caribbean reef	C. perezi	F0A2	3DD.003D44F0A2
+  # Caribbean reef	C. perezi	F066	3DD.003D44F066
+  # Great hammerhead	S. mokarran	xxx	xxx
+  # Caribbean reef	C. perezi	F090	3DD.003D44F090
+  # Caribbean reef	C. perezi	F08B	3DD.003D44F08B
+  # Caribbean reef	C. perezi	F06E	3DD.003D44F06E
+  # Caribbean reef	C. perezi	F078	3DD.003D44F078
+
+
+pitjoin <- shark %>%
+  select(PIT_Tag_Full_ID_no) %>%
+  mutate(Pit_Tag_no = str_sub(PIT_Tag_Full_ID_no, -4, -1))
+
+setDT(pitjoin) # convert to data.table without copy
+setDT(drumline) # convert to data.table without copy
+# join and update "df_i" by reference, i.e. without copy
+# https://stackoverflow.com/questions/44930149/replace-a-subset-of-a-data-frame-with-dplyr-join-operations
+# If you want to return only df_nonai that have a matching df_i (i.e. rows where the key is in both tables), set the nomatch argument of data.table to 0.
+# nomatch isn't relevant together with :=, ignoring nomatch
+drumline[pitjoin, on = "Pit_Tag_no", PIT_Tag_Full_ID_no := i.PIT_Tag_Full_ID_no]
+
+pitjoin <- shark %>%
+  select(PIT_Tag_Full_ID_no) %>%
+  mutate(Pit_Tag_no = str_sub(PIT_Tag_Full_ID_no, -5, -1))
+
+drumline[pitjoin, on = "Pit_Tag_no", PIT_Tag_Full_ID_no := i.PIT_Tag_Full_ID_no]
+
+# copy full PITs from Pit_Tag_no to PIT_Tag_Full_ID_no
+drumline[which(nchar(drumline$Pit_Tag_no) > 5), "PIT_Tag_Full_ID_no"] <- drumline[which(nchar(drumline$Pit_Tag_no) > 5), "Pit_Tag_no"]
+
+# PIT tag but no full ID
+drop_na(drumline[which(is.na(drumline$PIT_Tag_Full_ID_no)), "Pit_Tag_no"])
+# F064
+# F0A7
+# 5689D
+# to fix####
+
 
 write.csv(x = drumline,
           file = paste0("../../Data/", today(), "_drumline_data.csv"),
@@ -231,3 +275,9 @@ write.csv(x = drumline,
 saveRDS(object = drumline,
         file = paste0("../../Data/", today(), "_drumline_data.rds"))
 rm(list = ls()) #remove all objects
+
+
+# What is the point of "summary for reports" tab in dbase?
+# We should be able to autogenerate whatever this is, automatically in a simple script. LMK what it is and I'll do it.
+# Can thus also automate report elements like plots etc., in a markdown. I'd be keen to do this.
+# Same Q about Caribbean reef tab.

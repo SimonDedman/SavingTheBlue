@@ -1,17 +1,10 @@
-# Map analysis & Shiny presentation
+# Map analysis & Shiny presentation,  shark catch cpue
 # Simon Dedman simondedman@gmail.com
 # 2021-03-04
 
 # Drumline mapping priority for website.
 # Acoustic & sat tag data looks less good.
 # Arrows = time spent moving in 1 direction.
-
-# Getting scripts ready in R with errors around points,
-# heat-map for spot tag data.
-# GPS + estimated error for position.
-
-# Hammerheads: 1 male 9 month track, 2 females sending data daily, not great positions,
-# 1 better than other, could put those maps up to show people
 
 # Shiny for website.
 library(ggmap)
@@ -24,10 +17,10 @@ library(ggspatial)
 library(tidylog) # verbose version of tidyverse
 library(concaveman) # points to poly bounding box
 
-# shark <- readRDS(file = paste0("../../Data/", today(), "_shark_capture_data.rds"))
-shark <- readRDS(file = paste0("../../Data/", "2021-03-10", "_shark_capture_data.rds"))
-# drumline <- readRDS(file = paste0("../../Data/", today(), "_drumline_data.rds"))
-drumline <- readRDS(file = paste0("../../Data/", "2021-03-10", "_drumline_data.rds"))
+source('R/01_data-import.R') # run data import if you changed the database.
+
+shark <- readRDS(file = paste0("../../Data/", "2021-03-11", "_shark_capture_data.rds"))
+drumline <- readRDS(file = paste0("../../Data/", "2021-03-11", "_drumline_data.rds"))
 
 # bounding box lowerleftlon, lowerleftlat, upperrightlon, upperrightlat
 myLocation <- c(min(shark$Longitude), min(shark$Latitude), max(shark$Longitude), max(shark$Latitude))
@@ -109,32 +102,12 @@ sf_sites_polys <- sf::st_as_sf(sites_polys, sf_column_name = "polygons") %>% # c
   sf::st_set_crs(4326)
 
 
-
-
-# make the circles a bit bigger to reduce the resolution on the data
-# we want people to know what we're doing and some of our results, but maybe we
-# don;t want to give away too much.
-
 # For species composition, there is a cool package in R that allows you to make "scatterpies"
 # We could put a scatterpie at each site on a map and display species diversity.
 # In the attached example, you can see the size of the circle is dictated by sample size.
 # We could do the same for effort, but this would be related to overall captures of sharks per location and not CPUE of individual species.
 
 # individual heat maps for each species
-
-# CPUE using ggplot and geom_count(). This would show CPUE across sampling sites per species.
-# (individual spreadsheets with) daily CPUEs for each site.
-# calculate the CPUE of each species per site. Then have an excel with species ID, site name, lat/lon, and CPUE
-# CPUE (sharks per hook hour) for each day of fishing at each site for each species [drumline only?]
-
-# 0’s will need to be included for days that sharks of each species were not caught.
-# how to handle empty hooks – I don’t think it’s appropriate to consider these to be
-# fishing for the duration of the soak time since empty hooks don’t catch sharks.
-# I’ve used the precedent set by Mike that empty hooks constitute ½ of the soak time
-
-# 2021-03-08
-# Maps: for each main site, single circle with different colour based on CPUE. Blank circles if no catches.
-# Column for each species, 1 number for each site per species.
 
 
 # Count & CPUE stats####
@@ -218,9 +191,9 @@ ggmap(myMap) +
   facet_wrap(.~Common) + # facet by species
   labs(x = "Longitude",
        y = "Latitude",
-       size = "CPUE (sharks per hook soak-hour)") +
+       size = paste("CPUE (sharks/", "hook/soak-hr)", sep = "\n")) +
   ggtitle("Sharks caught off East Andros, drumlines, CPUE") +
-  theme(legend.position = c(0.88, 0.15), #%dist (of middle? of legend box) from L to R, %dist from Bot to Top
+  theme(legend.position = c(0.88, 0.92), #%dist (of middle? of legend box) from L to R, %dist from Bot to Top
         legend.spacing.x = unit(0, 'cm'), #compress spacing between legend items, this is min
         legend.background = element_blank(),
         panel.background = element_rect(fill = "white", colour = "grey50"), # white background
@@ -242,6 +215,8 @@ ggmap(myMap) +
 #                 size = 0.25) +
 #
 
+
+Size histograms, all sites, per shark, per sex: will do, cheers.
 
 
 
