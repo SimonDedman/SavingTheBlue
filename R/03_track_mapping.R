@@ -28,13 +28,20 @@ hammerfolders <- list.dirs(path = "../../Data/Hammerhead SPOT tags/",
 
 for (hammerdirs in hammerfolders) { # hammerdirs <- hammerfolders[1]
 
+deploy <- read_csv(file = paste0("../../Data/Hammerhead SPOT tags/", hammerdirs, "/", hammerdirs, "-Deploy.csv")) %>%
+  rename(ID = "Platform ID No.",
+         Datetime = "Loc. date") %>%
+  mutate(Datetime = as_datetime(Datetime, format = "%m/%d/%Y %H:%M:%S"))
+
 hammertrack <- read_csv(file = paste0("../../Data/Hammerhead SPOT tags/", hammerdirs, "/", hammerdirs, "-All.csv")) %>%
   select("Platform ID No.", Latitude, Longitude, "Loc. quality", "Loc. date") %>%
   rename(ID = "Platform ID No.",
          Quality = "Loc. quality",
          Datetime = "Loc. date") %>%
   mutate(Datetime = as_datetime(Datetime, format = "%m/%d/%Y %H:%M:%S")) %>%
-  drop_na()
+  drop_na() %>%
+  filter(Datetime > deploy$Datetime) # Filter out all datetimes before the deploy datetime
+
 
 # convert quality to numeric
 # unique(hammertrack$Quality) # "3" "1" "2" "B" "0" "A" "Z"
@@ -94,12 +101,6 @@ sf_buffer <- st_transform(sfhammertrack, 6931) %>% # Transform from geographical
 sf_buffer %<>% st_buffer(dist = sf_buffer$ErrorDistance) %>% # metres
   st_transform(4326) # convert back to normal coords
 
-# month_lines <- sfhammertrack %>%
-#   mutate(Month = month(Datetime)) %>%
-#   dplyr::group_by(Month) %>%
-#   dplyr::summarise(do_union = FALSE) %>%
-#   sf::st_cast("MULTILINESTRING")
-
 ggmap(myMap) +
   geom_sf(data = sf_buffer, # buffer circles around the points
           alpha = 0.1,
@@ -111,6 +112,12 @@ ggmap(myMap) +
                           length = unit(0.05, "inches"),
                           ends = "last",
                           type = "open")) +
+  geom_point(aes(x = Longitude, y = Latitude), # add deploy triangle
+             data = deploy,
+             shape = 24,
+             fill = "white",
+             colour = "black",
+             size = 4) +
   labs(x = "Longitude",
        y = "Latitude") +
   ggtitle(paste0("Hammerhead movement off East Andros, shark: ", hammerdirs)) +
@@ -128,5 +135,5 @@ ggmap(myMap) +
 } # end loop of hammerdirs
 # ToDO####
 # Path coloured by date month like blocklab (add dates?) or could do as coloured dots??
-# Add a deploy point, single geom
+# Add deploy point to legend
 
