@@ -19,8 +19,8 @@ library(concaveman) # points to poly bounding box
 
 source('R/01_data-import.R') # run data import if you changed the database.
 
-shark <- readRDS(file = paste0("../../Data/", "2021-03-11", "_shark_capture_data.rds"))
-drumline <- readRDS(file = paste0("../../Data/", "2021-03-11", "_drumline_data.rds"))
+shark <- readRDS(file = paste0("../../Data/", "2021-03-20", "_shark_capture_data.rds"))
+drumline <- readRDS(file = paste0("../../Data/", "2021-03-20", "_drumline_data.rds"))
 
 # bounding box lowerleftlon, lowerleftlat, upperrightlon, upperrightlat
 myLocation <- c(min(shark$Longitude), min(shark$Latitude), max(shark$Longitude), max(shark$Latitude))
@@ -147,6 +147,8 @@ sharks_per_site <- drumline %>%
   summarise(Count = n()) %>%
   filter(Common %in% unique(shark$Common))
 
+sharks_per_site$Common %in% unique(shark$Common)
+
 CPUE <- sharks_per_site %>%
   left_join(soak_per_site) %>% # Joining, by = "Site2"
   mutate(CPUE = Count / Total_Soak) %>% # generate CPUE
@@ -200,8 +202,8 @@ ggmap(myMap) +
         legend.key = element_blank()) + # removed whitespace buffer around legend boxes which is nice
   ggsave(paste0(today(), "_CPUE_Sites_Facet_Species.png"),
          plot = last_plot(), device = "png", path = "../../Maps & Surveys/R_Plot_Outputs", scale = 1.75, #changes how big lines & legend items & axes & titles are relative to basemap. Smaller number = bigger items
-         width = 4, # 8 for Med # 7 normal # 3.8 miwingWhotspot, 7 wholearea 6 gsl 5 gom 5.5 centralAtl
-         height = 6.4, #NA default; Then ggsave with defaults, changes from 7x7" to e.g.
+         width = 4,
+         height = 6.4,
          units = "in", dpi = 600, limitsize = TRUE)
 # fixed dodgy point, ~lon -77.77 ~lat 24.625
 #
@@ -216,13 +218,41 @@ ggmap(myMap) +
 #
 
 
-Size histograms, all sites, per shark, per sex: will do, cheers.
 
+# Size histograms, x species, colour sex, all sites####
+ggplot(shark, aes(x = Common, y = PCL)) +
+  geom_boxplot(aes(fill = Sex), colour = "black", notch = F) +
+  labs(x = "Species", y = "PCL, cm") +
+  # stat_summary(fun.y = mean, geom = "point", shape = 23, size = 5, colour = "white") + # adds mean point
+  # scale_x_discrete(labels = c("GSL-GOM", "GOM-GSL", "GSL-Med", "Med-GSL")) + # manually relabel to remove underscores
+  # scale_fill_manual(values = c("red", "red", "blue", "blue")) + # manually colour plots if specified
+  theme_minimal() %+replace% theme(axis.text = element_text(size = rel(2)),
+                                   title = element_text(size = rel(2)),
+                                   legend.position = "none",
+                                   panel.border = element_rect(colour = "black", fill = NA, size = 1)) +
+  ggsave(paste0(today(), "_Size_Histo.png"),
+         plot = last_plot(), device = "png", path = "../../Maps & Surveys/R_Plot_Outputs", scale = 1.75, #changes how big lines & legend items & axes & titles are relative to basemap. Smaller number = bigger items
+         width = 15, height = 6, units = "in", dpi = 600, limitsize = TRUE)
 
+# Size histograms, x species, colour sex, facet sites####
+ggplot(shark, aes(x = Common, y = PCL)) +
+  geom_boxplot(aes(fill = Sex), colour = "black", notch = F) +
+  facet_wrap(.~Site2, # facet by site
+             scales = "free") + # drops zero-shark bins
+  labs(x = "Species", y = "PCL, cm") +
+  # stat_summary(fun.y = mean, geom = "point", shape = 23, size = 5, colour = "white") + # adds mean point
+  # scale_x_discrete(labels = c("GSL-GOM", "GOM-GSL", "GSL-Med", "Med-GSL")) + # manually relabel to remove underscores
+  # scale_fill_manual(values = c("red", "red", "blue", "blue")) + # manually colour plots if specified
+  theme_minimal() %+replace% theme(axis.text = element_text(size = rel(1)),
+                                   title = element_text(size = rel(1)),
+                                   legend.position = "none",
+                                   panel.border = element_rect(colour = "black", fill = NA, size = 1)) +
+  ggsave(paste0(today(), "_Size_Histo_SiteFacet.png"),
+         plot = last_plot(), device = "png", path = "../../Maps & Surveys/R_Plot_Outputs", scale = 1.75, #changes how big lines & legend items & axes & titles are relative to basemap. Smaller number = bigger items
+         width = 15, height = 6, units = "in", dpi = 600, limitsize = TRUE)
 
 # Website: preliminary insights page with maps. And also 2 female hammers giving a lot of data. (once we have drumline data?). Liaise with Annie & TG.
 # And can also do histograms and bar plots and such. Markdown.
 
 
-# Habitat: I finally got the new high res habitat data from The Nature Conservancy:
-# nearly 3gb & a weird format so will take a bit of processing but a positive step forward nonetheless
+# new high res habitat data from The Nature Conservancy: include?
