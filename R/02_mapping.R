@@ -26,8 +26,8 @@ drumline <- readRDS(file = paste0("../../Data/", "2021-03-20", "_drumline_data.r
 myLocation <- c(min(shark$Longitude), min(shark$Latitude), max(shark$Longitude), max(shark$Latitude))
 
 myMap <- get_map(location = myLocation,
-                 source = "osm",
-                 maptype = "osm",
+                 # source = "osm",
+                 # maptype = "osm",
                  crop = FALSE)
 # zoom = 10) # default?
 
@@ -169,7 +169,8 @@ ggmap(myMap) +
   scale_size_continuous() +
   facet_wrap(.~Common) + # facet by species
   labs(x = "Longitude",
-       y = "Latitude") +
+       y = "Latitude",
+       caption = paste0("Saving The Blue, ", today())) +
   ggtitle("Sharks caught off East Andros, all gear, counts") +
   theme(legend.position = c(0.88, 0.15), #%dist (of middle? of legend box) from L to R, %dist from Bot to Top
         legend.spacing.x = unit(0, 'cm'), #compress spacing between legend items, this is min
@@ -193,7 +194,8 @@ ggmap(myMap) +
   facet_wrap(.~Common) + # facet by species
   labs(x = "Longitude",
        y = "Latitude",
-       size = paste("CPUE (sharks/", "hook/soak-hr)", sep = "\n")) +
+       size = paste("CPUE (sharks/", "hook/soak-hr)", sep = "\n"),
+       caption = paste0("Saving The Blue, ", today())) +
   ggtitle("Sharks caught off East Andros, drumlines, CPUE") +
   theme(legend.position = c(0.88, 0.92), #%dist (of middle? of legend box) from L to R, %dist from Bot to Top
         legend.spacing.x = unit(0, 'cm'), #compress spacing between legend items, this is min
@@ -216,40 +218,69 @@ ggmap(myMap) +
 #                 colour = "black",
 #                 size = 0.25) +
 #
-
-
+ # 285
 
 # Size histograms, x species, colour sex, all sites####
-ggplot(shark, aes(x = Common, y = PCL)) +
-  geom_boxplot(aes(fill = Sex), colour = "black", notch = F) +
-  labs(x = "Species", y = "PCL, cm") +
+ggplot(shark %>%
+         group_by(Common) %>%
+         filter(length(PCL) > 1), # remove groups with 1 observation
+       aes(x = Common, y = PCL)) +
+  geom_boxplot(aes(fill = Sex), colour = "black", notch = F,
+               position = position_dodge(preserve = "single")) + # preserves width when species have 0 data for 1 sex
+  scale_y_continuous(limits = c(0, round(max(shark$PCL, na.rm = T), -2)),
+                     breaks = seq(from = 0, to = round(max(shark$PCL, na.rm = T), -2), by = 50)) +
+  labs(x = "Species", y = "Pre-caudal Length (cm)", caption = paste0("Saving The Blue, ", today())) +
   # stat_summary(fun.y = mean, geom = "point", shape = 23, size = 5, colour = "white") + # adds mean point
   # scale_x_discrete(labels = c("GSL-GOM", "GOM-GSL", "GSL-Med", "Med-GSL")) + # manually relabel to remove underscores
   # scale_fill_manual(values = c("red", "red", "blue", "blue")) + # manually colour plots if specified
   theme_minimal() %+replace% theme(axis.text = element_text(size = rel(2)),
+                                   axis.title.x = element_text(vjust = -2), # move x axis label down a bit
                                    title = element_text(size = rel(2)),
-                                   legend.position = "none",
+                                   legend.text = element_text(size = rel(2)),
+                                   legend.position = c(0.03, 0.92),
                                    panel.border = element_rect(colour = "black", fill = NA, size = 1)) +
   ggsave(paste0(today(), "_Size_Histo.png"),
          plot = last_plot(), device = "png", path = "../../Maps & Surveys/R_Plot_Outputs", scale = 1.75, #changes how big lines & legend items & axes & titles are relative to basemap. Smaller number = bigger items
          width = 15, height = 6, units = "in", dpi = 600, limitsize = TRUE)
 
+tmp <- shark %>%
+  filter(!is.na(Sex)) %>%
+  group_by(Site2, Common, Sex) %>%
+  summarise(n = length(PCL))
+  # filter(length(PCL) > 1)
+
 # Size histograms, x species, colour sex, facet sites####
-ggplot(shark, aes(x = Common, y = PCL)) +
-  geom_boxplot(aes(fill = Sex), colour = "black", notch = F) +
+ggplot(shark %>%
+         filter(!is.na(Sex)) %>%
+         group_by(Site2, Common, Sex) %>%
+         filter(length(PCL) > 1),
+       aes(x = Common, y = PCL)) +
+  geom_boxplot(aes(fill = Sex), colour = "black", notch = F, position = position_dodge(preserve = "single")) +
   facet_wrap(.~Site2, # facet by site
              scales = "free") + # drops zero-shark bins
-  labs(x = "Species", y = "PCL, cm") +
+  scale_y_continuous(limits = c(0, round(max(shark$PCL, na.rm = T), -2)),
+                     breaks = seq(from = 0, to = round(max(shark$PCL, na.rm = T), -2), by = 50)) +
+  labs(x = "Species", y = "Pre-caudal Length (cm)", caption = paste0("Saving The Blue, ", today())) +
   # stat_summary(fun.y = mean, geom = "point", shape = 23, size = 5, colour = "white") + # adds mean point
   # scale_x_discrete(labels = c("GSL-GOM", "GOM-GSL", "GSL-Med", "Med-GSL")) + # manually relabel to remove underscores
   # scale_fill_manual(values = c("red", "red", "blue", "blue")) + # manually colour plots if specified
   theme_minimal() %+replace% theme(axis.text = element_text(size = rel(1)),
+                                   axis.title.x = element_text(vjust = -2), # move x axis label down a bit
                                    title = element_text(size = rel(1)),
                                    legend.position = "none",
                                    panel.border = element_rect(colour = "black", fill = NA, size = 1)) +
   ggsave(paste0(today(), "_Size_Histo_SiteFacet.png"),
          plot = last_plot(), device = "png", path = "../../Maps & Surveys/R_Plot_Outputs", scale = 1.75, #changes how big lines & legend items & axes & titles are relative to basemap. Smaller number = bigger items
          width = 15, height = 6, units = "in", dpi = 600, limitsize = TRUE)
+
+# TODO####
+# PM (both graphics): One concern is the readability for non-scientists – might be good for Annie and Gabby to have a look and see how they interpret them.
+# BK Maybe we should only retain a species if n is a decent value (n >5??). We can be upfront and write size distributions for n > 5 (or whatever).
+#  Perhaps we can also put n = X somewhere on each box? although this may be too much for the public.
+#  When we submit these data for a scientific audience it makes sense to include n=1.
+
+
+
 
 # Website: preliminary insights page with maps. And also 2 female hammers giving a lot of data. (once we have drumline data?). Liaise with Annie & TG.
 # And can also do histograms and bar plots and such. Markdown.

@@ -143,7 +143,7 @@ for (hammerdirs in hammerfolders) { # hammerdirs <- hammerfolders[1]
     geom_path(aes(x = Longitude, y = Latitude), # track line, simple thin black,
               data = hammertrack, colour = "black", size = 0.1) +
     geom_point(aes(x = Longitude, y = Latitude, fill = Month), # points per hit, coloured by month
-               data = hammertrack, shape = 21, colour = "black", size = 1) +
+               data = hammertrack, shape = 21, colour = "black", size = 2) +
     scale_fill_gradientn(colours = rev(rainbow(12)), limits = c(1, 12), # month colour controls
                          labels = month.abb, breaks = 1:12) +
     geom_point(aes(x = Longitude, y = Latitude, shape = Name), # add deploy triangle & last diamond
@@ -151,7 +151,7 @@ for (hammerdirs in hammerfolders) { # hammerdirs <- hammerfolders[1]
     scale_shape_manual(values = c(24, 23)) + # choose shapes manually, in order, deploy then last
     # geom_text(aes(x = Longitude - 0.3, y = Latitude, label = Date), # add deploy & last labels, shift location
     #           data = DeployLast, colour = "white") +
-    labs(x = "Longitude", y = "Latitude") +
+    labs(x = "Longitude", y = "Latitude", caption = paste0("Saving The Blue, ", today())) +
     ggtitle(paste0("Hammerhead movement off East Andros, shark: ", hammerdirs)) +
     theme(legend.position = c(0.1, 0.16), #%dist (of middle? of legend box) from L to R, %dist from Bot to Top
           legend.spacing.x = unit(0, 'cm'), #compress spacing between legend items, this is min
@@ -168,4 +168,4 @@ for (hammerdirs in hammerfolders) { # hammerdirs <- hammerfolders[1]
 } # end loop of hammerdirs
 
 # ToDo####
-# Better labelling? Put deploy & last dates in the Name values, removing the need for geom_text?!
+# Better labelling?
