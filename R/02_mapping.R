@@ -243,21 +243,46 @@ ggplot(shark %>%
          plot = last_plot(), device = "png", path = "../../Maps & Surveys/R_Plot_Outputs", scale = 1.75, #changes how big lines & legend items & axes & titles are relative to basemap. Smaller number = bigger items
          width = 15, height = 6, units = "in", dpi = 600, limitsize = TRUE)
 
-tmp <- shark %>%
+tmp <-shark %>%
   filter(!is.na(Sex)) %>%
   group_by(Site2, Common, Sex) %>%
-  summarise(n = length(PCL))
-  # filter(length(PCL) > 1)
+  filter(length(PCL) > 1)
+
+shark$Site3 <- as.character(shark$Site2)
+# pool nearby sites, such as blackbeards and shark hole. /  pool all north bight, shark hole, islas and blackbeards
+shark[which(shark$Site3 == "Blackbeard's Channel"), "Site3"] <- "Wider North Bight"
+shark[which(shark$Site3 == "Shark Hole"), "Site3"] <- "Wider North Bight"
+shark[which(shark$Site3 == "North Bight"), "Site3"] <- "Wider North Bight"
+shark[which(shark$Site3 == "Isla's Spot"), "Site3"] <- "Wider North Bight"
+# If we only wanted to include core sites where we have a lot of effort, I think they would be Green cay, AUTEC channel, bigwood, TOTO, Islas - maybe north bight
+# pick sites with > 10 captures
+
+unique(shark$Site3)
+# Gibson Cay           Green Cay            TOTO Navy Buoy       Blackbeard's Channel Bigwood Channel      Fresh Creek          North Bight          AUTEC Channel        Isla's Spot
+# Bristol Galley       Shark Hole           Somerset             High Cay
+
+shark$Site3 <- factor(shark$Site3, levels = c("Fresh Creek", "Somerset", "High Cay", "Green Cay", "Bristol Galley", "AUTEC Channel", "Wider North Bight", "Bigwood Channel", "TOTO Navy Buoy", "Gibson Cay"))
+# removing sites where effort is limited?
+# Including these data might cause our public audience to draw conclusions about diversity/abundance at that location,
+# but we might not have enough effort to make these conclusions realistic.
+# An example would be blackbeards channel.
+# I know we haven't fished there a ton (relatively speaking),
+# but from the figures it seems as though only nurse sharks are present and I do not think that is the message we want to convey.
+
 
 # Size histograms, x species, colour sex, facet sites####
 ggplot(shark %>%
          filter(!is.na(Sex)) %>%
-         group_by(Site2, Common, Sex) %>%
+         group_by(Site3) %>%
+         filter(n() >= 10) %>%
+         ungroup() %>%
+         group_by(Site3, Common, Sex) %>%
          filter(length(PCL) > 1),
        aes(x = Common, y = PCL)) +
   geom_boxplot(aes(fill = Sex), colour = "black", notch = F, position = position_dodge(preserve = "single")) +
-  facet_wrap(.~Site2, # facet by site
-             scales = "free") + # drops zero-shark bins
+  facet_wrap(.~Site3, # facet by site
+             scales = "free", # drops zero-shark bins
+             drop = TRUE) + # otherwise plots empty sites even if they're not in the dbase so how does it know what they are?? From factor levels.
   scale_y_continuous(limits = c(0, round(max(shark$PCL, na.rm = T), -2)),
                      breaks = seq(from = 0, to = round(max(shark$PCL, na.rm = T), -2), by = 50)) +
   labs(x = "Species", y = "Pre-caudal Length (cm)", caption = paste0("Saving The Blue, ", today())) +
@@ -267,11 +292,22 @@ ggplot(shark %>%
   theme_minimal() %+replace% theme(axis.text = element_text(size = rel(1)),
                                    axis.title.x = element_text(vjust = -2), # move x axis label down a bit
                                    title = element_text(size = rel(1)),
-                                   legend.position = "none",
+                                   legend.position = c(0.03, 0.92),
                                    panel.border = element_rect(colour = "black", fill = NA, size = 1)) +
   ggsave(paste0(today(), "_Size_Histo_SiteFacet.png"),
          plot = last_plot(), device = "png", path = "../../Maps & Surveys/R_Plot_Outputs", scale = 1.75, #changes how big lines & legend items & axes & titles are relative to basemap. Smaller number = bigger items
          width = 15, height = 6, units = "in", dpi = 600, limitsize = TRUE)
+
+
+# ensure females are always on the left and males always on the right? You will see female = 0 and male >1, the male block ends up on the left (see high cay, blackbeards)
+# taken care of by removing low-n groups
+
+# TG:
+# size-frequency histograms instead? just include species with > 5 catches?
+# do this overall for individual species catches (all sites) and only for species with > 5 captures. Could be split by colour for sex too?
+# SD:L confused, asked for more info.
+
+
 
 # TODO####
 # PM (both graphics): One concern is the readability for non-scientists – might be good for Annie and Gabby to have a look and see how they interpret them.
