@@ -2,7 +2,6 @@
 # Simon Dedman simondedman@gmail.com
 # 2021-03-03
 
-# install.packages("openxlsx")
 library(openxlsx)
 library(stringr)
 library(magrittr)
@@ -11,7 +10,7 @@ library(lubridate)
 library(tidylog) # verbose version of tidyverse
 # getwd() # Saving The Blue/Code/SavingTheBlue
 
-latestdbase <- "../../Data/Database_2021-03-20.xlsx"
+latestdbase <- "../../Data/Database_2021-06-25.xlsx"
 # Shark Data####
 shark <- read.xlsx(xlsxFile = latestdbase,
                    sheet = 1,
@@ -20,6 +19,8 @@ shark <- read.xlsx(xlsxFile = latestdbase,
                    na.strings = c("NA", "xxx")) # various cols are "xxx" instead of NA or blank, why?
 # date wrong, is excel format
 shark$Date <- as.Date(shark$Date, origin = "1899-12-30")
+shark$Time <- convertToDateTime(shark$Time, origin = shark$Date, tz = "America/New_York")
+
 # convert yes no to T F in "Mature" "Fin.genetics"         "Fin.isotopes"         "Muscle.isotopes"      "Whole.blood.isotopes" "Plasma.isotopes" "RBC.isotopes"
 # Fixed in Excel sheet with find replace
 
@@ -140,7 +141,6 @@ unique(shark$Gear)
 # "Block-rig" "By-hand" "Polyball" "Handline" "Drumline-bottom" "Gillnet" "Drumline-top"
 shark$Gear2 <- shark$Gear
 shark[which(shark$Gear2 %in% c("Handline", "By-hand")), "Gear2"] <- "Hand"
-# fromhere which blockrig####
 levels_Gear2 <- c("Hand",
                   "Polyball",
                   "Drumline-bottom",
@@ -156,7 +156,6 @@ saveRDS(object = shark,
 
 
 # Drumline Data####
-
 drumline <- read.xlsx(xlsxFile = latestdbase,
                       sheet = 2,
                       detectDates = TRUE, # fails
@@ -164,7 +163,9 @@ drumline <- read.xlsx(xlsxFile = latestdbase,
                       na.strings = c("NA", "xxx")) # various cols are "xxx" instead of NA or blank, why?
 drumline$Date <- as.Date(drumline$Date, origin = "1899-12-30")
 drumline$Depth_m <- as.numeric(drumline$Depth_m)
-
+drumline$Time_in <- convertToDateTime(drumline$Time_in, origin = drumline$Date, tz = "America/New_York")
+drumline$Time_out <- convertToDateTime(drumline$Time_out, origin = drumline$Date, tz = "America/New_York")
+drumline$Soak_time <- drumline$Time_out - drumline$Time_in # time diff in mins
 # don't add blank rows to break up sheets
 # no adding spaces to the end of cells
 

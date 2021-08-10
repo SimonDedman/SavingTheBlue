@@ -156,6 +156,31 @@ CPUE <- sharks_per_site %>%
 
 
 
+shark$Site3 <- as.character(shark$Site2)
+# pool nearby sites, such as blackbeards and shark hole. /  pool all north bight, shark hole, islas and blackbeards
+shark[which(shark$Site3 == "Blackbeard's Channel"), "Site3"] <- "Wider North Bight"
+shark[which(shark$Site3 == "Shark Hole"), "Site3"] <- "Wider North Bight"
+shark[which(shark$Site3 == "North Bight"), "Site3"] <- "Wider North Bight"
+shark[which(shark$Site3 == "Isla's Spot"), "Site3"] <- "Wider North Bight"
+# If we only wanted to include core sites where we have a lot of effort, I think they would be Green cay, AUTEC channel, bigwood, TOTO, Islas - maybe north bight
+# pick sites with > 10 captures
+
+# unique(shark$Site3)
+# Gibson Cay           Green Cay            TOTO Navy Buoy       Blackbeard's Channel Bigwood Channel      Fresh Creek          North Bight          AUTEC Channel        Isla's Spot
+# Bristol Galley       Shark Hole           Somerset             High Cay
+
+shark$Site3 <- factor(shark$Site3, levels = c("Fresh Creek", "Somerset", "High Cay", "Green Cay", "Bristol Galley", "AUTEC Channel", "Wider North Bight", "Bigwood Channel", "TOTO Navy Buoy", "Gibson Cay"))
+# removing sites where effort is limited?
+# Including these data might cause our public audience to draw conclusions about diversity/abundance at that location,
+# but we might not have enough effort to make these conclusions realistic.
+# An example would be blackbeards channel.
+# I know we haven't fished there a ton (relatively speaking),
+# but from the figures it seems as though only nurse sharks are present and I do not think that is the message we want to convey.
+
+
+
+
+
 # count of each shark species (discard nonsharks or filter later)
 # divide count by total soaktime2
 
@@ -220,7 +245,7 @@ ggmap(myMap) +
 #
  # 285
 
-# Size histograms, x species, colour sex, all sites####
+# Size boxplots, x species, colour sex, all sites####
 ggplot(shark %>%
          group_by(Common) %>%
          filter(length(PCL) > 1), # remove groups with 1 observation
@@ -243,34 +268,10 @@ ggplot(shark %>%
          plot = last_plot(), device = "png", path = "../../Maps & Surveys/R_Plot_Outputs", scale = 1.75, #changes how big lines & legend items & axes & titles are relative to basemap. Smaller number = bigger items
          width = 15, height = 6, units = "in", dpi = 600, limitsize = TRUE)
 
-tmp <-shark %>%
-  filter(!is.na(Sex)) %>%
-  group_by(Site2, Common, Sex) %>%
-  filter(length(PCL) > 1)
-
-shark$Site3 <- as.character(shark$Site2)
-# pool nearby sites, such as blackbeards and shark hole. /  pool all north bight, shark hole, islas and blackbeards
-shark[which(shark$Site3 == "Blackbeard's Channel"), "Site3"] <- "Wider North Bight"
-shark[which(shark$Site3 == "Shark Hole"), "Site3"] <- "Wider North Bight"
-shark[which(shark$Site3 == "North Bight"), "Site3"] <- "Wider North Bight"
-shark[which(shark$Site3 == "Isla's Spot"), "Site3"] <- "Wider North Bight"
-# If we only wanted to include core sites where we have a lot of effort, I think they would be Green cay, AUTEC channel, bigwood, TOTO, Islas - maybe north bight
-# pick sites with > 10 captures
-
-unique(shark$Site3)
-# Gibson Cay           Green Cay            TOTO Navy Buoy       Blackbeard's Channel Bigwood Channel      Fresh Creek          North Bight          AUTEC Channel        Isla's Spot
-# Bristol Galley       Shark Hole           Somerset             High Cay
-
-shark$Site3 <- factor(shark$Site3, levels = c("Fresh Creek", "Somerset", "High Cay", "Green Cay", "Bristol Galley", "AUTEC Channel", "Wider North Bight", "Bigwood Channel", "TOTO Navy Buoy", "Gibson Cay"))
-# removing sites where effort is limited?
-# Including these data might cause our public audience to draw conclusions about diversity/abundance at that location,
-# but we might not have enough effort to make these conclusions realistic.
-# An example would be blackbeards channel.
-# I know we haven't fished there a ton (relatively speaking),
-# but from the figures it seems as though only nurse sharks are present and I do not think that is the message we want to convey.
 
 
-# Size histograms, x species, colour sex, facet sites####
+
+# Size boxplots, x species, colour sex, facet sites####
 ggplot(shark %>%
          filter(!is.na(Sex)) %>%
          group_by(Site3) %>%
@@ -302,10 +303,38 @@ ggplot(shark %>%
 # ensure females are always on the left and males always on the right? You will see female = 0 and male >1, the male block ends up on the left (see high cay, blackbeards)
 # taken care of by removing low-n groups
 
-# TG:
-# size-frequency histograms instead? just include species with > 5 catches?
+
+# Size histograms ####
+# TG: size-frequency histograms instead? just include species with > 5 catches?
 # do this overall for individual species catches (all sites) and only for species with > 5 captures. Could be split by colour for sex too?
-# SD:L confused, asked for more info.
+# SD:L confused, asked for more info. He means column plots
+
+ggplot(shark %>%
+         filter(!is.na(Sex)) %>%
+         group_by(Site3) %>%
+         filter(n() >= 10) %>%
+         ungroup() %>%
+         group_by(Site3, Common, Sex) %>%
+         filter(length(PCL) > 1),
+       aes(x = PCL)) +
+  geom_histogram(aes(fill = Sex), colour = "black", position = position_dodge(preserve = "single"), bins = 6) + #
+  facet_wrap(facets = c("Common"), # facet by site
+             scales = "free", # drops zero-shark bins
+             drop = TRUE) + # otherwise plots empty sites even if they're not in the dbase so how does it know what they are?? From factor levels.
+  # scale_y_continuous(limits = c(0, round(max(shark$PCL, na.rm = T), -2)),
+  #                    breaks = seq(from = 0, to = round(max(shark$PCL, na.rm = T), -2), by = 50)) +
+  labs(x = "Pre-caudal Length (cm)", y = "Count", caption = paste0("Saving The Blue, ", today())) +
+  # stat_summary(fun.y = mean, geom = "point", shape = 23, size = 5, colour = "white") + # adds mean point
+  # scale_x_discrete(labels = c("GSL-GOM", "GOM-GSL", "GSL-Med", "Med-GSL")) + # manually relabel to remove underscores
+  # scale_fill_manual(values = c("red", "red", "blue", "blue")) + # manually colour plots if specified
+  theme_minimal() %+replace% theme(axis.text = element_text(size = rel(1)),
+                                   axis.title.x = element_text(vjust = -2), # move x axis label down a bit
+                                   title = element_text(size = rel(1)),
+                                   legend.position = c(0.03, 0.92),
+                                   panel.border = element_rect(colour = "black", fill = NA, size = 1)) +
+  ggsave(paste0(today(), "_Size_Columns_CommonFacet.png"),
+         plot = last_plot(), device = "png", path = "../../Maps & Surveys/R_Plot_Outputs", scale = 1.75, #changes how big lines & legend items & axes & titles are relative to basemap. Smaller number = bigger items
+         width = 15, height = 6, units = "in", dpi = 600, limitsize = TRUE)
 
 
 

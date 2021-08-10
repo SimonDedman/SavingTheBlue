@@ -29,7 +29,7 @@ hammerfolders <- list.dirs(path = "../../Data/Hammerhead SPOT tags/",
                            full.names = FALSE,
                            recursive = FALSE)
 
-for (hammerdirs in hammerfolders) { # hammerdirs <- hammerfolders[1]
+for (hammerdirs in hammerfolders) { # hammerdirs <- hammerfolders[2]
 
   # Deployment point
   deploy <- read_csv(file = paste0("../../Data/Hammerhead SPOT tags/", hammerdirs, "/", hammerdirs, "-Deploy.csv")) %>%
@@ -101,7 +101,8 @@ for (hammerdirs in hammerfolders) { # hammerdirs <- hammerfolders[1]
 
   googlemap = TRUE
   if (googlemap) { # grow bounds extents if requested
-    expandfactor <- 1.6 # 1.3 - 1.5 same zoom as 1. 1.6 is a big leap up in zoom (out)
+    expandfactor <- 1.6 # 1.3 - 1.5 same zoom as 1. 1.6 is a big leap up in zoom (out). 1.9 (& maybe 1.7 or 1.8 is another step out, done manually for #2, 200368, because some points were out of bounds.)
+    # Still need to improve this part
     xmid <- mean(myLocation[c(1,3)])
     ymid <- mean(myLocation[c(2,4)])
     xmax <- ((myLocation[3] - xmid) * expandfactor) + xmid #updated for sf/st
