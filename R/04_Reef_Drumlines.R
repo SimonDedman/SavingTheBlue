@@ -58,11 +58,12 @@ drumline %<>%
 # 12 Seagrass              7
 
 drumline %<>%
-  mutate(Substrate2 = case_when(
-    Substrate %in% c("Sand & patch reef", "Patch reef", "Sand & octocorals") ~ "Reef",
-    Substrate %in% c("Silt & seagrass", "Sand & seagrass", "Sand & algae") ~ "Vegetation",
+  mutate(Substrate2 = factor(case_when(
+    Substrate %in% c("Sand & patch reef", "Patch reef", "Sand & octocorals", "Sand & coral") ~ "Reef",
+    Substrate %in% c("Silt & seagrass", "Sand & seagrass", "Sand & algae", "Seagrass") ~ "Vegetation",
     Substrate %in% c("Sand", "Silt", "Hard bottom") ~ "Bare",
-    TRUE ~ as.character(Substrate)))
+    TRUE ~ as.character(Substrate)),
+    levels = c("Bare", "Vegetation", "Reef")))
 # could then mutate Substrate2 into a factor with levels I specify
 
 # unique(drumline$Habitat)
@@ -159,7 +160,11 @@ saveRDS(object = drumline,
 
 
 # Analysis: bar chats & scatterplots####
-
+# read in saved data from above
+drumline <- list.files(path = "../../Data/") %>% # list all files in Data folder
+  .[matches("_drumline_reefs.rds", vars = .)] %>% # filter for the right ones, all today() variants, will be ordered rising by date
+  last() # last one is highest date i.e. latest
+drumline <- readRDS(file = paste0("../../Data/", drumline))
 # use drumline data to explore CPUE in different habitats, sex and size segregation / overlap.
 # Possible seasonal differences in catch rates or habitats caught in due to temp etc?
 
@@ -195,7 +200,7 @@ colnames(drumline)
 
 
 # Loop through factorial variables & barplot against CPUE
-for (factorvars in c("Site3", "Habitat", "Substrate", "Tide", "Season", "LunarPhase")) {
+for (factorvars in c("Site3", "Habitat", "Substrate", "Substrate2", "Tide", "Season", "LunarPhase")) {
   ggplot(data = drumline) +
     geom_col(mapping = aes(x = .data[[factorvars]], y = CPUE), fill = "black") +
     theme_minimal() %+replace% theme(axis.text = element_text(size = rel(1.1)),
@@ -238,10 +243,19 @@ for (numvars in c("Latitude", "Longitude", "Depth_m", "Temperature_C", "Salinity
 library(gbm.auto)
 expvars = c("Site3", "Habitat", "Substrate", "Tide", "Season", "LunarPhase",
             "Latitude", "Longitude", "Depth_m", "Temperature_C", "Salinity", "DO_mg_L", "Yearday", "Month", "daylength")
+# 2021-09-08 PM Substrate2 suggestion
+expvars = c("Site3", "Habitat", "Substrate2", "Tide", "Season", "LunarPhase",
+            "Latitude", "Longitude", "Depth_m", "Temperature_C", "Salinity", "DO_mg_L", "Yearday", "Month", "daylength")
 gbm.bfcheck(samples = drumline, resvar = "CPUE")
 # [1] "  binary bag fraction must be at least 0.018. n = 1179"
 # [1] "Gaussian bag fraction must be at least 0.262. n = 80"
 # [1] 0.0178117 0.2625000
+
+# 2021-09-08 PM remove Somerset suggestion
+drumline %<>%
+  filter(Site3 != "Somerset") %>% #remove Somerset rows, n=103, 9% of data
+  mutate(Site3 = factor(Site3, levels = levels(Site3)[2:6])) # remove Somerset as a factor level
+
 gbm.auto(
   grids = NULL,
   samples = drumline, # [-which(is.na(drumline[resvar])),]
@@ -276,7 +290,10 @@ gbm.auto(
 
 # gaus run struggling, only n=80, keep playing with list options
 
-
+# PM: Something that would be interesting to include are size and sex differences –
+# any segregation in distributions based on these factors,
+# who do we catch more of, and
+# is there any seasonality to juveniles or mature individuals that could be indicative of reproductive behavior (pupping, migration, etc.).
 
 
 # Bayesian! Perfect test case

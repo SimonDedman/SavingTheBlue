@@ -10,6 +10,13 @@
 
 # Hammerheads: 1 male 9 month track, 2 females sending data daily, not great positions,
 # 1 better than other, could put those maps up to show people
+# download from https://argos-system.clsamerica.com/argos-cwi2/login.html
+# Data, download messages, by platform ID numbers, enter number.
+# loc only, select all classes. between dates: select all
+# [asked STB lads]
+# Or wildlife computers https://my.wildlifecomputers.com/?last=%2Fdata%2F&logout=y
+# Owner: tristan. filter by tag#, select, download, unzip
+
 
 # Shiny for website.
 # remove.packages("ggmap")
