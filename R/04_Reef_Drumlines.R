@@ -158,7 +158,6 @@ write.csv(x = drumline,
 saveRDS(object = drumline,
         file = paste0("../../Data/", today(), "_drumline_reefs.rds"))
 
-
 # Analysis: bar chats & scatterplots####
 # read in saved data from above
 drumline <- list.files(path = "../../Data/") %>% # list all files in Data folder
@@ -198,7 +197,7 @@ colnames(drumline)
 # chl?
 # any other satellite stuff that's easy to grab? NO, all too coarse spatial res & not spatially dynamic at the static sites.
 
-
+# Bar plots####
 # Loop through factorial variables & barplot against CPUE
 for (factorvars in c("Site3", "Habitat", "Substrate", "Substrate2", "Tide", "Season", "LunarPhase")) {
   ggplot(data = drumline) +
@@ -218,6 +217,7 @@ for (factorvars in c("Site3", "Habitat", "Substrate", "Substrate2", "Tide", "Sea
            height = 4, units = "in", dpi = 300, limitsize = TRUE)
 }
 
+# Scatterplots####
 # Loop through numerical variables & scatterplot against CPUE with trendline
 for (numvars in c("Latitude", "Longitude", "Depth_m", "Temperature_C", "Salinity", "DO_mg_L", "Yearday", "Month", "daylength")) {
   ggplot(data = drumline) +
@@ -240,6 +240,8 @@ for (numvars in c("Latitude", "Longitude", "Depth_m", "Temperature_C", "Salinity
 
 
 # BRT ####
+library(remotes)
+install_github("SimonDedman/gbm.auto")
 library(gbm.auto)
 expvars = c("Site3", "Habitat", "Substrate", "Tide", "Season", "LunarPhase",
             "Latitude", "Longitude", "Depth_m", "Temperature_C", "Salinity", "DO_mg_L", "Yearday", "Month", "daylength")
@@ -261,11 +263,11 @@ gbm.auto(
   samples = drumline, # [-which(is.na(drumline[resvar])),]
   expvar = expvars,
   resvar = "CPUE",
-  tc = c(2),
-  lr = list(0.01, 0.00001),
+  tc = 2,
+  lr = list(0.01, 0.005),
   bf = list(0.5, 0.9),
   n.trees = 50,
-  ZI = FALSE, # "CHECK"
+  ZI = "CHECK",
   fam1 = c("bernoulli", "binomial", "poisson", "laplace", "gaussian"),
   fam2 = c("gaussian", "bernoulli", "binomial", "poisson", "laplace"),
   simp = TRUE,
@@ -274,7 +276,7 @@ gbm.auto(
   multiplot = TRUE,
   cols = grey.colors(1, 1, 1),
   linesfiles = TRUE,
-  smooth = FALSE,
+  smooth = TRUE, # FALSE
   savedir = "../../Projects/2021_06 Reef shark drumline CPUE/Results_Plots/BRT",
   savegbm = TRUE,
   loadgbm = NULL,
@@ -282,23 +284,58 @@ gbm.auto(
   map = TRUE,
   shape = NULL,
   RSB = TRUE,
-  BnW = F,
+  BnW = FALSE,
   alerts = TRUE,
   pngtype = c("cairo-png", "quartz", "Xlib"),
-  gaus = FALSE, # TRUE
+  gaus = TRUE,
   MLEvaluate = TRUE)
 
 # gaus run struggling, only n=80, keep playing with list options
+# lr
+# 0.005 bin 0.54 gaus 0.64
+# 0.001 bin 0.5 gaus 0.66
+# 0.0001 bin 0.52 gaus 0.55
+# 0.00001 runs bin 0.5 gaus 0.5 (about the same)
+# 0.000001 didn't
+# 0.0000001 bin 0.5 gaus 0.51
+# do gbm.loop
 
+# Gbm.loop####
+library(magrittr)
+library(dplyr)
+library(tidyverse)
+library(tidylog)
+drumline <- list.files(path = "../../Data/") %>% # list all files in Data folder
+  .[matches("_drumline_reefs.rds", vars = .)] %>% # filter for the right ones, all today() variants, will be ordered rising by date
+  last() # last one is highest date i.e. latest
+drumline <- readRDS(file = paste0("../../Data/", drumline))
+library(remotes)
+install_github("SimonDedman/gbm.auto")
+library(gbm.auto)
+expvars = c("Site3", "Habitat", "Substrate2", "Tide", "Season", "LunarPhase",
+            "Latitude", "Longitude", "Depth_m", "Temperature_C", "Salinity", "DO_mg_L", "Yearday", "Month", "daylength")
+drumline %<>%
+  filter(Site3 != "Somerset") %>% #remove Somerset rows, n=103, 9% of data
+  mutate(Site3 = factor(Site3, levels = levels(Site3)[2:6])) # remove Somerset as a factor level
+
+gbm.loop(savedir = "../../Projects/2021_06 Reef shark drumline CPUE/Results_Plots/BRT",
+         samples = drumline,
+         expvar = expvars,
+         resvar = "CPUE",
+         lr = list(0.01, 0.0001), #0.005
+         bf = list(0.5, 0.9),
+         runautos = FALSE)
+
+# Subset categories next steps####
 # PM: Something that would be interesting to include are size and sex differences –
 # any segregation in distributions based on these factors,
 # who do we catch more of, and
-# is there any seasonality to juveniles or mature individuals that could be indicative of reproductive behavior (pupping, migration, etc.).
+# is there any seasonality to juveniles or mature individuals that could be indicative of reproductive behaviour (pupping, migration, etc.).
 
 
 # Bayesian! Perfect test case
 
 
-
+# Turn this into a markup doc which can be online
 # D. See if they say anything interesting
 # E. Write short comms paper if so
