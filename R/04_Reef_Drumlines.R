@@ -336,7 +336,6 @@
 
 
 
-
 # Analysis: bar chats & scatterplots####
 # read in saved data from above
 drumline <- list.files(path = "../../Data/") %>% # list all files in Data folder
@@ -375,11 +374,14 @@ colnames(drumline)
 # chl?
 # any other satellite stuff that's easy to grab? NO, all too coarse spatial res & not spatially dynamic at the static sites.
 
+<<<<<<< HEAD
 
 
 
 
 
+=======
+>>>>>>> 0de472986545e2abd143873e75f621f12c33bdda
 # Bar plots####
 # Loop through factorial variables & barplot against CPUE
 for (factorvars in c("Site3", "Habitat", "Substrate", "Substrate2", "Tide", "Season", "LunarPhase")) {
@@ -400,6 +402,7 @@ for (factorvars in c("Site3", "Habitat", "Substrate", "Substrate2", "Tide", "Sea
          height = 4, units = "in", dpi = 300, limitsize = TRUE)
 }
 
+<<<<<<< HEAD
 
 
 
@@ -407,6 +410,8 @@ for (factorvars in c("Site3", "Habitat", "Substrate", "Substrate2", "Tide", "Sea
 
 
 
+=======
+>>>>>>> 0de472986545e2abd143873e75f621f12c33bdda
 # Scatterplots####
 # Loop through numerical variables & scatterplot against CPUE with trendline
 for (numvars in c("Latitude", "Longitude", "Depth_m", "Temperature_C", "Salinity", "DO_mg_L", "Yearday", "Month", "daylength")) {
@@ -521,12 +526,6 @@ gbm.loop(savedir = "../../Projects/2021_06 Reef shark drumline CPUE/Results_Plot
          lr = list(0.01, 0.0001), #0.005
          bf = list(0.5, 0.9),
          runautos = FALSE)
-
-
-
-
-
-
 
 
 
@@ -796,6 +795,16 @@ drumline %>%  # create summary table as data input
          height = 4, units = "in", dpi = 300, limitsize = TRUE)
 
 # replace theme_minimal with my own with all the changes I make, to save space.
+=======
+
+gbm.loop(savedir = "../../Projects/2021_06 Reef shark drumline CPUE/Results_Plots/BRT",
+         samples = drumline,
+         expvar = expvars,
+         resvar = "CPUE",
+         lr = list(0.01, 0.0001), #0.005
+         bf = list(0.5, 0.9),
+         runautos = FALSE)
+>>>>>>> 0de472986545e2abd143873e75f621f12c33bdda
 
 # Subset categories next steps####
 # PM: Something that would be interesting to include are size and sex differences –
@@ -807,7 +816,12 @@ drumline %>%  # create summary table as data input
 # Bayesian! Perfect test case
 # brms, https://bookdown.org/connect/#/apps/1850/access
 
+<<<<<<< HEAD
 # Turn this into a markup doc which can be online
 
+=======
+
+# Turn this into a markup doc which can be online
+>>>>>>> 0de472986545e2abd143873e75f621f12c33bdda
 # D. See if they say anything interesting
 # E. Write short comms paper if so
