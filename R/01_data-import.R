@@ -2,6 +2,7 @@
 # Simon Dedman simondedman@gmail.com
 # 2021-03-03
 
+{ # run everything in one click
 library(openxlsx)
 library(stringr)
 library(magrittr)
@@ -10,7 +11,8 @@ library(lubridate)
 library(tidylog) # verbose version of tidyverse
 # getwd() # Saving The Blue/Code/SavingTheBlue
 
-latestdbase <- "../../Data/Database_2021-06-25.xlsx"
+# latestdbase <- "../../Data/Database_2021-06-25.xlsx"
+latestdbase <- "../../Data/Database_2021-09-23.xlsx"
 # Shark Data####
 shark <- read.xlsx(xlsxFile = latestdbase,
                    sheet = 1,
@@ -85,8 +87,8 @@ shark$Species <- factor(shark$Species, levels = levels_Species)
 unique(shark$Common)
 levels_Common <- c("Silky", "Dusky", # silky (Carcharhinus falciformis) and dusky (Carcharhinus obscurus)
                    "Blacknose", "Sharpnose", # blacknose (Carcharhinus acronotus) and sharpnose (Rhizoprionodon terraenovae)
-                   "Blacktip", "Caribbean reef", "Lemon", "Nurse", # blacktip (Carcharhinus limbatus), reef (Carcharhinus perezi), and nurse (Ginglymostoma cirratum)
-                   "Tiger", "Bull", "Great hammerhead") # tiger (Galeocerdo cuvier), bull (Carcharhinus leucas), hammerhead (Sphyrna mokarran)
+                   "Blacktip", "Caribbean Reef", "Lemon", "Nurse", # blacktip (Carcharhinus limbatus), reef (Carcharhinus perezi), and nurse (Ginglymostoma cirratum)
+                   "Tiger", "Bull", "Great Hammerhead") # tiger (Galeocerdo cuvier), bull (Carcharhinus leucas), hammerhead (Sphyrna mokarran)
 shark$Common <- factor(shark$Common, levels = levels_Common)
 
 
@@ -98,7 +100,7 @@ unique(shark$Substrate)
 # coral: soft, hard
 levels_Substrate <- c("Sand & mud", "Silt", "Sand", "Sand & Rock", "Hard bottom",
                       "Silt & seagrass", "Sand & algae", "Sand & seagrass", "Seagrass",
-                      "Sand & patch reef", "Sand & coral", "Sand & octocorals", "Patch reef", "Coral reef", "Reef")
+                      "Sand & patch reef", "Sand & coral", "Sand & octocorals", "Patch reef", "Reef") # 2021-10-05 removed "Coral Reef", dupe of Reef, in dbase
 shark$Substrate <- factor(shark$Substrate, levels = levels_Substrate)
 
 
@@ -130,7 +132,8 @@ levels_Site2 <- c("Fresh Creek",
                   "Bigwood Channel",
                   "TOTO Navy Buoy",
                   "Blackbeard's Channel",
-                  "Gibson Cay")
+                  "Gibson Cay",
+                  "Jupiter Florida")
 shark$Site2 <- factor(shark$Site2, levels = levels_Site2)
 
 # toadd####
@@ -138,9 +141,9 @@ shark$Site2 <- factor(shark$Site2, levels = levels_Site2)
 
 
 unique(shark$Gear)
-# "Block-rig" "By-hand" "Polyball" "Handline" "Drumline-bottom" "Gillnet" "Drumline-top"
+# "Block-rig" "By-hand" "Polyball" "Handline" "Drumline-bottom" "Gillnet" "Drumline-top" "Polespear"
 shark$Gear2 <- shark$Gear
-shark[which(shark$Gear2 %in% c("Handline", "By-hand")), "Gear2"] <- "Hand"
+shark[which(shark$Gear2 %in% c("Handline", "By-hand", "Polespear")), "Gear2"] <- "Hand"
 levels_Gear2 <- c("Hand",
                   "Polyball",
                   "Drumline-bottom",
@@ -153,6 +156,13 @@ write.csv(x = shark,
           row.names = F)
 saveRDS(object = shark,
         file = paste0("../../Data/", today(), "_shark_capture_data.rds"))
+
+
+
+
+
+
+
 
 
 # Drumline Data####
@@ -183,7 +193,7 @@ unique(drumline$Depth_m)
 # convert things to factors with defined levels
 # convert substrate to sand grain size? Or just spatial lookup against the databases
 unique(drumline$Tide)
-# "High"     "Falling"  "Rising"   "Low"      "Bonito"   NA         "Incoming"
+# "High"     "Falling"  "Rising"   "Low"      NA         "Slack low"
 drumline$Tide <- factor(drumline$Tide, levels = c("Low", "Rising", "High", "Falling"))
 
 unique(drumline$Bait_type)
@@ -206,7 +216,6 @@ unique(drumline$Site)
 # Same as for Shark tab, check they have the same levels. Include all in both.
 
 drumline$Site2 <- drumline$Site
-unique(drumline$Site2)
 drumline[which(drumline$Site2 == "Somerset reef"), "Site2"] <- "Somerset"
 drumline[which(drumline$Site2 == "AUTEC Channel Reef"), "Site2"] <- "AUTEC Channel"
 drumline[which(drumline$Site2 == "AUTEC Reef"), "Site2"] <- "AUTEC Channel"
@@ -274,6 +283,7 @@ write.csv(x = drumline,
 saveRDS(object = drumline,
         file = paste0("../../Data/", today(), "_drumline_data.rds"))
 rm(list = ls()) #remove all objects
+} # close runeverything
 
 
 # What is the point of "summary for reports" tab in dbase?
