@@ -3,16 +3,16 @@
 # 2021-03-03
 
 { # run everything in one click
-library(openxlsx)
-library(stringr)
-library(magrittr)
-library(data.table)
-library(lubridate)
+library(openxlsx) # read.xlsx convertToDateTime
+library(stringr) # "No used functions found"
+library(magrittr) # "No used functions found"
+library(data.table) # "No used functions found"
+library(lubridate) # today
 library(tidylog) # verbose version of tidyverse
 # getwd() # Saving The Blue/Code/SavingTheBlue
 
 # latestdbase <- "../../Data/Database_2021-06-25.xlsx"
-latestdbase <- "../../Data/Database_2021-09-23.xlsx"
+latestdbase <- "../../Data/Database_2022-Jan-22.xlsx"
 # Shark Data####
 shark <- read.xlsx(xlsxFile = latestdbase,
                    sheet = 1,
@@ -117,8 +117,10 @@ shark[which(shark$Site2 %in% c("North Bight – Upper",
                                "Middle Bight – Upper",
                                "Middle Bight",
                                "Middle Bight - MB4",
+                               "Pyes Harbour",
                                "Behring Point")), "Site2"] <- "North Bight"
 shark[which(shark$Site2 == "Gibson Channel"), "Site2"] <- "Gibson Cay"
+shark[which(shark$Site2 == "Bristol Galley dropoff"), "Site2"] <- "Bristol Galley"
 levels_Site2 <- c("Fresh Creek",
                   "Somerset",
                   "High Cay",
@@ -135,9 +137,6 @@ levels_Site2 <- c("Fresh Creek",
                   "Gibson Cay",
                   "Jupiter Florida")
 shark$Site2 <- factor(shark$Site2, levels = levels_Site2)
-
-# toadd####
-# Cargill Creek, Gibson Channel
 
 
 unique(shark$Gear)
@@ -223,9 +222,12 @@ drumline[which(drumline$Site2 %in% c("North Bight - Upper",
                                      "Middle Bight - Upper",
                                      "Middle Bight",
                                      "Middle Bight - MB4",
+                                     "Pyes Harbour",
                                      "Behring Point")), "Site2"] <- "North Bight"
 drumline[which(drumline$Site2 == "Gibson Channel"), "Site2"] <- "Gibson Cay"
+shark[which(shark$Site2 == "Bristol Galley dropoff"), "Site2"] <- "Bristol Galley"
 drumline$Site2 <- factor(drumline$Site2, levels = levels_Site2)
+
 
 unique(drumline$Bottom_top)
 drumline$Bottom_top <- factor(drumline$Bottom_top, levels = c("Bottom", "Top"))

@@ -3,11 +3,12 @@
 # With Tristan Guttridge & Phil Matich
 
 # Setup, load, prep data####
+library(magrittr) # %>% %<>% # %>% %<>%
+library(dplyr) # %>% matches last filter mutate case_when relocate everything rename across last_col bind_cols group_by tally pull summarise n_distinct left_join arrange select bind_rows # %>% matches last filter mutate case_when relocate everything rename across last_col bind_cols group_by tally pull summarise n_distinct left_join arrange select bind_rows
+library(lubridate) # minute yday month is.POSIXt today
+library(tidyverse) # "No used functions found" # "No used functions found"
+library(tidylog) # filter mutate relocate pivot_wider rename replace_na group_by tally summarise left_join drop_na select pivot_longer # filter mutate relocate pivot_wider rename replace_na group_by tally summarise left_join drop_na select pivot_longer
 { # processing runall
-  library(magrittr)
-  library(dplyr)
-  library(tidyverse)
-  library(tidylog)
   # read in data
   # source('R/01_data-import.R') # run data import if you changed the database.
   drumline <- list.files(path = "../../Data/") %>% # list all files in Data folder
@@ -140,10 +141,11 @@
       CommonValues = 1 # for Binomial SpeciesCPUE columns via pivot_wider:
     ) %>%
     pivot_wider(names_from = Common, # Make values 1 when specific shark caught, else 0
-                values_from = CommonValues)
+                values_from = CommonValues) %>%
+    rename(CaribbeanReef = "Caribbean Reef",
+           GreatHammerhead = "Great Hammerhead") %>%
+    mutate(across("NA":last_col(), ~ replace_na(., 0))) # https://stackoverflow.com/a/63970397/3975144
   # later, grouped calculations for CPUE via: mutate(CPUE = "Caribbean Reef" / Soak_time_CaribbeanReef)
-
-
 
 
   # temporal####
@@ -205,7 +207,7 @@
   #
   # length(unique(shark$PIT_Tag_Full_ID_no[!is.na(shark$PIT_Tag_Full_ID_no)])) # 138 non na entries, 131 unique = 7 dupes
 
-  dupePITs <- shark %>% # create dupecasey list
+  dupePITs <- shark %>%     # create dupecasey list
     filter(!is.na(PIT_Tag_Full_ID_no)) %>% # remove nas
     group_by(PIT_Tag_Full_ID_no) %>%
     tally() %>% # number of rows per group
@@ -377,7 +379,7 @@ colnames(drumline)
 # Loop through factorial variables & barplot against CPUE
 for (factorvars in c("Site3", "Habitat", "Substrate", "Substrate2", "Tide", "Season", "LunarPhase")) {
   ggplot(data = drumline) +
-    geom_col(mapping = aes(x = .data[[factorvars]], y = CPUE), fill = "black") +
+    geom_col(mapping = aes(x = .data[[factorvars]], y = CaribbeanReef), fill = "black") +
     theme_minimal() %+replace% theme(axis.text = element_text(size = rel(1.1)),
                                      title = element_text(size = rel(2)),
                                      legend.text = element_text(size = rel(1.5)),
@@ -397,8 +399,8 @@ for (factorvars in c("Site3", "Habitat", "Substrate", "Substrate2", "Tide", "Sea
 # Loop through numerical variables & scatterplot against CPUE with trendline
 for (numvars in c("Latitude", "Longitude", "Depth_m", "Temperature_C", "Salinity", "DO_mg_L", "Yearday", "Month", "daylength")) {
   ggplot(data = drumline) +
-    geom_point(mapping = aes(x = .data[[numvars]], y = CPUE), fill = "black") +
-    geom_smooth(mapping = aes(x = .data[[numvars]], y = CPUE)) + # , fill = "black"
+    geom_point(mapping = aes(x = .data[[numvars]], y = CaribbeanReef), fill = "black") +
+    geom_smooth(mapping = aes(x = .data[[numvars]], y = CaribbeanReef)) + # , fill = "black"
     theme_minimal() %+replace% theme(axis.text = element_text(size = rel(1.1)),
                                      title = element_text(size = rel(2)),
                                      legend.text = element_text(size = rel(1.5)),
@@ -419,35 +421,39 @@ for (numvars in c("Latitude", "Longitude", "Depth_m", "Temperature_C", "Salinity
 
 
 # BRT ####
-library(remotes)
+library(remotes) # install_github # install_github
 install_github("SimonDedman/gbm.auto")
-library(gbm.auto)
-expvars = c("Site3", "Habitat", "Substrate", "Tide", "Season", "LunarPhase",
-            "Latitude", "Longitude", "Depth_m", "Temperature_C", "Salinity", "DO_mg_L", "Yearday", "Month", "daylength")
+library(gbm.auto) # gbm.bfcheck gbm.auto gbm.loop # gbm.bfcheck gbm.auto gbm.loop
+# expvars = c("Site3", "Habitat", "Substrate", "Tide", "Season", "LunarPhase",
+#             "Latitude", "Longitude", "Depth_m", "Temperature_C", "Salinity", "DO_mg_L", "Yearday", "Month", "daylength")
 # 2021-09-08 PM Substrate2 suggestion
 expvars = c("Site3", "Habitat", "Substrate2", "Tide", "Season", "LunarPhase",
             "Latitude", "Longitude", "Depth_m", "Temperature_C", "Salinity", "DO_mg_L", "Yearday", "Month", "daylength")
-gbm.bfcheck(samples = drumline, resvar = "CPUE")
-# [1] "  binary bag fraction must be at least 0.018. n = 1179"
-# [1] "Gaussian bag fraction must be at least 0.262. n = 80"
-# [1] 0.0178117 0.2625000
+gbm.bfcheck(samples = drumline, resvar = "CaribbeanReef")
+                            # [1] "  binary bag fraction must be at least 0.018. n = 1179"
+                            # [1] "Gaussian bag fraction must be at least 0.262. n = 80"
+                            # [1] 0.0178117 0.2625000
 
 # 2021-09-08 PM remove Somerset suggestion
 drumline %<>%
   filter(Site3 != "Somerset") %>% #remove Somerset rows, n=103, 9% of data
   mutate(Site3 = factor(Site3, levels = levels(Site3)[2:6])) # remove Somerset as a factor level
 
+# 2021-10-19 now doesn't work since new binomial CPUE by species.
+drumline <- as.data.frame(drumline) # fails if tibble
+
 gbm.auto(
   grids = NULL,
-  samples = drumline, # [-which(is.na(drumline[resvar])),]
+  samples = drumline,       # [-which(is.na(drumline[resvar])),]
   expvar = expvars,
-  resvar = "CPUE",
+  resvar = "CaribbeanReef",
   tc = 2,
   lr = list(0.01, 0.005),
   bf = list(0.5, 0.9),
   n.trees = 50,
   ZI = "CHECK",
-  fam1 = c("bernoulli", "binomial", "poisson", "laplace", "gaussian"),
+  # fam1 = c("bernoulli", "binomial", "poisson", "laplace", "gaussian"),
+  fam1 = "bernoulli",
   fam2 = c("gaussian", "bernoulli", "binomial", "poisson", "laplace"),
   simp = TRUE,
   gridslat = 2,
@@ -456,7 +462,7 @@ gbm.auto(
   cols = grey.colors(1, 1, 1),
   linesfiles = TRUE,
   smooth = TRUE, # FALSE
-  savedir = "../../Projects/2021_06 Reef shark drumline CPUE/Results_Plots/BRT",
+  savedir = "../../Projects/2021-10_Drumline_Reefshark/BRT",
   savegbm = TRUE,
   loadgbm = NULL,
   varint = TRUE,
@@ -466,8 +472,10 @@ gbm.auto(
   BnW = FALSE,
   alerts = TRUE,
   pngtype = c("cairo-png", "quartz", "Xlib"),
-  gaus = TRUE,
+  gaus = TRUE, # bin run
   MLEvaluate = TRUE)
+
+
 
 # gaus run struggling, only n=80, keep playing with list options
 # lr
@@ -480,17 +488,17 @@ gbm.auto(
 # do gbm.loop
 
 # Gbm.loop####
-library(magrittr)
-library(dplyr)
-library(tidyverse)
-library(tidylog)
+library(magrittr) # %>% %<>% # %>% %<>%
+library(dplyr) # %>% matches last filter mutate case_when relocate everything rename across last_col bind_cols group_by tally pull summarise n_distinct left_join arrange select bind_rows # %>% matches last filter mutate case_when relocate everything rename across last_col bind_cols group_by tally pull summarise n_distinct left_join arrange select bind_rows
+library(tidyverse) # "No used functions found" # "No used functions found"
+library(tidylog) # filter mutate relocate pivot_wider rename replace_na group_by tally summarise left_join drop_na select pivot_longer # filter mutate relocate pivot_wider rename replace_na group_by tally summarise left_join drop_na select pivot_longer
 drumline <- list.files(path = "../../Data/") %>% # list all files in Data folder
   .[matches("_drumline_reefs.rds", vars = .)] %>% # filter for the right ones, all today() variants, will be ordered rising by date
   last() # last one is highest date i.e. latest
 drumline <- readRDS(file = paste0("../../Data/", drumline))
-library(remotes)
+library(remotes) # install_github # install_github
 install_github("SimonDedman/gbm.auto")
-library(gbm.auto)
+library(gbm.auto) # gbm.bfcheck gbm.auto gbm.loop # gbm.bfcheck gbm.auto gbm.loop
 expvars = c("Site3", "Habitat", "Substrate2", "Tide", "Season", "LunarPhase",
             "Latitude", "Longitude", "Depth_m", "Temperature_C", "Salinity", "DO_mg_L", "Yearday", "Month", "daylength")
 drumline %<>%
@@ -500,7 +508,7 @@ drumline %<>%
 gbm.loop(savedir = "../../Projects/2021_06 Reef shark drumline CPUE/Results_Plots/BRT",
          samples = drumline,
          expvar = expvars,
-         resvar = "CPUE",
+         resvar = "CaribbeanReef",
          lr = list(0.01, 0.0001), #0.005
          bf = list(0.5, 0.9),
          runautos = FALSE)
@@ -508,7 +516,7 @@ gbm.loop(savedir = "../../Projects/2021_06 Reef shark drumline CPUE/Results_Plot
 
 # Henderson etal 2021 figures ####
 # F3 x seasons y temperatureC dots w/ SDs ####
-drumline %>%  # create summary table as data input
+drumline %>%                # create summary table as data input
   group_by(Season) %>%
   summarise(Temperature = mean(Temperature_C, na.rm = TRUE),
             TempSDmin = mean(Temperature_C, na.rm = TRUE) - sd(Temperature_C, na.rm = TRUE),
@@ -539,9 +547,7 @@ drumline %>%  # create summary table as data input
 
 # F4 x species y CPUE (sharks/hook/hour) columns ####
 # warning: these are hardcoded so new sharks have to be coded in
-drumline %>%  # create summary table as data input
-  rename(CaribbeanReef = "Caribbean Reef",
-         GreatHammerhead = "Great Hammerhead") %>%
+drumline %>%                # create summary table as data input
   summarise(Blacknose = sum(Blacknose, na.rm = T) / sum(Soak_time_Blacknose, na.rm = T),
             Sharpnose = sum(Sharpnose, na.rm = T) / sum(Soak_time_Sharpnose, na.rm = T),
             Blacktip = sum(Blacktip, na.rm = T) / sum(Soak_time_Blacktip, na.rm = T),
@@ -576,9 +582,7 @@ drumline %>%  # create summary table as data input
 
 
 # F5 x species y CPUE (sharks/hook/hour) site-shaped dots ####
-drumline %>%  # create summary table as data input
-  rename(CaribbeanReef = "Caribbean Reef",
-         GreatHammerhead = "Great Hammerhead") %>%
+drumline %>%                # create summary table as data input
   group_by(Habitat2) %>%
   summarise(Blacknose = sum(Blacknose, na.rm = T) / sum(Soak_time_Blacknose, na.rm = T),
             Sharpnose = sum(Sharpnose, na.rm = T) / sum(Soak_time_Sharpnose, na.rm = T),
@@ -616,7 +620,7 @@ drumline %>%  # create summary table as data input
          height = 4, units = "in", dpi = 300, limitsize = TRUE)
 
 # F6 x sex y TL facet species boxplots ####
-drumline %>%  # create summary table as data input
+drumline %>%                # create summary table as data input
   select(Species, Sex, STL) %>%
   drop_na() %>% # Sex, Species, STL
   group_by(Species) %>%
@@ -642,9 +646,7 @@ drumline %>%  # create summary table as data input
          height = 4, units = "in", dpi = 300, limitsize = TRUE)
 
 # F7 x season y CPUE dots by species ####
-drumline %>%  # create summary table as data input
-  rename(CaribbeanReef = "Caribbean Reef",
-         GreatHammerhead = "Great Hammerhead") %>%
+drumline %>%                # create summary table as data input
   group_by(Season) %>%
   summarise(Blacknose = sum(Blacknose, na.rm = T) / sum(Soak_time_Blacknose, na.rm = T),
             Sharpnose = sum(Sharpnose, na.rm = T) / sum(Soak_time_Sharpnose, na.rm = T),
@@ -689,7 +691,7 @@ drumline %>%  # create summary table as data input
 
 
 # F8 x season y TL facet species boxplots (see F6) ####
-drumline %>%  # create summary table as data input
+drumline %>%                # create summary table as data input
   select(Species, Season, STL) %>%
   drop_na() %>%
   group_by(Species) %>%
@@ -718,7 +720,7 @@ drumline %>%  # create summary table as data input
 # F9 x habitat/substrate y TL facet species boxplots (see F6) ####
 unique(drumline$Habitat2) # Fore reef  flats   Back reef
 
-drumline %>%  # create summary table as data input
+drumline %>%                # create summary table as data input
   select(Species, Habitat2, STL) %>%
   drop_na() %>%
   group_by(Species) %>%
@@ -745,7 +747,7 @@ drumline %>%  # create summary table as data input
          height = 4, units = "in", dpi = 300, limitsize = TRUE)
 
 unique(drumline$Substrate2) # Reef       Vegetation Bare       <NA>
-drumline %>%  # create summary table as data input
+drumline %>%                # create summary table as data input
   select(Species, Substrate2, STL) %>%
   drop_na() %>%
   group_by(Species) %>%
@@ -781,15 +783,133 @@ drumline %>%  # create summary table as data input
 # is there any seasonality to juveniles or mature individuals that could be indicative of reproductive behaviour (pupping, migration, etc.).
 
 
-# Bayesian! Perfect test case
+
+
+
+# Bayesian ####
+# Perfect test case?
 # brms, https://bookdown.org/connect/#/apps/1850/access
+# expvars = c("Site3", "Habitat", "Substrate2", "Tide", "Season", "LunarPhase",
+#             "Latitude", "Longitude", "Depth_m", "Temperature_C", "Salinity", "DO_mg_L", "Yearday", "Month", "daylength")
+drumline <- list.files(path = "../../Data/") %>% # list all files in Data folder
+  .[matches("_drumline_reefs.rds", vars = .)] %>% # filter for the right ones, all today() variants, will be ordered rising by date
+  last() # last one is highest date i.e. latest
+drumline <- readRDS(file = paste0("../../Data/", drumline))
+drumline %<>%
+  filter(Site3 != "Somerset") %>% #remove Somerset rows, n=103, 9% of data
+  mutate(Site3 = factor(Site3, levels = levels(Site3)[2:6])) # remove Somerset as a factor level
+
+# samples = drumline,       # [-which(is.na(drumline[resvar])),]
+# expvar = expvars,
+# resvar = "CPUE",
+# fam1 = c("bernoulli", "binomial", "poisson", "laplace", "gaussian"),
+# fam2 = c("gaussian", "bernoulli", "binomial", "poisson", "laplace"),
+# savedir = "../../Projects/2021_06 Reef shark drumline CPUE/Results_Plots/BRT",
+
+# install.packages("brms")
+library(brms) # brm zero_inflated_poisson marginal_effects
+# fit_zinb1 <- brm(count ~ persons + child + camper,
+#                  data = zinb,
+#                  family = zero_inflated_poisson("log"))
+
+# brm(
+#   formula,
+#   data,
+#   family = gaussian(),
+#   prior = NULL,
+#   autocor = NULL,
+#   data2 = NULL,
+#   cov_ranef = NULL,
+#   sample_prior = "no",
+#   sparse = NULL,
+#   knots = NULL,
+#   stanvars = NULL,
+#   stan_funs = NULL,
+#   fit = NA,
+#   save_pars = NULL,
+#   save_ranef = NULL,
+#   save_mevars = NULL,
+#   save_all_pars = NULL,
+#   inits = "random",
+#   chains = 4,
+#   iter = 2000,
+#   warmup = floor(iter/2),
+#   thin = 1,
+#   cores = getOption("mc.cores", 1),
+#   threads = NULL,
+#   opencl = NULL,
+#   normalize = getOption("brms.normalize", TRUE),
+#   control = NULL,
+#   algorithm = getOption("brms.algorithm", "sampling"),
+#   backend = getOption("brms.backend", "rstan"),
+#   future = getOption("future", FALSE),
+#   silent = 1,
+#   seed = NA,
+#   save_model = NULL,
+#   stan_model_args = list(),
+#   file = NULL,
+#   file_refit = getOption("brms.file_refit", "never"),
+#   empty = FALSE,
+#   rename = TRUE,
+#   ...
+# )
+
+
+fit_zinb1 <- brm(CaribbeanReef ~ Site3 + Habitat + Substrate2 + Tide + Season + # all expvars from above. Could trim based on gbm.auto outputs?
+                   LunarPhase + Latitude + Longitude + Depth_m + Temperature_C +
+                   Salinity + DO_mg_L + Yearday + Month + daylength,
+                 data = drumline,
+                 family = zero_inflated_poisson("log")) # CPUE (CaribbeanReef) is ZI according to gbm.auto check
+                            # crashes
+# try best 5 only
+fit_zinb1 <- brm(CaribbeanReef ~ Depth_m + Season + DO_mg_L + Longitude + Salinity,
+                 data = drumline,
+                 family = zero_inflated_poisson("log")) # CPUE (CaribbeanReef) is ZI according to gbm.auto check
+summary(fit_zinb1)
+#  Family: zero_inflated_poisson
+#   Links: mu = log; zi = identity
+# Formula: CaribbeanReef ~ Depth_m + Season + DO_mg_L + Longitude + Salinity
+#    Data: drumline (Number of observations: 738)
+#   Draws: 4 chains, each with iter = 2000; warmup = 1000; thin = 1;
+#          total post-warmup draws = 4000
+#
+# Population-Level Effects:
+#              Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+# Intercept     3929.38   1477.88  1389.22  7292.94 1.00     2891     2097
+# Depth_m          0.03      0.03    -0.03     0.10 1.00     3149     2671
+# SeasonSpring     1.84      0.51     0.86     2.84 1.00     3128     2465
+# SeasonSummer    -0.11      0.54    -1.15     0.96 1.00     2698     2958
+# SeasonAutumn    -0.25      0.53    -1.31     0.80 1.00     2607     2682
+# DO_mg_L         -0.44      0.29    -1.00     0.14 1.00     3159     3069
+# Longitude       50.27     19.01    17.65    93.28 1.00     2900     2065
+# Salinity        -0.63      0.31    -1.24    -0.04 1.00     2924     2702
+#
+# Family Specific Parameters:
+#    Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+# zi     0.15      0.12     0.01     0.44 1.00     2724     2220
+#
+# Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
+# and Tail_ESS are effective sample size measures, and Rhat is the potential
+# scale reduction factor on split chains (at convergence, Rhat = 1).
+
+
+marginal_effects(fit_zinb1) # marginal_effects(fit_rent1, surface = TRUE)
+
+
+
+
+
+# loo(fit_zinb1, fit_zinb2)
+
+
+
+
+
+
+
+
 
 
 # Turn this into a markup doc which can be online
-
-
-
-# Turn this into a markup doc which can be online
-
 # D. See if they say anything interesting
 # E. Write short comms paper if so

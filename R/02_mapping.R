@@ -7,13 +7,13 @@
 # Arrows = time spent moving in 1 direction.
 
 # Shiny for website.
-library(ggmap)
+library(ggmap) # get_map %>% ggmap
 # Please cite ggmap if you use it! See citation("ggmap") for details.
-library(dplyr)
-library(lubridate)
+library(dplyr) # %>% group_by summarise n filter pull rename left_join mutate ungroup
+library(lubridate) # today
 library(magrittr) # %>%
-library(sf)
-library(ggspatial)
+library(sf) # %>% st_as_sf st_set_crs st_sf st_cast st_combine
+library(ggspatial) # aes ggplot
 library(tidylog) # verbose version of tidyverse
 library(concaveman) # points to poly bounding box
 

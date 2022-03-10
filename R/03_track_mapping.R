@@ -22,14 +22,14 @@
 # remove.packages("ggmap")
 # can't change map soufce due to bug in CRAN version fixed in github see https://github.com/dkahle/ggmap/issues/287
 # devtools::install_github("dkahle/ggmap")
-library(ggmap)
+library(ggmap) # %>% get_map ggmap
 # Please cite ggmap if you use it! See citation("ggmap") for details.
-library(tidyverse)
-library(dplyr)
-library(lubridate)
+library(tidyverse) # "No used functions found"
+library(dplyr) # %>% rename mutate first select filter group_by summarise across left_join summarise_all bind_rows
+library(lubridate) # as_datetime as_date month yday today
 library(magrittr) # %>%
-library(sf)
-library(ggspatial)
+library(sf) # %>%
+library(ggspatial) # aes
 library(tidylog) # verbose version of tidyverse
 # library(concaveman) # points to poly bounding box
 hammerfolders <- list.dirs(path = "../../Data/Hammerhead SPOT tags/",
