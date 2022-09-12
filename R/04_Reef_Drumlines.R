@@ -336,7 +336,7 @@ library(tidylog) # filter mutate relocate pivot_wider rename replace_na group_by
 
 
 
-# Analysis: bar chats & scatterplots####
+# Analysis: bar charts & scatterplots####
 # read in saved data from above
 drumline <- list.files(path = "../../Data/") %>% # list all files in Data folder
   .[matches("_drumline_reefs.rds", vars = .)] %>% # filter for the right ones, all today() variants, will be ordered rising by date
