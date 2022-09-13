@@ -12,16 +12,20 @@ library(tidylog) # verbose version of tidyverse
 # getwd() # Saving The Blue/Code/SavingTheBlue
 
 # latestdbase <- "../../Data/Database_2021-06-25.xlsx"
-latestdbase <- "../../Data/Database_2022-Jan-22.xlsx"
-# Shark Data####
+latestdbase <- "../../Data/Database_2022-September-12.xlsx"
+# Shark Data ####
 shark <- read.xlsx(xlsxFile = latestdbase,
                    sheet = 1,
-                   detectDates = TRUE, # fails
+                   detectDates = TRUE,
                    check.names = TRUE,
                    na.strings = c("NA", "xxx")) # various cols are "xxx" instead of NA or blank, why?
-# date wrong, is excel format
-shark$Date <- as.Date(shark$Date, origin = "1899-12-30")
-shark$Time <- convertToDateTime(shark$Time, origin = shark$Date, tz = "America/New_York")
+tmp <- as.POSIXct(rep(NA, nrow(shark)), tz = "America/New_York")
+for (i in 1:nrow(shark)) {
+  tmp[i] <- convertToDateTime(shark$Time[i], origin = shark$Date[i], tz = "America/New_York")
+  # convertToDateTime can't vectorise over >len1 origins
+}
+shark$Time <- tmp # can't output directly to sharks$Time since it's numeric and thus converts the outputs
+rm(tmp)
 
 # convert yes no to T F in "Mature" "Fin.genetics"         "Fin.isotopes"         "Muscle.isotopes"      "Whole.blood.isotopes" "Plasma.isotopes" "RBC.isotopes"
 # Fixed in Excel sheet with find replace
@@ -164,16 +168,28 @@ saveRDS(object = shark,
 
 
 
-# Drumline Data####
+# Drumline Data ####
 drumline <- read.xlsx(xlsxFile = latestdbase,
-                      sheet = 2,
+                      sheet = "Drumline sampling data",
                       detectDates = TRUE, # fails
                       check.names = TRUE,
                       na.strings = c("NA", "xxx")) # various cols are "xxx" instead of NA or blank, why?
 drumline$Date <- as.Date(drumline$Date, origin = "1899-12-30")
 drumline$Depth_m <- as.numeric(drumline$Depth_m)
-drumline$Time_in <- convertToDateTime(drumline$Time_in, origin = drumline$Date, tz = "America/New_York")
-drumline$Time_out <- convertToDateTime(drumline$Time_out, origin = drumline$Date, tz = "America/New_York")
+tmp <- as.POSIXct(rep(NA, nrow(drumline)), tz = "America/New_York")
+for (i in 1:nrow(drumline)) {
+  tmp[i] <- convertToDateTime(drumline$Time_in[i], origin = drumline$Date[i], tz = "America/New_York")
+  # convertToDateTime can't vectorise over >len1 origins
+}
+drumline$Time_in <- tmp # can't output directly to drumline$Time_in since it's numeric and thus converts the outputs
+rm(tmp)
+tmp <- as.POSIXct(rep(NA, nrow(drumline)), tz = "America/New_York")
+for (i in 1:nrow(drumline)) {
+  tmp[i] <- convertToDateTime(drumline$Time_out[i], origin = drumline$Date[i], tz = "America/New_York")
+  # convertToDateTime can't vectorise over >len1 origins
+}
+drumline$Time_out <- tmp # can't output directly to drumline$Time_out since it's numeric and thus converts the outputs
+rm(tmp)
 drumline$Soak_time <- drumline$Time_out - drumline$Time_in # time diff in mins
 # don't add blank rows to break up sheets
 # no adding spaces to the end of cells
