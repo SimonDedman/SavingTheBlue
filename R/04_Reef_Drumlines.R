@@ -390,7 +390,7 @@ for (factorvars in c("Site3", "Habitat", "Substrate", "Substrate2", "Tide", "Sea
                                      plot.background = element_rect(fill = "white"),
                                      strip.text.x = element_text(size = rel(2)),
                                      panel.border = element_rect(colour = "black", fill = NA, size = 1))
-  ggsave(paste0("../../Projects/2021_06 Reef shark drumline CPUE/Results_Plots/", today(), "_ColPlot_CPUE_", factorvars, ".png"),
+  ggsave(paste0("../../Projects/2021-10_Drumline_Reefshark/", today(), "_ColPlot_CPUE_", factorvars, ".png"),
          plot = last_plot(), device = "png", scale = 1.75, width = 7,
          height = 4, units = "in", dpi = 300, limitsize = TRUE)
 }
@@ -411,7 +411,7 @@ for (numvars in c("Latitude", "Longitude", "Depth_m", "Temperature_C", "Salinity
                                      plot.background = element_rect(fill = "white"),
                                      strip.text.x = element_text(size = rel(2)),
                                      panel.border = element_rect(colour = "black", fill = NA, size = 1))
-  ggsave(paste0("../../Projects/2021_06 Reef shark drumline CPUE/Results_Plots/", today(), "_ScatterPlot_CPUE_", numvars, ".png"),
+  ggsave(paste0("../../Projects/2021-10_Drumline_Reefshark/", today(), "_ScatterPlot_CPUE_", numvars, ".png"),
          plot = last_plot(), device = "png", scale = 1.75, width = 7,
          height = 4, units = "in", dpi = 300, limitsize = TRUE)
 }
@@ -430,9 +430,9 @@ library(gbm.auto) # gbm.bfcheck gbm.auto gbm.loop # gbm.bfcheck gbm.auto gbm.loo
 expvars = c("Site3", "Habitat", "Substrate2", "Tide", "Season", "LunarPhase",
             "Latitude", "Longitude", "Depth_m", "Temperature_C", "Salinity", "DO_mg_L", "Yearday", "Month", "daylength")
 gbm.bfcheck(samples = drumline, resvar = "CaribbeanReef")
-                            # [1] "  binary bag fraction must be at least 0.018. n = 1179"
+                            # [1] "  binary bag fraction must be at least 0.011. n = 1843"
                             # [1] "Gaussian bag fraction must be at least 0.262. n = 80"
-                            # [1] 0.0178117 0.2625000
+                            # [1] 0.01139447 0.2625000
 
 # 2021-09-08 PM remove Somerset suggestion
 drumline %<>%
@@ -448,9 +448,9 @@ gbm.auto(
   expvar = expvars,
   resvar = "CaribbeanReef",
   tc = 2,
-  lr = list(0.01, 0.005),
-  bf = list(0.5, 0.9),
-  n.trees = 50,
+  lr = 0.01, # list(0.01, 0.005),
+  bf = 0.5, # list(0.5, 0.9)
+  n.trees = 10, # 50
   ZI = "CHECK",
   # fam1 = c("bernoulli", "binomial", "poisson", "laplace", "gaussian"),
   fam1 = "bernoulli",
@@ -472,7 +472,7 @@ gbm.auto(
   BnW = FALSE,
   alerts = TRUE,
   pngtype = c("cairo-png", "quartz", "Xlib"),
-  gaus = TRUE, # bin run
+  gaus = FALSE, # bin run
   MLEvaluate = TRUE)
 
 
@@ -486,6 +486,10 @@ gbm.auto(
 # 0.000001 didn't
 # 0.0000001 bin 0.5 gaus 0.51
 # do gbm.loop
+
+# 2022-09-13: resvar is binomial: range(drumline$CaribbeanReef) 0 1
+# switch to bin run only : gaus = FALSE
+# 11 of these: In cor(y_i, u_i) : the standard deviation is zero
 
 # Gbm.loop####
 library(magrittr) # %>% %<>% # %>% %<>%
@@ -515,6 +519,7 @@ gbm.loop(savedir = "../../Projects/2021_06 Reef shark drumline CPUE/Results_Plot
 
 
 # Henderson etal 2021 figures ####
+options(scipen = 5)
 # F3 x seasons y temperatureC dots w/ SDs ####
 drumline %>%                # create summary table as data input
   group_by(Season) %>%
@@ -540,7 +545,7 @@ drumline %>%                # create summary table as data input
                                    plot.background = element_rect(fill = "white"),
                                    strip.text.x = element_text(size = rel(2)),
                                    panel.border = element_rect(colour = "black", fill = NA, size = 1)) +
-  ggsave(paste0("../../Projects/2021_06 Reef shark drumline CPUE/Results_Plots/", today(), "_DotWhisker_Temp_Season.png"),
+  ggsave(paste0("../../Projects/2021-10_Drumline_Reefshark/", today(), "_DotWhisker_Temp_Season.png"),
          plot = last_plot(), device = "png", scale = 1.75, width = 7,
          height = 4, units = "in", dpi = 300, limitsize = TRUE)
 
@@ -576,7 +581,7 @@ drumline %>%                # create summary table as data input
                                    plot.background = element_rect(fill = "white"),
                                    strip.text.x = element_text(size = rel(2)),
                                    panel.border = element_rect(colour = "black", fill = NA, size = 1)) +
-  ggsave(paste0("../../Projects/2021_06 Reef shark drumline CPUE/Results_Plots/", today(), "_Column_CPUE_Species.png"),
+  ggsave(paste0("../../Projects/2021-10_Drumline_Reefshark/", today(), "_Column_CPUE_Species.png"),
          plot = last_plot(), device = "png", scale = 1.75, width = 7,
          height = 4, units = "in", dpi = 300, limitsize = TRUE)
 
@@ -615,7 +620,7 @@ drumline %>%                # create summary table as data input
                                    plot.background = element_rect(fill = "white"),
                                    strip.text.x = element_text(size = rel(2)),
                                    panel.border = element_rect(colour = "black", fill = NA, size = 1)) +
-  ggsave(paste0("../../Projects/2021_06 Reef shark drumline CPUE/Results_Plots/", today(), "_DotPlot_CPUE_Species_Habitat2.png"),
+  ggsave(paste0("../../Projects/2021-10_Drumline_Reefshark/", today(), "_DotPlot_CPUE_Species_Habitat2.png"),
          plot = last_plot(), device = "png", scale = 1.75, width = 7,
          height = 4, units = "in", dpi = 300, limitsize = TRUE)
 
@@ -641,7 +646,7 @@ drumline %>%                # create summary table as data input
                                    plot.background = element_rect(fill = "white"),
                                    strip.text.x = element_text(size = rel(2)),
                                    panel.border = element_rect(colour = "black", fill = NA, size = 1)) +
-  ggsave(paste0("../../Projects/2021_06 Reef shark drumline CPUE/Results_Plots/", today(), "_BoxPlot_STL_Sex_facetSpecies.png"),
+  ggsave(paste0("../../Projects/2021-10_Drumline_Reefshark/", today(), "_BoxPlot_STL_Sex_facetSpecies.png"),
          plot = last_plot(), device = "png", scale = 1.75, width = 7,
          height = 4, units = "in", dpi = 300, limitsize = TRUE)
 
@@ -685,7 +690,7 @@ drumline %>%                # create summary table as data input
                                    plot.background = element_rect(fill = "white"),
                                    strip.text.x = element_text(size = rel(2)),
                                    panel.border = element_rect(colour = "black", fill = NA, size = 1)) +
-  ggsave(paste0("../../Projects/2021_06 Reef shark drumline CPUE/Results_Plots/", today(), "_DotPlot_CPUE_Species_Season.png"),
+  ggsave(paste0("../../Projects/2021-10_Drumline_Reefshark/", today(), "_DotPlot_CPUE_Species_Season.png"),
          plot = last_plot(), device = "png", scale = 1.75, width = 7,
          height = 4, units = "in", dpi = 300, limitsize = TRUE)
 
@@ -712,7 +717,7 @@ drumline %>%                # create summary table as data input
                                    plot.background = element_rect(fill = "white"),
                                    strip.text.x = element_text(size = rel(2)),
                                    panel.border = element_rect(colour = "black", fill = NA, size = 1)) +
-  ggsave(paste0("../../Projects/2021_06 Reef shark drumline CPUE/Results_Plots/", today(), "_BoxPlot_STL_Season_facetSpecies.png"),
+  ggsave(paste0("../../Projects/2021-10_Drumline_Reefshark/", today(), "_BoxPlot_STL_Season_facetSpecies.png"),
          plot = last_plot(), device = "png", scale = 1.75, width = 7,
          height = 4, units = "in", dpi = 300, limitsize = TRUE)
 
@@ -742,11 +747,12 @@ drumline %>%                # create summary table as data input
                                    plot.background = element_rect(fill = "white"),
                                    strip.text.x = element_text(size = rel(2)),
                                    panel.border = element_rect(colour = "black", fill = NA, size = 1)) +
-  ggsave(paste0("../../Projects/2021_06 Reef shark drumline CPUE/Results_Plots/", today(), "_BoxPlot_STL_Habitat2_facetSpecies.png"),
+  ggsave(paste0("../../Projects/2021-10_Drumline_Reefshark/", today(), "_BoxPlot_STL_Habitat2_facetSpecies.png"),
          plot = last_plot(), device = "png", scale = 1.75, width = 7,
          height = 4, units = "in", dpi = 300, limitsize = TRUE)
 
 unique(drumline$Substrate2) # Reef       Vegetation Bare       <NA>
+
 drumline %>%                # create summary table as data input
   select(Species, Substrate2, STL) %>%
   drop_na() %>%
@@ -769,7 +775,7 @@ drumline %>%                # create summary table as data input
                                    plot.background = element_rect(fill = "white"),
                                    strip.text.x = element_text(size = rel(2)),
                                    panel.border = element_rect(colour = "black", fill = NA, size = 1)) +
-  ggsave(paste0("../../Projects/2021_06 Reef shark drumline CPUE/Results_Plots/", today(), "_BoxPlot_STL_Substrate2_facetSpecies.png"),
+  ggsave(paste0("../../Projects/2021-10_Drumline_Reefshark/", today(), "_BoxPlot_STL_Substrate2_facetSpecies.png"),
          plot = last_plot(), device = "png", scale = 1.75, width = 7,
          height = 4, units = "in", dpi = 300, limitsize = TRUE)
 
@@ -861,6 +867,28 @@ fit_zinb1 <- brm(CaribbeanReef ~ Site3 + Habitat + Substrate2 + Tide + Season + 
                  data = drumline,
                  family = zero_inflated_poisson("log")) # CPUE (CaribbeanReef) is ZI according to gbm.auto check
                             # crashes
+
+# 2022-09-13:
+# Warning messages:
+# 1: Rows containing NAs were excluded from the model.
+# 2: There were 2 divergent transitions after warmup. See
+# https://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup
+# to find out why this is a problem and how to eliminate them.
+# 3: There were 3823 transitions after warmup that exceeded the maximum treedepth. Increase max_treedepth above 10. See
+# https://mc-stan.org/misc/warnings.html#maximum-treedepth-exceeded
+# 4: Examine the pairs() plot to diagnose sampling problems
+#
+# 5: The largest R-hat is 2.3, indicating chains have not mixed.
+# Running the chains for more iterations may help. See
+# https://mc-stan.org/misc/warnings.html#r-hat
+# 6: Bulk Effective Samples Size (ESS) is too low, indicating posterior means and medians may be unreliable.
+# Running the chains for more iterations may help. See
+# https://mc-stan.org/misc/warnings.html#bulk-ess
+# 7: Tail Effective Samples Size (ESS) is too low, indicating posterior variances and tail quantiles may be unreliable.
+# Running the chains for more iterations may help. See
+# https://mc-stan.org/misc/warnings.html#tail-ess
+
+
 # try best 5 only
 fit_zinb1 <- brm(CaribbeanReef ~ Depth_m + Season + DO_mg_L + Longitude + Salinity,
                  data = drumline,
@@ -875,36 +903,28 @@ summary(fit_zinb1)
 #
 # Population-Level Effects:
 #              Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-# Intercept     3929.38   1477.88  1389.22  7292.94 1.00     2891     2097
-# Depth_m          0.03      0.03    -0.03     0.10 1.00     3149     2671
-# SeasonSpring     1.84      0.51     0.86     2.84 1.00     3128     2465
-# SeasonSummer    -0.11      0.54    -1.15     0.96 1.00     2698     2958
-# SeasonAutumn    -0.25      0.53    -1.31     0.80 1.00     2607     2682
-# DO_mg_L         -0.44      0.29    -1.00     0.14 1.00     3159     3069
-# Longitude       50.27     19.01    17.65    93.28 1.00     2900     2065
-# Salinity        -0.63      0.31    -1.24    -0.04 1.00     2924     2702
+# Intercept     3928.73   1508.16  1324.13  7113.20 1.00     2697     2360
+# Depth_m          0.04      0.03    -0.03     0.10 1.00     2843     2684
+# SeasonSpring     1.87      0.53     0.87     2.97 1.00     2845     2269
+# SeasonSummer    -0.08      0.54    -1.16     0.95 1.00     2403     2762
+# SeasonAutumn    -0.25      0.52    -1.28     0.76 1.00     2352     2823
+# DO_mg_L         -0.43      0.27    -0.94     0.12 1.00     2862     2686
+# Longitude       50.25     19.39    16.81    91.45 1.00     2706     2375
+# Salinity        -0.64      0.30    -1.22    -0.05 1.00     2836     2803
 #
 # Family Specific Parameters:
 #    Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-# zi     0.15      0.12     0.01     0.44 1.00     2724     2220
+# zi     0.15      0.12     0.00     0.43 1.00     3241     2118
 #
 # Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
 # and Tail_ESS are effective sample size measures, and Rhat is the potential
 # scale reduction factor on split chains (at convergence, Rhat = 1).
 
-
 marginal_effects(fit_zinb1) # marginal_effects(fit_rent1, surface = TRUE)
-
-
-
+# Manually save these
 
 
 # loo(fit_zinb1, fit_zinb2)
-
-
-
-
-
 
 
 
