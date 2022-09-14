@@ -903,18 +903,18 @@ summary(fit_zinb1)
 #
 # Population-Level Effects:
 #              Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-# Intercept     3928.73   1508.16  1324.13  7113.20 1.00     2697     2360
-# Depth_m          0.04      0.03    -0.03     0.10 1.00     2843     2684
-# SeasonSpring     1.87      0.53     0.87     2.97 1.00     2845     2269
-# SeasonSummer    -0.08      0.54    -1.16     0.95 1.00     2403     2762
-# SeasonAutumn    -0.25      0.52    -1.28     0.76 1.00     2352     2823
-# DO_mg_L         -0.43      0.27    -0.94     0.12 1.00     2862     2686
-# Longitude       50.25     19.39    16.81    91.45 1.00     2706     2375
-# Salinity        -0.64      0.30    -1.22    -0.05 1.00     2836     2803
+# Intercept     3891.07   1452.03  1402.61  7020.66 1.00     2932     2706
+# Depth_m          0.03      0.03    -0.03     0.09 1.00     2760     2910
+# SeasonSpring     1.86      0.52     0.88     2.88 1.00     3346     2719
+# SeasonSummer    -0.09      0.55    -1.19     0.96 1.00     2696     2979
+# SeasonAutumn    -0.26      0.53    -1.30     0.76 1.00     2502     2834
+# DO_mg_L         -0.44      0.29    -1.00     0.14 1.00     2866     2967
+# Longitude       49.77     18.66    17.88    89.93 1.00     2945     2726
+# Salinity        -0.64      0.31    -1.25    -0.04 1.00     2766     2527
 #
 # Family Specific Parameters:
 #    Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-# zi     0.15      0.12     0.00     0.43 1.00     3241     2118
+# zi     0.15      0.12     0.01     0.43 1.00     3051     2484
 #
 # Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
 # and Tail_ESS are effective sample size measures, and Rhat is the potential
