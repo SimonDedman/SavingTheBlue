@@ -431,8 +431,8 @@ expvars = c("Site3", "Habitat", "Substrate2", "Tide", "Season", "LunarPhase",
             "Latitude", "Longitude", "Depth_m", "Temperature_C", "Salinity", "DO_mg_L", "Yearday", "Month", "daylength")
 gbm.bfcheck(samples = drumline, resvar = "CaribbeanReef")
                             # [1] "  binary bag fraction must be at least 0.011. n = 1843"
-                            # [1] "Gaussian bag fraction must be at least 0.262. n = 80"
-                            # [1] 0.01139447 0.2625000
+                            # [1] "Gaussian bag fraction must be at least 0.262. n = 109"
+                            # [1] 0.01139447 0.19266055
 
 # 2021-09-08 PM remove Somerset suggestion
 drumline %<>%
@@ -492,30 +492,30 @@ gbm.auto(
 # 11 of these: In cor(y_i, u_i) : the standard deviation is zero
 
 # Gbm.loop####
-library(magrittr) # %>% %<>% # %>% %<>%
-library(dplyr) # %>% matches last filter mutate case_when relocate everything rename across last_col bind_cols group_by tally pull summarise n_distinct left_join arrange select bind_rows # %>% matches last filter mutate case_when relocate everything rename across last_col bind_cols group_by tally pull summarise n_distinct left_join arrange select bind_rows
-library(tidyverse) # "No used functions found" # "No used functions found"
-library(tidylog) # filter mutate relocate pivot_wider rename replace_na group_by tally summarise left_join drop_na select pivot_longer # filter mutate relocate pivot_wider rename replace_na group_by tally summarise left_join drop_na select pivot_longer
-drumline <- list.files(path = "../../Data/") %>% # list all files in Data folder
-  .[matches("_drumline_reefs.rds", vars = .)] %>% # filter for the right ones, all today() variants, will be ordered rising by date
-  last() # last one is highest date i.e. latest
-drumline <- readRDS(file = paste0("../../Data/", drumline))
-library(remotes) # install_github # install_github
-install_github("SimonDedman/gbm.auto")
-library(gbm.auto) # gbm.bfcheck gbm.auto gbm.loop # gbm.bfcheck gbm.auto gbm.loop
-expvars = c("Site3", "Habitat", "Substrate2", "Tide", "Season", "LunarPhase",
-            "Latitude", "Longitude", "Depth_m", "Temperature_C", "Salinity", "DO_mg_L", "Yearday", "Month", "daylength")
-drumline %<>%
-  filter(Site3 != "Somerset") %>% #remove Somerset rows, n=103, 9% of data
-  mutate(Site3 = factor(Site3, levels = levels(Site3)[2:6])) # remove Somerset as a factor level
-
-gbm.loop(savedir = "../../Projects/2021_06 Reef shark drumline CPUE/Results_Plots/BRT",
-         samples = drumline,
-         expvar = expvars,
-         resvar = "CaribbeanReef",
-         lr = list(0.01, 0.0001), #0.005
-         bf = list(0.5, 0.9),
-         runautos = FALSE)
+# library(magrittr) # %>% %<>% # %>% %<>%
+# library(dplyr) # %>% matches last filter mutate case_when relocate everything rename across last_col bind_cols group_by tally pull summarise n_distinct left_join arrange select bind_rows # %>% matches last filter mutate case_when relocate everything rename across last_col bind_cols group_by tally pull summarise n_distinct left_join arrange select bind_rows
+# library(tidyverse) # "No used functions found" # "No used functions found"
+# library(tidylog) # filter mutate relocate pivot_wider rename replace_na group_by tally summarise left_join drop_na select pivot_longer # filter mutate relocate pivot_wider rename replace_na group_by tally summarise left_join drop_na select pivot_longer
+# drumline <- list.files(path = "../../Data/") %>% # list all files in Data folder
+#   .[matches("_drumline_reefs.rds", vars = .)] %>% # filter for the right ones, all today() variants, will be ordered rising by date
+#   last() # last one is highest date i.e. latest
+# drumline <- readRDS(file = paste0("../../Data/", drumline))
+# library(remotes) # install_github # install_github
+# install_github("SimonDedman/gbm.auto")
+# library(gbm.auto) # gbm.bfcheck gbm.auto gbm.loop # gbm.bfcheck gbm.auto gbm.loop
+# expvars = c("Site3", "Habitat", "Substrate2", "Tide", "Season", "LunarPhase",
+#             "Latitude", "Longitude", "Depth_m", "Temperature_C", "Salinity", "DO_mg_L", "Yearday", "Month", "daylength")
+# drumline %<>%
+#   filter(Site3 != "Somerset") %>% #remove Somerset rows, n=103, 9% of data
+#   mutate(Site3 = factor(Site3, levels = levels(Site3)[2:6])) # remove Somerset as a factor level
+#
+# gbm.loop(savedir = "../../Projects/2021_06 Reef shark drumline CPUE/Results_Plots/BRT",
+#          samples = drumline,
+#          expvar = expvars,
+#          resvar = "CaribbeanReef",
+#          lr = list(0.01, 0.0001), #0.005
+#          bf = list(0.5, 0.9),
+#          runautos = FALSE)
 
 
 # Henderson etal 2021 figures ####
@@ -544,7 +544,7 @@ drumline %>%                # create summary table as data input
                                    panel.grid.minor = element_blank(), # remove mid value x & y axis gridlines
                                    plot.background = element_rect(fill = "white"),
                                    strip.text.x = element_text(size = rel(2)),
-                                   panel.border = element_rect(colour = "black", fill = NA, size = 1)) +
+                                   panel.border = element_rect(colour = "black", fill = NA, size = 1))
   ggsave(paste0("../../Projects/2021-10_Drumline_Reefshark/", today(), "_DotWhisker_Temp_Season.png"),
          plot = last_plot(), device = "png", scale = 1.75, width = 7,
          height = 4, units = "in", dpi = 300, limitsize = TRUE)
@@ -580,7 +580,7 @@ drumline %>%                # create summary table as data input
                                    panel.grid.minor = element_blank(), # remove mid value x & y axis gridlines
                                    plot.background = element_rect(fill = "white"),
                                    strip.text.x = element_text(size = rel(2)),
-                                   panel.border = element_rect(colour = "black", fill = NA, size = 1)) +
+                                   panel.border = element_rect(colour = "black", fill = NA, size = 1))
   ggsave(paste0("../../Projects/2021-10_Drumline_Reefshark/", today(), "_Column_CPUE_Species.png"),
          plot = last_plot(), device = "png", scale = 1.75, width = 7,
          height = 4, units = "in", dpi = 300, limitsize = TRUE)
@@ -619,7 +619,7 @@ drumline %>%                # create summary table as data input
                                    panel.grid.minor = element_blank(), # remove mid value x & y axis gridlines
                                    plot.background = element_rect(fill = "white"),
                                    strip.text.x = element_text(size = rel(2)),
-                                   panel.border = element_rect(colour = "black", fill = NA, size = 1)) +
+                                   panel.border = element_rect(colour = "black", fill = NA, size = 1))
   ggsave(paste0("../../Projects/2021-10_Drumline_Reefshark/", today(), "_DotPlot_CPUE_Species_Habitat2.png"),
          plot = last_plot(), device = "png", scale = 1.75, width = 7,
          height = 4, units = "in", dpi = 300, limitsize = TRUE)
@@ -645,7 +645,7 @@ drumline %>%                # create summary table as data input
                                    panel.grid.minor = element_blank(), # remove mid value x & y axis gridlines
                                    plot.background = element_rect(fill = "white"),
                                    strip.text.x = element_text(size = rel(2)),
-                                   panel.border = element_rect(colour = "black", fill = NA, size = 1)) +
+                                   panel.border = element_rect(colour = "black", fill = NA, size = 1))
   ggsave(paste0("../../Projects/2021-10_Drumline_Reefshark/", today(), "_BoxPlot_STL_Sex_facetSpecies.png"),
          plot = last_plot(), device = "png", scale = 1.75, width = 7,
          height = 4, units = "in", dpi = 300, limitsize = TRUE)
@@ -689,7 +689,7 @@ drumline %>%                # create summary table as data input
                                    panel.grid.minor = element_blank(), # remove mid value x & y axis gridlines
                                    plot.background = element_rect(fill = "white"),
                                    strip.text.x = element_text(size = rel(2)),
-                                   panel.border = element_rect(colour = "black", fill = NA, size = 1)) +
+                                   panel.border = element_rect(colour = "black", fill = NA, size = 1))
   ggsave(paste0("../../Projects/2021-10_Drumline_Reefshark/", today(), "_DotPlot_CPUE_Species_Season.png"),
          plot = last_plot(), device = "png", scale = 1.75, width = 7,
          height = 4, units = "in", dpi = 300, limitsize = TRUE)
@@ -716,7 +716,7 @@ drumline %>%                # create summary table as data input
                                    panel.grid.minor = element_blank(), # remove mid value x & y axis gridlines
                                    plot.background = element_rect(fill = "white"),
                                    strip.text.x = element_text(size = rel(2)),
-                                   panel.border = element_rect(colour = "black", fill = NA, size = 1)) +
+                                   panel.border = element_rect(colour = "black", fill = NA, size = 1))
   ggsave(paste0("../../Projects/2021-10_Drumline_Reefshark/", today(), "_BoxPlot_STL_Season_facetSpecies.png"),
          plot = last_plot(), device = "png", scale = 1.75, width = 7,
          height = 4, units = "in", dpi = 300, limitsize = TRUE)
@@ -746,7 +746,7 @@ drumline %>%                # create summary table as data input
                                    panel.grid.minor = element_blank(), # remove mid value x & y axis gridlines
                                    plot.background = element_rect(fill = "white"),
                                    strip.text.x = element_text(size = rel(2)),
-                                   panel.border = element_rect(colour = "black", fill = NA, size = 1)) +
+                                   panel.border = element_rect(colour = "black", fill = NA, size = 1))
   ggsave(paste0("../../Projects/2021-10_Drumline_Reefshark/", today(), "_BoxPlot_STL_Habitat2_facetSpecies.png"),
          plot = last_plot(), device = "png", scale = 1.75, width = 7,
          height = 4, units = "in", dpi = 300, limitsize = TRUE)
@@ -774,7 +774,7 @@ drumline %>%                # create summary table as data input
                                    panel.grid.minor = element_blank(), # remove mid value x & y axis gridlines
                                    plot.background = element_rect(fill = "white"),
                                    strip.text.x = element_text(size = rel(2)),
-                                   panel.border = element_rect(colour = "black", fill = NA, size = 1)) +
+                                   panel.border = element_rect(colour = "black", fill = NA, size = 1))
   ggsave(paste0("../../Projects/2021-10_Drumline_Reefshark/", today(), "_BoxPlot_STL_Substrate2_facetSpecies.png"),
          plot = last_plot(), device = "png", scale = 1.75, width = 7,
          height = 4, units = "in", dpi = 300, limitsize = TRUE)
@@ -903,18 +903,18 @@ summary(fit_zinb1)
 #
 # Population-Level Effects:
 #              Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-# Intercept     3891.07   1452.03  1402.61  7020.66 1.00     2932     2706
-# Depth_m          0.03      0.03    -0.03     0.09 1.00     2760     2910
-# SeasonSpring     1.86      0.52     0.88     2.88 1.00     3346     2719
-# SeasonSummer    -0.09      0.55    -1.19     0.96 1.00     2696     2979
-# SeasonAutumn    -0.26      0.53    -1.30     0.76 1.00     2502     2834
-# DO_mg_L         -0.44      0.29    -1.00     0.14 1.00     2866     2967
-# Longitude       49.77     18.66    17.88    89.93 1.00     2945     2726
-# Salinity        -0.64      0.31    -1.25    -0.04 1.00     2766     2527
+# Intercept     3884.14   1504.25  1282.53  7235.72 1.00     2579     2038
+# Depth_m          0.03      0.03    -0.03     0.09 1.00     3099     2792
+# SeasonSpring     1.86      0.52     0.85     2.88 1.00     2929     2416
+# SeasonSummer    -0.10      0.55    -1.23     0.96 1.00     2375     2868
+# SeasonAutumn    -0.26      0.53    -1.29     0.77 1.00     2189     2360
+# DO_mg_L         -0.44      0.28    -1.00     0.11 1.00     2760     3071
+# Longitude       49.68     19.34    16.27    92.72 1.00     2584     2039
+# Salinity        -0.64      0.32    -1.27    -0.03 1.00     2509     2644
 #
 # Family Specific Parameters:
 #    Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-# zi     0.15      0.12     0.01     0.43 1.00     3051     2484
+# zi     0.15      0.12     0.01     0.44 1.00     2877     1752
 #
 # Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
 # and Tail_ESS are effective sample size measures, and Rhat is the potential
