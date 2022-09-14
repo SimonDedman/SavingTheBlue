@@ -117,12 +117,15 @@ shark$Site2 <- shark$Site
 unique(shark$Site2)
 shark[which(shark$Site2 == "Somerset reef"), "Site2"] <- "Somerset"
 shark[which(shark$Site2 == "AUTEC Channel Reef"), "Site2"] <- "AUTEC Channel"
+shark[which(shark$Site2 == "Princess Anne Wreck"), "Site2"] <- "Jupiter Florida"
 shark[which(shark$Site2 %in% c("North Bight – Upper",
                                "Middle Bight – Upper",
                                "Middle Bight",
                                "Middle Bight - MB4",
-                               "Pyes Harbour",
+                               "Pye's Harbour",
                                "Behring Point")), "Site2"] <- "North Bight"
+shark[which(shark$Site2 %in% c("Bahia Honda",
+                               "Sandy Key")), "Site2"] <- "Florida Keys"
 shark[which(shark$Site2 == "Gibson Channel"), "Site2"] <- "Gibson Cay"
 shark[which(shark$Site2 == "Bristol Galley dropoff"), "Site2"] <- "Bristol Galley"
 levels_Site2 <- c("Fresh Creek",
@@ -139,6 +142,7 @@ levels_Site2 <- c("Fresh Creek",
                   "TOTO Navy Buoy",
                   "Blackbeard's Channel",
                   "Gibson Cay",
+                  "Florida Keys",
                   "Jupiter Florida")
 shark$Site2 <- factor(shark$Site2, levels = levels_Site2)
 
@@ -238,12 +242,12 @@ drumline[which(drumline$Site2 %in% c("North Bight - Upper",
                                      "Middle Bight - Upper",
                                      "Middle Bight",
                                      "Middle Bight - MB4",
-                                     "Pyes Harbour",
+                                     "Pye's Harbour",
                                      "Behring Point")), "Site2"] <- "North Bight"
 drumline[which(drumline$Site2 == "Gibson Channel"), "Site2"] <- "Gibson Cay"
 shark[which(shark$Site2 == "Bristol Galley dropoff"), "Site2"] <- "Bristol Galley"
 drumline$Site2 <- factor(drumline$Site2, levels = levels_Site2)
-
+unique(drumline$Site2)
 
 unique(drumline$Bottom_top)
 drumline$Bottom_top <- factor(drumline$Bottom_top, levels = c("Bottom", "Top"))

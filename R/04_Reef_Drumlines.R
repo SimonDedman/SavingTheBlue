@@ -36,13 +36,12 @@ library(tidylog) # filter mutate relocate pivot_wider rename replace_na group_by
   # 12 Isla's Spot              7  Bight?
 
   drumline %<>%
-    filter(!Site2 %in% c("Gibson Cay", "Cargill Creek", "Isla's Spot")) %>% # only fished once
     mutate(Site3 = factor(
       case_when(
-        Site2 %in% c("North Bight", "Shark Hole", "Blackbeard's Channel") ~ "Bight", # Make values 1 when sharks caught
+        Site2 %in% c("North Bight", "Shark Hole", "Blackbeard's Channel", "Cargill Creek", "Isla's Spot") ~ "Bight", # Make values 1 when sharks caught
         Site2 == "High Cay" ~ "Somerset",
         TRUE ~ as.character(Site2)),
-      levels = c("Somerset", "Green Cay", "Bristol Galley", "AUTEC Channel", "Bight", "Bigwood Channel")))
+      levels = c("Somerset", "Green Cay", "Bristol Galley", "AUTEC Channel", "Bight", "Bigwood Channel", "Gibson Cay")))
 
   # unique(drumline$Substrate)
   # drumline %>%
@@ -144,17 +143,18 @@ library(tidylog) # filter mutate relocate pivot_wider rename replace_na group_by
                 values_from = CommonValues) %>%
     rename(CaribbeanReef = "Caribbean Reef",
            GreatHammerhead = "Great Hammerhead") %>%
-    mutate(across("NA":last_col(), ~ replace_na(., 0))) # https://stackoverflow.com/a/63970397/3975144
-  # later, grouped calculations for CPUE via: mutate(CPUE = "Caribbean Reef" / Soak_time_CaribbeanReef)
+    mutate(across("NA":last_col(), ~ replace_na(., 0)), # https://stackoverflow.com/a/63970397/3975144
+           CaribbeanReef_CPUE = CaribbeanReef / Soak_time_CaribbeanReef)
 
 
   # temporal####
   # time of day. Midpoint of timein/timeout? Will be a posix tho.
   # can use hour as a lazy proxy. or minute
   drumline %<>%
-    mutate(Minute = minute(Time_in),
-           Yearday = yday(Date),
-           Month = month(Date),
+    mutate(Minute = lubridate::minute(Time_in),
+           Hour = lubridate::hour(Time_in),
+           Yearday = lubridate::yday(Date),
+           Month = lubridate::month(Date),
            Season = cut(Month,
                         breaks = c(-Inf, 2, 5, 8, 11, Inf),
                         labels = c("Winter", "Spring", "Summer", "Autumn", "Winter")))
@@ -318,8 +318,9 @@ library(tidylog) # filter mutate relocate pivot_wider rename replace_na group_by
   #            across(where(~ is.character(.)), ~ ifelse(is.infinite(.), NA, .))) # https://community.rstudio.com/t/why-does-tidyrs-fill-work-with-nas-but-not-nans/25506/5
   # ) # Joining, by = "Casey"
 
+  drumline$RandomVar <- runif(n = nrow(drumline), min = 0, max = 1) # Fran Farabaugh idea, add random var to compare to BRT outputs
 
-
+  drumline %<>% droplevels() # R will plot all levels even if not populated. This drops unpopulated factor levels
 
   # Save sheets####
   write.csv(x = drumline,
@@ -327,7 +328,7 @@ library(tidylog) # filter mutate relocate pivot_wider rename replace_na group_by
             row.names = F)
   saveRDS(object = drumline,
           file = paste0("../../Data/", today(), "_drumline_reefs.rds"))
-  rm(list = c("bothdbs", "caseyjoinimport", "badPITs", "caseybothdbs", "caseybothdbsnopit", "dupePITs"))
+  rm(list = c("bothdbs", "caseyjoinimport", "badPITs", "caseybothdbs", "caseybothdbsnopit", "dupePITs", "dl", "shark"))
 } # finish processing runall
 
 
@@ -378,8 +379,8 @@ colnames(drumline)
 # Bar plots####
 # Loop through factorial variables & barplot against CPUE
 for (factorvars in c("Site3", "Habitat", "Substrate", "Substrate2", "Tide", "Season", "LunarPhase")) {
-  ggplot(data = drumline) +
-    geom_col(mapping = aes(x = .data[[factorvars]], y = CaribbeanReef), fill = "black") +
+  ggplot(data = drumline %>% tidyr::drop_na(CaribbeanReef_CPUE)) +
+    geom_col(mapping = aes(x = .data[[factorvars]], y = CaribbeanReef_CPUE), fill = "black", colour = "black") +
     theme_minimal() %+replace% theme(axis.text = element_text(size = rel(1.1)),
                                      title = element_text(size = rel(2)),
                                      legend.text = element_text(size = rel(1.5)),
@@ -398,9 +399,9 @@ for (factorvars in c("Site3", "Habitat", "Substrate", "Substrate2", "Tide", "Sea
 # Scatterplots####
 # Loop through numerical variables & scatterplot against CPUE with trendline
 for (numvars in c("Latitude", "Longitude", "Depth_m", "Temperature_C", "Salinity", "DO_mg_L", "Yearday", "Month", "daylength")) {
-  ggplot(data = drumline) +
-    geom_point(mapping = aes(x = .data[[numvars]], y = CaribbeanReef), fill = "black") +
-    geom_smooth(mapping = aes(x = .data[[numvars]], y = CaribbeanReef)) + # , fill = "black"
+  ggplot(data = drumline %>% tidyr::drop_na(CaribbeanReef_CPUE)) +
+    geom_point(mapping = aes(x = .data[[numvars]], y = CaribbeanReef_CPUE), fill = "black") +
+    geom_smooth(mapping = aes(x = .data[[numvars]], y = CaribbeanReef_CPUE)) + # , fill = "black"
     theme_minimal() %+replace% theme(axis.text = element_text(size = rel(1.1)),
                                      title = element_text(size = rel(2)),
                                      legend.text = element_text(size = rel(1.5)),
@@ -421,18 +422,38 @@ for (numvars in c("Latitude", "Longitude", "Depth_m", "Temperature_C", "Salinity
 
 
 # BRT ####
-library(remotes) # install_github # install_github
-install_github("SimonDedman/gbm.auto")
+# library(remotes) # install_github # install_github
+# install_github("SimonDedman/gbm.auto")
 library(gbm.auto) # gbm.bfcheck gbm.auto gbm.loop # gbm.bfcheck gbm.auto gbm.loop
 # expvars = c("Site3", "Habitat", "Substrate", "Tide", "Season", "LunarPhase",
 #             "Latitude", "Longitude", "Depth_m", "Temperature_C", "Salinity", "DO_mg_L", "Yearday", "Month", "daylength")
 # 2021-09-08 PM Substrate2 suggestion
-expvars = c("Site3", "Habitat", "Substrate2", "Tide", "Season", "LunarPhase",
-            "Latitude", "Longitude", "Depth_m", "Temperature_C", "Salinity", "DO_mg_L", "Yearday", "Month", "daylength")
+# drumline %>% select(DO_mg_L, Salinity) %>% summarise_all(funs(sum(is.na(.) / n() * 100))) # 58 & 54% NA, drop, 2022-09-14
+
+expvars = c(
+            # "Site3",
+            "Habitat", # Site3 Habitat Substrate2 all similar
+            # "Substrate2",
+            "Tide",
+            "Season",
+            "LunarPhase",
+            "Latitude",
+            "Longitude",
+            "Depth_m",
+            "Temperature_C",
+            # "Salinity",
+            # "DO_mg_L",
+            "Hour",
+            "Yearday",
+            "Month",
+            # "daylength" # Season better
+            "Sex",
+            "STL",
+            "RandomVar")
 gbm.bfcheck(samples = drumline, resvar = "CaribbeanReef")
-                            # [1] "  binary bag fraction must be at least 0.011. n = 1843"
-                            # [1] "Gaussian bag fraction must be at least 0.262. n = 109"
-                            # [1] 0.01139447 0.19266055
+                            # [1] "  binary bag fraction must be at least 0.011. n = 1968"
+                            # [1] "Gaussian bag fraction must be at least 0.191 n = 110"
+                            # [1] 0.01067073 0.19090909
 
 # 2021-09-08 PM remove Somerset suggestion
 drumline %<>%
@@ -444,13 +465,13 @@ drumline <- as.data.frame(drumline) # fails if tibble
 
 gbm.auto(
   grids = NULL,
-  samples = drumline,       # [-which(is.na(drumline[resvar])),]
+  samples = drumline %>% tidyr::drop_na(CaribbeanReef_CPUE),       # [-which(is.na(drumline[resvar])),]
   expvar = expvars,
-  resvar = "CaribbeanReef",
+  resvar = "CaribbeanReef_CPUE",
   tc = 2,
-  lr = 0.01, # list(0.01, 0.005),
+  lr = list(0.01, 0.005),
   bf = 0.5, # list(0.5, 0.9)
-  n.trees = 10, # 50
+  n.trees = 50,
   ZI = "CHECK",
   # fam1 = c("bernoulli", "binomial", "poisson", "laplace", "gaussian"),
   fam1 = "bernoulli",
@@ -472,10 +493,8 @@ gbm.auto(
   BnW = FALSE,
   alerts = TRUE,
   pngtype = c("cairo-png", "quartz", "Xlib"),
-  gaus = FALSE, # bin run
+  gaus = TRUE,
   MLEvaluate = TRUE)
-
-
 
 # gaus run struggling, only n=80, keep playing with list options
 # lr
@@ -521,7 +540,7 @@ gbm.auto(
 # Henderson etal 2021 figures ####
 options(scipen = 5)
 # F3 x seasons y temperatureC dots w/ SDs ####
-drumline %>%                # create summary table as data input
+drumline %>%  # create summary table as data input
   group_by(Season) %>%
   summarise(Temperature = mean(Temperature_C, na.rm = TRUE),
             TempSDmin = mean(Temperature_C, na.rm = TRUE) - sd(Temperature_C, na.rm = TRUE),
@@ -568,7 +587,7 @@ drumline %>%                # create summary table as data input
                values_to = "CPUE") %>%
   ggplot() +
   geom_col(mapping = aes(x = reorder(Species, -CPUE), # reorder largest to smallest
-                         y = CPUE)) +
+                         y = CPUE), fill = "black") +
   ylab("CPUE (sharks/minute)") +
   xlab("Species") +
   theme_minimal() %+replace% theme(axis.text = element_text(size = rel(1.1)),
