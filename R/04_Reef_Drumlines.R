@@ -239,6 +239,7 @@ library(tidylog) # filter mutate relocate pivot_wider rename replace_na group_by
       mutate(Sex = factor(Sex, levels = c("F", "M")))
     # mutate sex back to factor here ####
   ) # Joining, by = "PIT_Tag_Full_ID_no"
+  # ignore warnings: some PIT tags only have NA values for some values so max fails back to NA which is fine.
 
   # E9F44 PIT from drum, has full in shark? If so fix those in xlsx. Asked TG, 2021-10-05, should add ~10 fish
 
@@ -422,6 +423,16 @@ for (numvars in c("Latitude", "Longitude", "Depth_m", "Temperature_C", "Salinity
 
 
 # BRT ####
+# 2021-09-08 PM remove Somerset suggestion
+drumline %<>%
+  filter(Site3 != "Somerset") %>% #remove Somerset rows, n=103, 9% of data
+  mutate(Site3 = factor(Site3, levels = levels(Site3)[2:6])) %>% # remove Somerset as a factor level
+  tidyr::drop_na(CaribbeanReef_CPUE)
+
+
+# 2021-10-19 now doesn't work since new binomial CPUE by species.
+drumline <- as.data.frame(drumline) # fails if tibble
+
 # library(remotes) # install_github # install_github
 # install_github("SimonDedman/gbm.auto")
 library(gbm.auto) # gbm.bfcheck gbm.auto gbm.loop # gbm.bfcheck gbm.auto gbm.loop
@@ -431,41 +442,33 @@ library(gbm.auto) # gbm.bfcheck gbm.auto gbm.loop # gbm.bfcheck gbm.auto gbm.loo
 # drumline %>% select(DO_mg_L, Salinity) %>% summarise_all(funs(sum(is.na(.) / n() * 100))) # 58 & 54% NA, drop, 2022-09-14
 
 expvars = c(
-            # "Site3",
-            "Habitat", # Site3 Habitat Substrate2 all similar
-            # "Substrate2",
-            "Tide",
-            "Season",
-            "LunarPhase",
-            "Latitude",
-            "Longitude",
-            "Depth_m",
-            "Temperature_C",
-            # "Salinity",
-            # "DO_mg_L",
-            "Hour",
-            "Yearday",
-            "Month",
-            # "daylength" # Season better
-            "Sex",
-            "STL",
-            "RandomVar")
+  # "Site3",
+  "Habitat", # Site3 Habitat Substrate2 all similar
+  # "Substrate2",
+  "Tide",
+  "Season",
+  "LunarPhase",
+  "Latitude",
+  "Longitude",
+  "Depth_m",
+  "Temperature_C",
+  # "Salinity",
+  # "DO_mg_L",
+  "Hour",
+  "Yearday",
+  "Month",
+  # "daylength" # Season better
+  "Sex",
+  "STL",
+  "RandomVar")
 gbm.bfcheck(samples = drumline, resvar = "CaribbeanReef")
-                            # [1] "  binary bag fraction must be at least 0.011. n = 1968"
-                            # [1] "Gaussian bag fraction must be at least 0.191 n = 110"
-                            # [1] 0.01067073 0.19090909
-
-# 2021-09-08 PM remove Somerset suggestion
-drumline %<>%
-  filter(Site3 != "Somerset") %>% #remove Somerset rows, n=103, 9% of data
-  mutate(Site3 = factor(Site3, levels = levels(Site3)[2:6])) # remove Somerset as a factor level
-
-# 2021-10-19 now doesn't work since new binomial CPUE by species.
-drumline <- as.data.frame(drumline) # fails if tibble
+# [1] "  binary bag fraction must be at least 0.011. n = 1968"
+# [1] "Gaussian bag fraction must be at least 0.191 n = 110"
+# [1] 0.01067073 0.19090909
 
 gbm.auto(
   grids = NULL,
-  samples = drumline %>% tidyr::drop_na(CaribbeanReef_CPUE),       # [-which(is.na(drumline[resvar])),]
+  samples = drumline,       # [-which(is.na(drumline[resvar])),]
   expvar = expvars,
   resvar = "CaribbeanReef_CPUE",
   tc = 2,
@@ -509,6 +512,92 @@ gbm.auto(
 # 2022-09-13: resvar is binomial: range(drumline$CaribbeanReef) 0 1
 # switch to bin run only : gaus = FALSE
 # 11 of these: In cor(y_i, u_i) : the standard deviation is zero
+
+
+#2023-02-14 BRT edits & re-run####
+# include distance to dropoff as independent variable
+# -Presumably this will correlate with depth and potentially longitude (and maybe latitude)
+# -include variable(s) that are most influential (hopefully distance to dropoff based on the work you've been doing to get this data)
+write.csv(x = drumline,
+          file = paste0("../../Data/", today(), "_drumline_reefs_getDistToDropoff.csv"),
+          row.names = F)
+# Now add distance to dropoff:
+# /home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Maps & Surveys/Bathymetry/2023-02-13 Bathy process.txt
+drumlineDist <- read_csv("/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Maps & Surveys/Bathymetry/2022-09-14_drumline_NOAANAV_DtDropOff.csv")
+drumline %<>%
+  # add new columns from drumlineDist (drumline dist has column settings like POSIX killed due to csv, don't both to fix)
+  bind_cols(drumlineDist %>%
+              select(NOAANAV_1, DtDeeps_1, DtShallows_1)) %>%
+  # tidy names
+  rename(DeepShallow = NOAANAV_1,
+         DtDeeps = DtDeeps_1,
+         DtShallows = DtShallows_1) %>%
+  # switch from 1 & 9 to Deep & Shallow
+  mutate(DeepShallow = case_when(DeepShallow == 1 ~ "Deep",
+                                 DeepShallow == 9 ~ "Shallow"),
+         # Invert DtShallows so deep sharks have dist to dropoff negative
+         DtShallows = -DtShallows,
+         # Create combined metric of distance to dropoff, not 2 columns
+         DtDropOff = ifelse(DtShallows == 0, DtDeeps, DtShallows)) %>%
+  # remove prep columns
+  select(-DeepShallow, -DtShallows, -DtDeeps)
+
+# save for quick access
+saveRDS(object = drumline,
+        file = paste0("../../Data/", today(), "_drumline_reefs_DtDropOff.rds"))
+
+expvars = c(
+  # "Site3",
+  "Habitat", # Site3 Habitat Substrate2 all similar
+  # "Substrate2",
+  "Tide",
+  "Season",
+  "LunarPhase",
+  "Latitude",
+  "Longitude",
+  "Depth_m", # compare to DtDropOff
+  "Temperature_C",
+  # "Salinity",
+  # "DO_mg_L",
+  "Hour",
+  "Yearday",
+  "Month",
+  # "daylength" # Season better
+  # "Sex",
+  # "STL", # Remove STL as an independent variable considering we will be using this to delineate groups for most specific BRT
+  "RandomVar",
+  "DtDropOff")
+
+# Assess sex, maturity and size groups with potential combinations:
+# --Male
+# --Female
+# --Mature
+# --Immature
+# --Male immature, male mature
+# --Female immature, female mature
+# --Male >164 cm, male <165 cm (this cutoff is based on the largest immature male)
+# --Female >164, female <165 (based on size of males - ecologically we would expect similar behavior/distribution if size not maturity is mature factor)
+# --All sharks >164 cm, all sharks <165 cm
+
+# ISSUE####
+# Dataset isn't only positive reefsharks, is also zero catch.
+# For each subset, do:
+# CaribbeanReef == 0 AND (CaribbeanReef == 1 & Sex == Male)
+# CaribbeanReef == 0 AND (CaribbeanReef == 1 & Sex == Female)
+# CaribbeanReef == 0 AND (CaribbeanReef == 1 & Maturity == TRUE)
+# CaribbeanReef == 0 AND (CaribbeanReef == 1 & Maturity == FALSE)
+# etc:
+# Write out all of these combos
+
+
+gbm.bfcheck(samples = drumline, resvar = "CaribbeanReef")
+# [1] "  binary bag fraction must be at least 0.011. n = 1968"
+# [1] "Gaussian bag fraction must be at least 0.191 n = 110"
+# [1] 0.01067073 0.19090909
+
+
+
+
 
 # Gbm.loop####
 # library(magrittr) # %>% %<>% # %>% %<>%
@@ -564,9 +653,9 @@ drumline %>%  # create summary table as data input
                                    plot.background = element_rect(fill = "white"),
                                    strip.text.x = element_text(size = rel(2)),
                                    panel.border = element_rect(colour = "black", fill = NA, size = 1))
-  ggsave(paste0("../../Projects/2021-10_Drumline_Reefshark/", today(), "_DotWhisker_Temp_Season.png"),
-         plot = last_plot(), device = "png", scale = 1.75, width = 7,
-         height = 4, units = "in", dpi = 300, limitsize = TRUE)
+ggsave(paste0("../../Projects/2021-10_Drumline_Reefshark/", today(), "_DotWhisker_Temp_Season.png"),
+       plot = last_plot(), device = "png", scale = 1.75, width = 7,
+       height = 4, units = "in", dpi = 300, limitsize = TRUE)
 
 
 # F4 x species y CPUE (sharks/hook/hour) columns ####
@@ -600,9 +689,9 @@ drumline %>%                # create summary table as data input
                                    plot.background = element_rect(fill = "white"),
                                    strip.text.x = element_text(size = rel(2)),
                                    panel.border = element_rect(colour = "black", fill = NA, size = 1))
-  ggsave(paste0("../../Projects/2021-10_Drumline_Reefshark/", today(), "_Column_CPUE_Species.png"),
-         plot = last_plot(), device = "png", scale = 1.75, width = 7,
-         height = 4, units = "in", dpi = 300, limitsize = TRUE)
+ggsave(paste0("../../Projects/2021-10_Drumline_Reefshark/", today(), "_Column_CPUE_Species.png"),
+       plot = last_plot(), device = "png", scale = 1.75, width = 7,
+       height = 4, units = "in", dpi = 300, limitsize = TRUE)
 
 
 # F5 x species y CPUE (sharks/hook/hour) site-shaped dots ####
@@ -639,9 +728,9 @@ drumline %>%                # create summary table as data input
                                    plot.background = element_rect(fill = "white"),
                                    strip.text.x = element_text(size = rel(2)),
                                    panel.border = element_rect(colour = "black", fill = NA, size = 1))
-  ggsave(paste0("../../Projects/2021-10_Drumline_Reefshark/", today(), "_DotPlot_CPUE_Species_Habitat2.png"),
-         plot = last_plot(), device = "png", scale = 1.75, width = 7,
-         height = 4, units = "in", dpi = 300, limitsize = TRUE)
+ggsave(paste0("../../Projects/2021-10_Drumline_Reefshark/", today(), "_DotPlot_CPUE_Species_Habitat2.png"),
+       plot = last_plot(), device = "png", scale = 1.75, width = 7,
+       height = 4, units = "in", dpi = 300, limitsize = TRUE)
 
 # F6 x sex y TL facet species boxplots ####
 drumline %>%                # create summary table as data input
@@ -665,9 +754,9 @@ drumline %>%                # create summary table as data input
                                    plot.background = element_rect(fill = "white"),
                                    strip.text.x = element_text(size = rel(2)),
                                    panel.border = element_rect(colour = "black", fill = NA, size = 1))
-  ggsave(paste0("../../Projects/2021-10_Drumline_Reefshark/", today(), "_BoxPlot_STL_Sex_facetSpecies.png"),
-         plot = last_plot(), device = "png", scale = 1.75, width = 7,
-         height = 4, units = "in", dpi = 300, limitsize = TRUE)
+ggsave(paste0("../../Projects/2021-10_Drumline_Reefshark/", today(), "_BoxPlot_STL_Sex_facetSpecies.png"),
+       plot = last_plot(), device = "png", scale = 1.75, width = 7,
+       height = 4, units = "in", dpi = 300, limitsize = TRUE)
 
 # F7 x season y CPUE dots by species ####
 drumline %>%                # create summary table as data input
@@ -688,7 +777,7 @@ drumline %>%                # create summary table as data input
   filter(!Species %in% c("Sharpnose", "Bull", "Lemon")) %>% # 0.0002 max sharpnose, 0.00008 bull, 7 lemon
   # appeared in legend but weren't given icons, scores too low, removed for cleanliness
   # Species manually removed here ####
-  ggplot() +
+ggplot() +
   geom_point(mapping = aes(x = Season, # reorder largest to smallest
                            y = CPUE,
                            shape = reorder(factor(Species), -CPUE)), # , levels = c("Flats", "Fore reef", "Back reef")
@@ -709,9 +798,9 @@ drumline %>%                # create summary table as data input
                                    plot.background = element_rect(fill = "white"),
                                    strip.text.x = element_text(size = rel(2)),
                                    panel.border = element_rect(colour = "black", fill = NA, size = 1))
-  ggsave(paste0("../../Projects/2021-10_Drumline_Reefshark/", today(), "_DotPlot_CPUE_Species_Season.png"),
-         plot = last_plot(), device = "png", scale = 1.75, width = 7,
-         height = 4, units = "in", dpi = 300, limitsize = TRUE)
+ggsave(paste0("../../Projects/2021-10_Drumline_Reefshark/", today(), "_DotPlot_CPUE_Species_Season.png"),
+       plot = last_plot(), device = "png", scale = 1.75, width = 7,
+       height = 4, units = "in", dpi = 300, limitsize = TRUE)
 
 
 # F8 x season y TL facet species boxplots (see F6) ####
@@ -736,9 +825,9 @@ drumline %>%                # create summary table as data input
                                    plot.background = element_rect(fill = "white"),
                                    strip.text.x = element_text(size = rel(2)),
                                    panel.border = element_rect(colour = "black", fill = NA, size = 1))
-  ggsave(paste0("../../Projects/2021-10_Drumline_Reefshark/", today(), "_BoxPlot_STL_Season_facetSpecies.png"),
-         plot = last_plot(), device = "png", scale = 1.75, width = 7,
-         height = 4, units = "in", dpi = 300, limitsize = TRUE)
+ggsave(paste0("../../Projects/2021-10_Drumline_Reefshark/", today(), "_BoxPlot_STL_Season_facetSpecies.png"),
+       plot = last_plot(), device = "png", scale = 1.75, width = 7,
+       height = 4, units = "in", dpi = 300, limitsize = TRUE)
 
 
 # F9 x habitat/substrate y TL facet species boxplots (see F6) ####
@@ -766,9 +855,9 @@ drumline %>%                # create summary table as data input
                                    plot.background = element_rect(fill = "white"),
                                    strip.text.x = element_text(size = rel(2)),
                                    panel.border = element_rect(colour = "black", fill = NA, size = 1))
-  ggsave(paste0("../../Projects/2021-10_Drumline_Reefshark/", today(), "_BoxPlot_STL_Habitat2_facetSpecies.png"),
-         plot = last_plot(), device = "png", scale = 1.75, width = 7,
-         height = 4, units = "in", dpi = 300, limitsize = TRUE)
+ggsave(paste0("../../Projects/2021-10_Drumline_Reefshark/", today(), "_BoxPlot_STL_Habitat2_facetSpecies.png"),
+       plot = last_plot(), device = "png", scale = 1.75, width = 7,
+       height = 4, units = "in", dpi = 300, limitsize = TRUE)
 
 unique(drumline$Substrate2) # Reef       Vegetation Bare       <NA>
 
@@ -794,9 +883,9 @@ drumline %>%                # create summary table as data input
                                    plot.background = element_rect(fill = "white"),
                                    strip.text.x = element_text(size = rel(2)),
                                    panel.border = element_rect(colour = "black", fill = NA, size = 1))
-  ggsave(paste0("../../Projects/2021-10_Drumline_Reefshark/", today(), "_BoxPlot_STL_Substrate2_facetSpecies.png"),
-         plot = last_plot(), device = "png", scale = 1.75, width = 7,
-         height = 4, units = "in", dpi = 300, limitsize = TRUE)
+ggsave(paste0("../../Projects/2021-10_Drumline_Reefshark/", today(), "_BoxPlot_STL_Substrate2_facetSpecies.png"),
+       plot = last_plot(), device = "png", scale = 1.75, width = 7,
+       height = 4, units = "in", dpi = 300, limitsize = TRUE)
 
 # replace theme_minimal with my own with all the changes I make, to save space.
 
@@ -885,7 +974,7 @@ fit_zinb1 <- brm(CaribbeanReef ~ Site3 + Habitat + Substrate2 + Tide + Season + 
                    Salinity + DO_mg_L + Yearday + Month + daylength,
                  data = drumline,
                  family = zero_inflated_poisson("log")) # CPUE (CaribbeanReef) is ZI according to gbm.auto check
-                            # crashes
+# crashes
 
 # 2022-09-13:
 # Warning messages:

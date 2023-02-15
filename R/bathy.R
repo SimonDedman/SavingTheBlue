@@ -7,6 +7,9 @@
 # install.packages("marmap")
 library(marmap)
 library(dplyr)
+library(tidyverse)
+library(magrittr)
+library(tidylog)
 library(sf)
 library(ggplot2)
 library(ggspatial)
@@ -77,3 +80,21 @@ R <- ("/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Maps & Surveys
 R <- raster(R)
 print(R)
 plot(R)
+
+
+#2023-02-13 extract deeps & shallows from NOAA navigation chart####
+# See /home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Maps & Surveys/Bathymetry/2023-02-13 Bathy process.txt
+sharks <- read_csv(file = "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Maps & Surveys/Bathymetry/2022-09-14_reefsharks-notJupiter_NOAANAV.csv")
+dtshal <- read_csv(file = "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Maps & Surveys/Bathymetry/NOAA/4149/DeepDistToShallow.csv")
+dtdeep <- read_csv(file = "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Maps & Surveys/Bathymetry/NOAA/4149/ShallowDistToDeep.csv")
+sharks %<>%
+  left_join(dtshal %>%
+              select(Date, Time, DtShallows_1) %>%
+              mutate(DtShallows_1 = -DtShallows_1),
+            by = c("Date", "Time")) %>%
+  left_join(dtdeep %>%
+              select(Date, Time, DtDeeps_1),
+            by = c("Date", "Time")) %>%
+  mutate(DtDropOff = ifelse(is.na(DtShallows_1), DtDeeps_1, DtShallows_1)) %>%
+  select(-DtShallows_1, -DtDeeps_1)
+write.csv(x = sharks, file = "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Maps & Surveys/Bathymetry/2022-09-14_reefsharks-notJupiter_NOAANAV_DtDropOff.csv")

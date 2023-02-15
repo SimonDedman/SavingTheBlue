@@ -18,7 +18,10 @@ shark <- read.xlsx(xlsxFile = latestdbase,
                    sheet = 1,
                    detectDates = TRUE,
                    check.names = TRUE,
-                   na.strings = c("NA", "xxx")) # various cols are "xxx" instead of NA or blank, why?
+                   na.strings = c("NA", "xxx")) %>% # various cols are "xxx" instead of NA or blank, why?
+  # cut off after last date, given there are now extra rows for vlookups to prevent data entry errors
+  filter(!is.na(Date))
+
 tmp <- as.POSIXct(rep(NA, nrow(shark)), tz = "America/New_York")
 for (i in 1:nrow(shark)) {
   tmp[i] <- convertToDateTime(shark$Time[i], origin = shark$Date[i], tz = "America/New_York")
@@ -177,7 +180,9 @@ drumline <- read.xlsx(xlsxFile = latestdbase,
                       sheet = "Drumline sampling data",
                       detectDates = TRUE, # fails
                       check.names = TRUE,
-                      na.strings = c("NA", "xxx")) # various cols are "xxx" instead of NA or blank, why?
+                      na.strings = c("NA", "xxx")) %>% # various cols are "xxx" instead of NA or blank, why?
+  # cut off after last date, given there are now extra rows for vlookups to prevent data entry errors
+  filter(!is.na(Date))
 drumline$Date <- as.Date(drumline$Date, origin = "1899-12-30")
 drumline$Depth_m <- as.numeric(drumline$Depth_m)
 tmp <- as.POSIXct(rep(NA, nrow(drumline)), tz = "America/New_York")
