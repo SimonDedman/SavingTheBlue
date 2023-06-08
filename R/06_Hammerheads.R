@@ -182,7 +182,7 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
 hammers$kmeans2cluster <- as.character(rep(NA, nrow(hammers)))
 hammers$kmeansBinary <- as.integer(rep(NA, nrow(hammers)))
 
-# Prepare steplength & TA data
+# Prepare steplength & TA data ####
 # /500 issue; auto scale 500 scalar based on input data L201; use KM not BL?; SL values shouldn't influence cluster results??
 # VanM paper: We log-transformed both activity measures and steplength to reduce positive skew. Furthermore, we standardized all variable values on their range (Steinley 2006a).
 # Because we found no outliers (no data seemed outlying by visual inspection of the distribution, nor were any observations >3.3 SDs from the mean, which corresponds to a density of 0.001 in a normal distribution), we did not remove any data before data standardization.
@@ -234,12 +234,6 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
     # replace StepLengthBL with StepLengthBLlog1p in selection here down, 12 occurrences####
     x <- df_i[!is.na(df_i$StepLengthBLlog1p),] # omit NA rows
 
-    # ISSUE HERE####
-    # x$StepLengthBLlog1p <- x$StepLengthBLlog1p / 500 # divide by 500 to convert to Km-alike number ranges, BL values too high
-    # TODO auto scale 500 scalar based on input data####
-    # This makes no difference? results are identical with 500 and 1000!
-    # Results v different w/ no dividing
-    # If results are sensitive to these values, why, and what should the correct values be? Revert to Km? But km caused issues? High BL values caused issues
     x <- x[!is.na(x$TurnAngleRelDeg),] # ditto
     if (nrow(x) < 5) next # skip else kmeans will break. fish 28
     x <- x[,c("StepLengthBLlog1p", "TurnAngleRelDeg")] # , "Date", "Index"
