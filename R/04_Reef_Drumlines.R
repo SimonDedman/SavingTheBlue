@@ -3,94 +3,29 @@
 # With Tristan Guttridge & Phil Matich
 
 # Setup, load, prep data####
-library(magrittr) # %>% %<>% # %>% %<>%
+library(magrittr) # %<>%
 library(dplyr) # %>% matches last filter mutate case_when relocate everything rename across last_col bind_cols group_by tally pull summarise n_distinct left_join arrange select bind_rows # %>% matches last filter mutate case_when relocate everything rename across last_col bind_cols group_by tally pull summarise n_distinct left_join arrange select bind_rows
 library(lubridate) # minute yday month is.POSIXt today
 library(tidyverse) # "No used functions found" # "No used functions found"
 library(tidylog) # filter mutate relocate pivot_wider rename replace_na group_by tally summarise left_join drop_na select pivot_longer # filter mutate relocate pivot_wider rename replace_na group_by tally summarise left_join drop_na select pivot_longer
+remotes::install_github("SimonDedman/gbm.auto")
+library(gbm.auto)
+source("~/Dropbox/Galway/Analysis/R/My Misc Scripts/lognegs.R")
+
+# READ THIS!!
+# include distance to dropoff as independent variable
+# -Presumably this will correlate with depth and potentially longitude (and maybe latitude)
+# -include variable(s) that are most influential (hopefully distance to dropoff based on the work you've been doing to get this data)
+# /home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Maps & Surveys/Bathymetry/2023-02-13 Bathy process.txt
+# Then see bathy.R, run 2023-02-16 update section
+
 { # processing runall
   # read in data
   # source('R/01_data-import.R') # run data import if you changed the database.
   drumline <- list.files(path = "../../Data/") %>% # list all files in Data folder
-    .[matches("_drumline_data.rds", vars = .)] %>% # filter for the right ones, all today() variants, will be ordered rising by date
+    .[matches("_drumline_data_dropoff.rds", vars = .)] %>% # filter for the right ones, all today() variants, will be ordered rising by date
     last() # last one is highest date i.e. latest
   drumline <- readRDS(file = paste0("../../Data/", drumline))
-  # unique(drumline$Common)
-
-  # unique(drumline$Site2)
-  # drumline %>%
-  #   group_by(Site2) %>%
-  #   summarise(n = n()) %>%
-  #   arrange(desc(n))
-  # 1 Green Cay              330  *
-  # 2 Bigwood Channel        280  *
-  # 3 North Bight             97  Bight
-  # 4 AUTEC Channel           86  *
-  # 5 Bristol Galley          70  *
-  # 6 Shark Hole              35  Bight
-  # 7 Somerset                30  Somerset
-  # 8 Blackbeard's Channel    29  Bight
-  #  9 High Cay                25  Somerset
-  # 10 Gibson Cay              11  *
-  # 11 Cargill Creek           10  Bight?
-  # 12 Isla's Spot              7  Bight?
-
-  drumline %<>%
-    mutate(Site3 = factor(
-      case_when(
-        Site2 %in% c("North Bight", "Shark Hole", "Blackbeard's Channel", "Cargill Creek", "Isla's Spot") ~ "Bight", # Make values 1 when sharks caught
-        Site2 == "High Cay" ~ "Somerset",
-        TRUE ~ as.character(Site2)),
-      levels = c("Somerset", "Green Cay", "Bristol Galley", "AUTEC Channel", "Bight", "Bigwood Channel", "Gibson Cay")))
-
-  # unique(drumline$Substrate)
-  # drumline %>%
-  #   group_by(Substrate) %>%
-  #   summarise(n = n()) %>%
-  #   arrange(desc(n))
-  # 1 Sand & seagrass     315
-  # 2 Sand                269
-  # 3 Sand & patch reef   146
-  # 4 Sand & octocorals   108
-  # 5 Reef                 44
-  # 6 Patch reef           33
-  # 7 Silt                 29
-  # 8 Hard bottom          23
-  # 9 Sand & coral         19
-  # 10 Silt & seagrass      10
-  # 11 Sand & algae          7
-  # 12 Seagrass              7
-
-  drumline %<>%
-    mutate(Substrate2 = factor(case_when(
-      Substrate %in% c("Sand & patch reef", "Patch reef", "Sand & octocorals", "Sand & coral") ~ "Reef",
-      Substrate %in% c("Silt & seagrass", "Sand & seagrass", "Sand & algae", "Seagrass") ~ "Vegetation",
-      Substrate %in% c("Sand", "Silt", "Hard bottom") ~ "Bare",
-      TRUE ~ as.character(Substrate)),
-      levels = c("Bare", "Vegetation", "Reef")))
-  # could then mutate Substrate2 into a factor with levels I specify
-
-  # unique(drumline$Habitat)
-  # drumline %>%
-  #   group_by(Habitat) %>%
-  #   summarise(n = n()) %>%
-  #   arrange(desc(n))
-  # 1 Back reef   650
-  # 2 Channel     143
-  # 3 Flats       139
-  # 4 Fore reef    68
-  # 5 Blue Hole    10
-  drumline %<>%
-    mutate(Habitat2 = case_when(
-      Habitat == "Blue Hole" ~ "Flats",
-      Habitat == "Channel" & Site2 %in% c("Blackbeard's Channel", "North Bight", "Shark Hole", "Cargill Creek") ~ "Flats", # Cargill filtered out above
-      Habitat == "Channel" & Site3 %in% c("AUTEC Channel", "Bigwood Channel") ~ "Back reef",
-      TRUE ~ as.character(Habitat)))
-
-
-
-
-
 
   # Response data####
   # shark CPUE on drumline deployments. Common name vs NA, per adjusted soak time
@@ -147,42 +82,15 @@ library(tidylog) # filter mutate relocate pivot_wider rename replace_na group_by
            CaribbeanReef_CPUE = CaribbeanReef / Soak_time_CaribbeanReef)
 
 
-  # temporal####
-  # time of day. Midpoint of timein/timeout? Will be a posix tho.
-  # can use hour as a lazy proxy. or minute
-  drumline %<>%
-    mutate(Minute = lubridate::minute(Time_in),
-           Hour = lubridate::hour(Time_in),
-           Yearday = lubridate::yday(Date),
-           Month = lubridate::month(Date),
-           Season = cut(Month,
-                        breaks = c(-Inf, 2, 5, 8, 11, Inf),
-                        labels = c("Winter", "Spring", "Summer", "Autumn", "Winter")))
-
-  # Daylength
-  source('~/Dropbox/Galway/Analysis/R/daylength/daylength.R')
-
-  dl <- daylength(date = drumline$Date,
-                  lat = drumline$Latitude,
-                  lon = drumline$Longitude,
-                  tzs = "America/New_York")
-  #dl has date lat lon sunrise sunset dawn dusk daylength, mostly "POSIXct" "POSIXt"
-  drumline %<>% bind_cols(dl[, 4:8]) # append sunrise sunset dawn dusk daylength
-
-  # lunar cycle
-  library(lunar) #lunar.phase
-  drumline %<>% mutate(LunarPhase = lunar.phase(x = Date, shift = -5, name = TRUE)) # Levels: New Waxing Full Waning
-
-
   # Fishery / method:
   # Bait_type
   # Bottom_top
 
   # Subsetting variables: sex, size.
 
-  # add data from shark table, join by Casey tag####
+  # Add shark table traits by PIT####
   shark <- list.files(path = "../../Data/") %>% # list all files in Data folder
-    .[matches("_shark_capture_data.rds", vars = .)] %>% # filter for the right ones, all today() variants, will be ordered rising by date
+    .[matches("_shark_capture_data_dropoff.rds", vars = .)] %>% # filter for the right ones, all today() variants, will be ordered rising by date
     last() # last one is highest date i.e. latest
   shark <- readRDS(file = paste0("../../Data/", shark))
 
@@ -191,7 +99,6 @@ library(tidylog) # filter mutate relocate pivot_wider rename replace_na group_by
   # length(unique(shark$Casey_Tag_no[!is.na(shark$Casey_Tag_no)])) # 138 non na entries, 131 unique = 7 dupes
   # 398587 398587 398574 398562 398974 398574 406255 (2 doubles, 5 unique tags)
 
-  # from here####
   # # Need to join by PIT not Casey, almost twice as many PITs
   # length(unique(shark$Casey_Tag_no[!is.na(shark$Casey_Tag_no)])) # 131
   # length(unique(shark$PIT_Tag_Full_ID_no[!is.na(shark$PIT_Tag_Full_ID_no)])) # 256
@@ -207,12 +114,12 @@ library(tidylog) # filter mutate relocate pivot_wider rename replace_na group_by
   #
   # length(unique(shark$PIT_Tag_Full_ID_no[!is.na(shark$PIT_Tag_Full_ID_no)])) # 138 non na entries, 131 unique = 7 dupes
 
-  dupePITs <- shark %>%     # create dupecasey list
+  dupePITs <- shark %>%     # create dupePIT list
     filter(!is.na(PIT_Tag_Full_ID_no)) %>% # remove nas
     group_by(PIT_Tag_Full_ID_no) %>%
     tally() %>% # number of rows per group
     filter(n > 1) %>% # remove 1s leaving dupes
-    pull(PIT_Tag_Full_ID_no) # length 17, all unique
+    pull(PIT_Tag_Full_ID_no) # length 34, all unique
 
   # vector of same PITs, different Common
   badPITs <- shark %>%
@@ -220,29 +127,48 @@ library(tidylog) # filter mutate relocate pivot_wider rename replace_na group_by
     group_by(PIT_Tag_Full_ID_no) %>%
     summarise(howmany = n_distinct(Common)) %>%
     filter(howmany > 1) %>%
-    pull(PIT_Tag_Full_ID_no)
+    pull(PIT_Tag_Full_ID_no) # length 6
 
-  drumline %<>% left_join(
-    shark %>%
-      filter(!PIT_Tag_Full_ID_no %in% badPITs) %>% # exclude bad tags
-      drop_na(PIT_Tag_Full_ID_no) %>% # else joins NA pits in shark w all NAs pits in drumline, populates same values throughout.
-      arrange(Time) %>% # arrange by datetime
-      group_by(PIT_Tag_Full_ID_no) %>%
-      select(PIT_Tag_Full_ID_no, Sex, Mature, PCL, FL, TL, STL, Girth) %>% # remove unneeded cols
-      mutate(across(where(is.factor), as.character)) %>% # else breaks the NA fixes below
-      # summarise_all(last) # across numericals want max (na rm = T) else last (na rm = T)
-      summarise(across(where(is.numeric), max, na.rm = TRUE),
-                across(where(~ is.character(.) | is.POSIXt(.)), last)) %>%
-      # convert -Inf (from max/last of 2+ NAs) to NA
-      mutate(across(where(is.numeric), ~ ifelse(is.infinite(.), NA, .)), #convert NaN to NA. POSIX needs lubridate
-             across(where(~ is.character(.)), ~ ifelse(is.infinite(.), NA, .))) %>% # https://community.rstudio.com/t/why-does-tidyrs-fill-work-with-nas-but-not-nans/25506/5
-      mutate(Sex = factor(Sex, levels = c("F", "M")))
-    # mutate sex back to factor here ####
-  ) # Joining, by = "PIT_Tag_Full_ID_no"
-  # ignore warnings: some PIT tags only have NA values for some values so max fails back to NA which is fine.
 
-  # E9F44 PIT from drum, has full in shark? If so fix those in xlsx. Asked TG, 2021-10-05, should add ~10 fish
+  # noNA PIT shark table. DeDupes noNA PIT sharks. Ignore warnings
+  noNApitShark <- shark %>% # was 360 now 315 after Gear filter, 100 after Common, 93 after removing polyball
+    # exclude bad tags with same PIT for 2 different species.
+    filter(!PIT_Tag_Full_ID_no %in% badPITs,
+           # only include drumline sampling & Block-rig
+           # see next block also
+           Gear %in% c("Drumline-bottom",
+                       "Drumline-top",
+                       "Block-rig"),
+           Common == "Caribbean Reef") %>%
+    # drop_na, else joins NA pits in shark w all NAs pits in drumline, populates same values throughout.
+    # but means sacrificing sharks with no PIT tags which is a waste.
+    # 2-stage: dedupe nona PITs here, then create Na PITs below, then rbind, then leftjoin
+    drop_na(PIT_Tag_Full_ID_no) %>%
+    arrange(Time) %>% # arrange by datetime
+    # select(PIT_Tag_Full_ID_no, Sex, Mature, PCL, FL, TL, STL, Girth) %>% # remove unneeded cols
+    mutate(across(where(is.factor), as.character)) %>% # else breaks the NA fixes below
+    # group & summarise to collapse dupe PITs
+    group_by(PIT_Tag_Full_ID_no) %>%
+    # across numericals want max (na rm = T) else last (na rm = T)
+    summarise(across(where(is.numeric), \(x) max(x, na.rm = TRUE)), # The `...` argument of `across()` is deprecated as of dplyr 1.1.0
+              across(where(~ is.character(.) | is.POSIXt(.) | is.logical(.) | is.Date(.)), last)) %>%
+    # convert -Inf (from max/last of 2+ NAs) to NA
+    mutate(across(where(is.numeric), ~ ifelse(is.infinite(.), NA, .)), #convert NaN to NA. POSIX needs lubridate
+           across(where(~ is.character(.)), ~ ifelse(is.infinite(.), NA, .))) %>% # https://community.rstudio.com/t/why-does-tidyrs-fill-work-with-nas-but-not-nans/25506/5
+    mutate(Sex = factor(Sex, levels = c("F", "M")))
 
+  # add noNApitShark (shark table) traits to drumline
+  drumline %<>% left_join(noNApitShark %>%
+                            select(PIT_Tag_Full_ID_no, Sex, Mature, PCL, FL, TL, STL, Girth),
+                          by = "PIT_Tag_Full_ID_no")
+  rm(noNApitShark)
+  # Leaves NA PIT individuals in drumline & sharks unmatched, so no traits from sharks added to drumline sharks
+
+
+
+
+
+  # Add data by Casey####
   # Then: are there any instances where there are no pit tag match but there are casey matches?
   # Yes, e.g 398538
   # Both have casey & !(shark has PIT & drumline has PIT)
@@ -271,7 +197,7 @@ library(tidylog) # filter mutate relocate pivot_wider rename replace_na group_by
     group_by(Casey) %>%
     summarise(nalength = length(which(is.na(PIT_Tag_Full_ID_no)))) %>% # remove when PIT not present in both
     filter(nalength > 1) %>%
-    pull(Casey) # "406260" "406261" "406262" "406263"
+    pull(Casey) # "406260" "406261" "406262" "406263" # 2023-02-15 "398952"
 
   # Can join on these Caseys. But will wipe out everything else. Unless dplyr has fixed that?
 
@@ -280,8 +206,8 @@ library(tidylog) # filter mutate relocate pivot_wider rename replace_na group_by
                                      rename(Casey = Casey_Tag_no) %>%
                                      filter(Casey %in% caseybothdbsnopit) %>%
                                      select(Casey, Sex, Mature, PCL, FL, TL, STL, Girth) %>%
-                                     mutate(across(where(is.factor), as.character)) %>% # fixes Sex
-                                     arrange(Casey)
+                                     mutate(across(where(is.factor), as.character)) # fixes Sex
+                                   # %>% arrange(Casey) # means index join below silently puts data in the wrong place
   )
 
   drumline[which(drumline$Casey %in% caseybothdbsnopit), # rows indexed by Casey column logical check
@@ -312,14 +238,93 @@ library(tidylog) # filter mutate relocate pivot_wider rename replace_na group_by
   #     select(Casey, Sex, Mature, PCL, FL, TL, STL, Girth) %>% # remove unneeded cols
   #     mutate(Sex = as.character(Sex)) %>%
   #     # summarise_all(last) # across numericals want max (na rm = T) else last (na rm = T)
-  #     summarise(across(where(is.numeric), max, na.rm = TRUE),
+  #     summarise(across(where(is.numeric), \(x) max(x, na.rm = TRUE)),
   #               across(where(~ is.character(.) | is.POSIXt(.)), last)) %>%
   #     # convert -Inf (from max/last of 2+ NAs) to NA
   #     mutate(across(where(is.numeric), ~ ifelse(is.infinite(.), NA, .)), #convert NaN to NA. POSIX needs lubridate
   #            across(where(~ is.character(.)), ~ ifelse(is.infinite(.), NA, .))) # https://community.rstudio.com/t/why-does-tidyrs-fill-work-with-nas-but-not-nans/25506/5
   # ) # Joining, by = "Casey"
 
-  drumline$RandomVar <- runif(n = nrow(drumline), min = 0, max = 1) # Fran Farabaugh idea, add random var to compare to BRT outputs
+
+
+
+
+
+  # Add shark table traits, no PIT####
+  # NA PIT shark table
+  NApitShark <- shark %>% # was 95 now 89 after gear filter, 14 after Common filter, 14 after removing polyball, 12 after removing NA traits
+    filter(!PIT_Tag_Full_ID_no %in% badPITs,
+           is.na(PIT_Tag_Full_ID_no),
+           Gear %in% c("Drumline-bottom",
+                       "Drumline-top",
+                       "Block-rig"),
+           Common == "Caribbean Reef") %>%
+    # remove rows with NA for all traits: useless as won't add anything even if joined
+    rowwise() %>%
+    mutate(natraits = ifelse(all(is.na(c(Sex, Mature, PCL, FL, TL, STL, Girth))), NA, 1)) %>%
+    drop_na(natraits) %>%
+    select(-natraits)
+  # select(Sex, Mature, PCL, FL, TL, STL, Girth)
+
+
+  # Date: if there's only 1 in both (NApitShark and drumline) then join
+  # get only n=1 date rows from NA PIT shark
+  NApitSharkOneDate <- NApitShark %>%
+    group_by(Date) %>%
+    summarise(across(everything(), first),
+              n = n()) %>%
+    filter(n == 1) %>%
+    select(-n)
+
+  # subset remaining candidate matches based on species & date overlap, includes dupe date drumline hits
+  drumlineSameDates <- drumline %>%
+    filter(CaribbeanReef == 1,
+           Date %in% NApitSharkOneDate$Date)
+
+  # get vector of unique dates in drumline which overlap with unique dates in shark and both have Caribbean Reefs
+  drumlineSameDatesUnique <- drumlineSameDates %>%
+    group_by(Date) %>%
+    summarise(Date = first(Date),
+              n = n()) %>%
+    filter(n == 1) %>%
+    select(-n) %>%
+    pull(Date)
+
+  # use above vector as base R row index on drumline$Date to add shark traits data
+  drumline[which(drumline$Date %in% drumlineSameDatesUnique & drumline$CaribbeanReef == 1), # rows
+           # columns are only the traits we want
+           c("Sex", "Mature", "PCL", "FL", "TL", "STL", "Girth")] <- NApitSharkOneDate %>%
+    filter(Date %in% drumlineSameDatesUnique) %>%
+    select(Sex, Mature, PCL, FL, TL, STL, Girth)
+
+  # Remove the previously processed fish above, retains those already joined with Casey
+  NApitSharkToDo <- NApitShark %>%
+    filter(!Date %in% drumlineSameDatesUnique)
+
+  # index drumline with this then filter drumline for isna PIT & isna casey which we can't do in shark
+  mergedates <- drumline %>%
+    filter(Date %in% unique(NApitSharkToDo$Date),
+           CaribbeanReef == 1,
+           is.na(PIT_Tag_Full_ID_no),
+           is.na(Casey),
+           !Bite_off) %>%
+    pull(Date)
+  # this created an extra 2021-03-04: bite-off in drumline not present in shark
+  # hook numbers don't match: shark 4 5 2 2, drumline 4 1 4 5 2 (i.e. no second 2 in drumline, instead 1 & 4)
+  # added !Bite_off above
+  # why isn't that extra shark in the drumline database to be joined to though?
+  # don't remove bite-off and let it join normally, adding no data for that shark?
+  # because there's no data TO join, this row doesn't exist in the shark table, so remove the row as a merge option option from drumline
+
+  # feed those dates back into shark to get a same-nrow table of traits to feed into drumline
+  drumline[which(drumline$Date %in% unique(NApitSharkToDo$Date) &
+                   drumline$CaribbeanReef == 1 &
+                   is.na(drumline$PIT_Tag_Full_ID_no) &
+                   is.na(drumline$Casey) &
+                   !drumline$Bite_off), # rows
+           c("Sex", "Mature", "PCL", "FL", "TL", "STL", "Girth")] <- NApitSharkToDo %>%
+    filter(Date %in% mergedates) %>%
+    select(Sex, Mature, PCL, FL, TL, STL, Girth)
 
   drumline %<>% droplevels() # R will plot all levels even if not populated. This drops unpopulated factor levels
 
@@ -329,9 +334,8 @@ library(tidylog) # filter mutate relocate pivot_wider rename replace_na group_by
             row.names = F)
   saveRDS(object = drumline,
           file = paste0("../../Data/", today(), "_drumline_reefs.rds"))
-  rm(list = c("bothdbs", "caseyjoinimport", "badPITs", "caseybothdbs", "caseybothdbsnopit", "dupePITs", "dl", "shark"))
+  rm(list = c("bothdbs", "caseyjoinimport", "badPITs", "caseybothdbs", "caseybothdbsnopit", "dupePITs", "shark", "drumlineSameDates", "NApitShark", "NApitSharkOneDate", "NApitSharkToDo", "drumlineSameDatesUnique", "mergedates"))
 } # finish processing runall
-
 
 
 
@@ -377,6 +381,11 @@ colnames(drumline)
 # any other satellite stuff that's easy to grab? NO, all too coarse spatial res & not spatially dynamic at the static sites.
 
 
+
+
+
+
+
 # Bar plots####
 # Loop through factorial variables & barplot against CPUE
 for (factorvars in c("Site3", "Habitat", "Substrate", "Substrate2", "Tide", "Season", "LunarPhase")) {
@@ -396,6 +405,13 @@ for (factorvars in c("Site3", "Habitat", "Substrate", "Substrate2", "Tide", "Sea
          plot = last_plot(), device = "png", scale = 1.75, width = 7,
          height = 4, units = "in", dpi = 300, limitsize = TRUE)
 }
+
+
+
+
+
+
+
 
 # Scatterplots####
 # Loop through numerical variables & scatterplot against CPUE with trendline
@@ -422,6 +438,8 @@ for (numvars in c("Latitude", "Longitude", "Depth_m", "Temperature_C", "Salinity
 
 
 
+
+
 # BRT ####
 # 2021-09-08 PM remove Somerset suggestion
 drumline %<>%
@@ -429,9 +447,14 @@ drumline %<>%
   mutate(Site3 = factor(Site3, levels = levels(Site3)[2:6])) %>% # remove Somerset as a factor level
   tidyr::drop_na(CaribbeanReef_CPUE)
 
+# Fran Farabaugh idea, add random var to compare to BRT outputs
+# 2023-02-15 is this now done in gbm.auto as an option
+# drumline$RandomVar <- runif(n = nrow(drumline), min = 0, max = 1)
 
 # 2021-10-19 now doesn't work since new binomial CPUE by species.
 drumline <- as.data.frame(drumline) # fails if tibble
+saveRDS(object = drumline,
+        file = paste0("../../Data/", today(), "_drumline_reefs.rds"))
 
 # library(remotes) # install_github # install_github
 # install_github("SimonDedman/gbm.auto")
@@ -462,9 +485,9 @@ expvars = c(
   "STL",
   "RandomVar")
 gbm.bfcheck(samples = drumline, resvar = "CaribbeanReef")
-# [1] "  binary bag fraction must be at least 0.011. n = 1968"
-# [1] "Gaussian bag fraction must be at least 0.191 n = 110"
-# [1] 0.01067073 0.19090909
+# "  binary bag fraction must be at least 0.009. n = 2400"
+# "Gaussian bag fraction must be at least 0.194. n = 108"
+# 0.0087500 0.1944444
 
 gbm.auto(
   grids = NULL,
@@ -514,60 +537,174 @@ gbm.auto(
 # 11 of these: In cor(y_i, u_i) : the standard deviation is zero
 
 
-#2023-02-14 BRT edits & re-run####
-# include distance to dropoff as independent variable
-# -Presumably this will correlate with depth and potentially longitude (and maybe latitude)
-# -include variable(s) that are most influential (hopefully distance to dropoff based on the work you've been doing to get this data)
-write.csv(x = drumline,
-          file = paste0("../../Data/", today(), "_drumline_reefs_getDistToDropoff.csv"),
-          row.names = F)
-# Now add distance to dropoff:
-# /home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Maps & Surveys/Bathymetry/2023-02-13 Bathy process.txt
-drumlineDist <- read_csv("/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Maps & Surveys/Bathymetry/2022-09-14_drumline_NOAANAV_DtDropOff.csv")
-drumline %<>%
-  # add new columns from drumlineDist (drumline dist has column settings like POSIX killed due to csv, don't both to fix)
-  bind_cols(drumlineDist %>%
-              select(NOAANAV_1, DtDeeps_1, DtShallows_1)) %>%
-  # tidy names
-  rename(DeepShallow = NOAANAV_1,
-         DtDeeps = DtDeeps_1,
-         DtShallows = DtShallows_1) %>%
-  # switch from 1 & 9 to Deep & Shallow
-  mutate(DeepShallow = case_when(DeepShallow == 1 ~ "Deep",
-                                 DeepShallow == 9 ~ "Shallow"),
-         # Invert DtShallows so deep sharks have dist to dropoff negative
-         DtShallows = -DtShallows,
-         # Create combined metric of distance to dropoff, not 2 columns
-         DtDropOff = ifelse(DtShallows == 0, DtDeeps, DtShallows)) %>%
-  # remove prep columns
-  select(-DeepShallow, -DtShallows, -DtDeeps)
 
-# save for quick access
-saveRDS(object = drumline,
-        file = paste0("../../Data/", today(), "_drumline_reefs_DtDropOff.rds"))
+
+
+
+
+
+
+#2023-02-28 BRT edits & re-run####
+
+
+# drumline <- readRDS(file = paste0("../../Data/", "2023-03-07", "_drumline_reefs_DtDropOff.rds")) |>
+#   tidyr::drop_na(CaribbeanReef_CPUE) |>
+#   dplyr::filter(Site3 != "Somerset") |> #remove Somerset rows, n=103, 9% of data
+#   dplyr::mutate(Site3 = factor(Site3, levels = levels(Site3)[2:6])) |>  # remove Somerset as a factor level
+#   tidyr::drop_na(CaribbeanReef_CPUE)
+# saveRDS(object = drumline,file = paste0("../../Data/", "2023-03-07", "_drumline_reefs_DtDropOff.rds"))
+# drumline <- readRDS("/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Data/2023-03-07_drumline_reefs_DtDropOff.rds")
+# unique(drumline$Mature)
+# drumline$Mature[which(drumline$Mature == "TRUE")] <- "1" # replace "TRUE" with "1"
+# drumline$Mature[which(drumline$Mature == "FALSE")] <- "0"
+# drumline$Mature <- ordered(drumline$Mature)
+# saveRDS(object = drumline, file = paste0("../../Data/", "2023-04-04", "_drumline_reefs.rds"))
+drumline <- readRDS(file = paste0("../../Data/", "2023-04-04", "_drumline_reefs.rds"))
+drumline$DtDropOffLogNeg <- lognegs(drumline$DtDropOff) # log positives & negatives
+
+gbm.bfcheck(samples = drumline, resvar = "CaribbeanReef_CPUE")
+# "  binary bag fraction must be at least 0.009. n = 2400"
+# "Gaussian bag fraction must be at least 0.194. n = 108"
+# 0.0087500 0.1944444
 
 expvars = c(
-  # "Site3",
   "Habitat", # Site3 Habitat Substrate2 all similar
-  # "Substrate2",
   "Tide",
-  "Season",
+  # "Season", # 2023-05-22 remove, yearday does the same at higher res
   "LunarPhase",
-  "Latitude",
-  "Longitude",
-  "Depth_m", # compare to DtDropOff
+  # "Latitude", # 2023-05-22 remove, DtDropoff covers spatiality [was 3rd most important var]
+  # "Longitude", # 2023-05-22 remove, DtDropoff covers spatiality [was 4th most important var]
+  "Depth_m",
   "Temperature_C",
-  # "Salinity",
-  # "DO_mg_L",
-  "Hour",
+  # "Hour", # 2023-05-22 remove, sampling is limited over 24 period, so difficult to assess meaning  [was 8th most important var]
   "Yearday",
-  "Month",
-  # "daylength" # Season better
-  # "Sex",
-  # "STL", # Remove STL as an independent variable considering we will be using this to delineate groups for most specific BRT
-  "RandomVar",
-  "DtDropOff")
+  # "Month", # 2023-05-22 prefer season; Month was 0 influence
+  "DtDropOffLogNeg",
+  "Sex", # only for size sex vars, comparison
+  "STL" # only for size sex vars, comparison
+  # "Mature" # only for size sex vars, comparison. Also remove: autocorr w/ STL
+  )
 
+# Fran Farabaugh idea, add random var to compare to BRT outputs
+# 2023-02-15 is this now done in gbm.auto as an option
+# drumline$RandomVar <- runif(n = nrow(drumline), min = 0, max = 1)
+
+# Depth vs DtDropoff corr & import####
+gbm.auto(samples = as.data.frame(drumline),
+         expvar = expvars,
+         resvar = "CaribbeanReef_CPUE",
+         randomvar = TRUE,
+         tc = 9, # 14 for size sex vars # 2023-05-22 now 9 w/ sexsize vars in, 7 without
+         lr = 0.0095,
+         bf = 0.88,
+         fam1 = "bernoulli",
+         gaus = FALSE, # only run bin, gaus isn't working
+         smooth = TRUE,
+         simp = FALSE,
+         savegbm = FALSE,
+         MLEvaluate = TRUE, # until it's fixed.
+         savedir = paste0("../../Projects/2021-10_Drumline_Reefshark/BRT/"),
+         BnW = FALSE)
+# still can't get gaus to show any deviance. Runs anyway.
+# Model performance is TERRIBLE. training data correlation 0.4 bin 0.45 gaus, %dev explained 23 bin 0.03 gaus
+
+# 2023-05-06 improve performance ####
+# tc 6 better than 2 for bin & gaus. Try 13 (n expvars). Try 3 flavours of lr for bin. 3 of bf for gaus
+# tc 13 lr 0.001 for bin, not tried bf combos
+# tc 13 bf 0.9 gaus. Try lr combos. Failed on -6 having run -5 and typically running on -7. Odd. Removed
+# bin crashed on SIMP, turned off, find best non-simp model then turn simp back on
+# SIMP doesn't help BIN, doesn't seem to work on Gaus cos it's so bad anyway.
+# latest score: TD corr 0.663 td AUC 0.947. CV auc 0.795, Dev explained vs null: 40.33%
+# 2023-03-07 updated datebase w/ dropoff:
+# TDC 0.644 td auc 0.941 cv auc 0.786 dev explained vs null training 36.54%. cv: 9.72. Gaus:tdc 0.557, all else useless.
+# Random Var biggest with 23%. Redo random var & Run again to test.
+# 2023-05-18 removed gaus (gaus=FALSE), bin only, try LR combos to optimise performance.
+# lr = c(0.01, 0.05, 0.001, 0.005), 0.01 best
+# lr = c(0.03, 0.02, 0.015, 0.01, 0.0095, 0.009, 0.0075, 0.0065), best 0.0095
+# lr = c(0.0098, 0.0097, 0.0096, 0.0095, 0.0094, 0.0093, 0.0092, 0.0091), best 0.0097 (but worse than 0.0095 was)
+# lr = c(0.0095,0.0097), last try, stochasticity inevitably at play now, 0.0097, 0.0095 didn't run. Try other bfs
+# bf = c(0.8, 0.85, 0.9), 0.85
+# try simp: worse
+# add Sex, STL expvars: makes model performance absurdly better. Is there a reason we're not using these? So we can use them as filters below, inc mature.
+# Add mature to see model performance there also: slightly better still.
+# now 15 expvars not 13, try more tc: 14 best
+
+
+
+
+# Bugfixing & gbm.auto manual run info ####
+# Error in as.double(x) : cannot coerce type 'S4' to vector of type 'double'
+# 5: xy.coords(x, y, xlabel, ylabel, log)
+# 4: plot.default(e, s)
+# 3: plot(e, s) gbm.auto L1385
+# e is a S4 object, class ModelEvaluation as intended. dismo::plot should pick this up and run it fine, and does when run manually.
+# But in the function it seems to want to run graphics::plot and for x to be double rather than class ModelEvaluation
+# plot() isn't exported from dismo so i can't use dismo::plot. I @import the whole of dismo.
+# doesn't help if I don't library() anything else.
+
+# samples = as.data.frame(drumline)
+# expvar = c("Habitat", "Tide", "Season", "LunarPhase", "Latitude", "Longitude", "Depth_m", "Temperature_C", "Hour", "Yearday", "Month", "DtDropOff")
+# resvar = "CaribbeanReef_CPUE"
+# randomvar = TRUE
+# tc = 13
+# lr = list(0.001, 0.0000001)
+# bf = 0.9
+# fam1 = "bernoulli"
+# smooth = TRUE
+# savegbm = FALSE
+# # savedir = paste0("../../Projects/2021-10_Drumline_Reefshark/BRT/")
+# savedir = ("/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2021-10_Drumline_Reefshark/BRT/tmp/")
+# BnW = FALSE
+# grids = NULL
+# offset = NULL
+# n.trees = 50
+# ZI = "CHECK"
+# fam1 = c("bernoulli")
+# fam2 = c("gaussian")
+# simp = FALSE
+# gridslat = 2
+# gridslon = 1
+# multiplot = TRUE
+# cols = grey.colors(1,1,1)
+# linesfiles = TRUE
+# loadgbm = NULL
+# varint = TRUE
+# map = TRUE
+# shape = NULL
+# RSB = TRUE
+# alerts = TRUE
+# pngtype = c("cairo-png")
+# gaus = TRUE
+# MLEvaluate = TRUE
+# brv = NULL
+# grv = NULL
+# Bin_Preds = NULL
+# Gaus_Preds = NULL
+#
+# i <- resvar
+# j <- tc
+# k <- lr
+# l <- bf
+#
+# j <- tcgaus
+# k <- lrgaus
+# l <- bfgaus
+
+# gbm.auto(samples = as.data.frame(drumline),       # [-which(is.na(drumline[resvar])),]
+#          expvar = expvars,
+#          resvar = "CaribbeanReef_CPUE",
+#          lr = 0.005,
+#          bf = 0.5,
+#          fam1 = "bernoulli",
+#          smooth = TRUE, # FALSE
+#          savedir = paste0("../../Projects/2021-10_Drumline_Reefshark/BRT/"),
+#          BnW = FALSE,
+#          gaus = FALSE)
+# bin only: TD corr 0.385 % dev explained 20.73. Worse.
+
+
+
+# Sex maturity size combos####
 # Assess sex, maturity and size groups with potential combinations:
 # --Male
 # --Female
@@ -575,55 +712,344 @@ expvars = c(
 # --Immature
 # --Male immature, male mature
 # --Female immature, female mature
+# --All sharks >164 cm, all sharks <165 cm
 # --Male >164 cm, male <165 cm (this cutoff is based on the largest immature male)
 # --Female >164, female <165 (based on size of males - ecologically we would expect similar behavior/distribution if size not maturity is mature factor)
-# --All sharks >164 cm, all sharks <165 cm
 
-# ISSUE####
 # Dataset isn't only positive reefsharks, is also zero catch.
-# For each subset, do:
-# CaribbeanReef == 0 AND (CaribbeanReef == 1 & Sex == Male)
-# CaribbeanReef == 0 AND (CaribbeanReef == 1 & Sex == Female)
-# CaribbeanReef == 0 AND (CaribbeanReef == 1 & Maturity == TRUE)
-# CaribbeanReef == 0 AND (CaribbeanReef == 1 & Maturity == FALSE)
-# etc:
-# Write out all of these combos
+drumlist <- list() # # make these combos into a vector of filters so I can run them all in a loop
+drumlinefilt <- drumline %>% select(CaribbeanReef_CPUE, CaribbeanReef, Sex, Mature, STL, all_of(expvars)) %>% filter(!is.na(CaribbeanReef_CPUE))
+drumlist[[1]] <- drumlinefilt %>% filter(CaribbeanReef == 0 | (CaribbeanReef == 1 & Sex == "M")) # 1911; 2023-05-18 update: 2343
+drumlist[[2]] <- drumlinefilt %>% filter(CaribbeanReef == 0 | (CaribbeanReef == 1 & Sex == "F")) # 1897: 2331
+drumlist[[3]] <- drumlinefilt %>% filter(CaribbeanReef == 0 | (CaribbeanReef == 1 & Mature == 1)) # 1905: 2339
+drumlist[[4]] <- drumlinefilt %>% filter(CaribbeanReef == 0 | (CaribbeanReef == 1 & Mature == 0)) # 1898: 2328
+drumlist[[5]] <- drumlinefilt %>% filter(CaribbeanReef == 0 | (CaribbeanReef == 1 & Sex == "M" & Mature == 1)) # 1894: 2327
+drumlist[[6]] <- drumlinefilt %>% filter(CaribbeanReef == 0 | (CaribbeanReef == 1 & Sex == "M" & Mature == 0)) # 1873: 2304
+drumlist[[7]] <- drumlinefilt %>% filter(CaribbeanReef == 0 | (CaribbeanReef == 1 & Sex == "F" & Mature == 1)) # 1869: 2304
+drumlist[[8]] <- drumlinefilt %>% filter(CaribbeanReef == 0 | (CaribbeanReef == 1 & Sex == "F" & Mature == 0)) # 1881: 2314
+drumlist[[9]] <- drumlinefilt %>% filter(CaribbeanReef == 0 | (CaribbeanReef == 1 & STL <= 165)) # 1909: 2341
+drumlist[[10]] <- drumlinefilt %>% filter(CaribbeanReef == 0 | (CaribbeanReef == 1 & STL > 165)) # 1899: 2333
+drumlist[[11]] <- drumlinefilt %>% filter(CaribbeanReef == 0 | (CaribbeanReef == 1 & Sex == "M" & STL <= 165)) # 1886: 2319
+drumlist[[12]] <- drumlinefilt %>% filter(CaribbeanReef == 0 | (CaribbeanReef == 1 & Sex == "M" & STL > 165)) # 1881: 2314
+drumlist[[13]] <- drumlinefilt %>% filter(CaribbeanReef == 0 | (CaribbeanReef == 1 & Sex == "F" & STL <= 165)) # 1879: 2312
+drumlist[[14]] <- drumlinefilt %>% filter(CaribbeanReef == 0 | (CaribbeanReef == 1 & Sex == "F" & STL > 165)) # 1876: 2311
+# create list of tc lr bf values to tweak them on a per-loop basis as needed
+tclist <- list()
+lrlist <- list()
+bflist <- list()
+# original runs with more vars pre 2023-05-22
+# tclist[[1]] <- 12
+# tclist[[2]] <- 10
+# tclist[[3]] <- 12
+# tclist[[4]] <- 12
+# tclist[[5]] <- 12
+# tclist[[6]] <- 12
+# tclist[[7]] <- 11
+# tclist[[8]] <- 11
+# tclist[[9]] <- 12
+# tclist[[10]] <- 12
+# tclist[[11]] <- 12
+# tclist[[12]] <- 12
+# tclist[[13]] <- 12
+# tclist[[14]] <- 10
+# lrlist[[1]] <-  0.0009
+# lrlist[[2]] <-  0.0007
+# lrlist[[3]] <-  0.0009
+# lrlist[[4]] <-  0.0009
+# lrlist[[5]] <-  0.0005
+# lrlist[[6]] <-  0.0007
+# lrlist[[7]] <-  0.0003
+# lrlist[[8]] <-  0.0007
+# lrlist[[9]] <-  0.0009
+# lrlist[[10]] <- 0.0007
+# lrlist[[11]] <- 0.0009
+# lrlist[[12]] <- 0.0003
+# lrlist[[13]] <- 0.0009
+# lrlist[[14]] <- 0.0005
+# bflist[[1]] <- 0.9
+# bflist[[2]] <- 0.85
+# bflist[[3]] <- 0.87
+# bflist[[4]] <- 0.9
+# bflist[[5]] <- 0.87
+# bflist[[6]] <- 0.85
+# bflist[[7]] <- 0.85
+# bflist[[8]] <- 0.85
+# bflist[[9]] <- 0.87
+# bflist[[10]] <- 0.9
+# bflist[[11]] <- 0.85
+# bflist[[12]] <- 0.87
+# bflist[[13]] <- 0.87
+# bflist[[14]] <- 0.85
+tclist[[1]] <- 7
+tclist[[2]] <- 7
+tclist[[3]] <- 7
+tclist[[4]] <- 7
+tclist[[5]] <- 7
+tclist[[6]] <- 7
+tclist[[7]] <- 7
+tclist[[8]] <- 7
+tclist[[9]] <- 7
+tclist[[10]] <- 7
+tclist[[11]] <- 7
+tclist[[12]] <- 7
+tclist[[13]] <- 7
+tclist[[14]] <- 7
+lrlist[[1]] <- 0.002
+lrlist[[2]] <- 0.002
+lrlist[[3]] <- 0.002
+lrlist[[4]] <- 0.002
+lrlist[[5]] <- 0.002
+lrlist[[6]] <- 0.002
+lrlist[[7]] <- 0.001
+lrlist[[8]] <- 0.002
+lrlist[[9]] <- 0.002
+lrlist[[10]] <- 0.002
+lrlist[[11]] <- 0.002
+lrlist[[12]] <- 0.001
+lrlist[[13]] <- 0.002
+lrlist[[14]] <- 0.002
+bflist[[1]] <- 0.8
+bflist[[2]] <- 0.8
+bflist[[3]] <- 0.8
+bflist[[4]] <- 0.8
+bflist[[5]] <- 0.8
+bflist[[6]] <- 0.8
+bflist[[7]] <- 0.8
+bflist[[8]] <- 0.8
+bflist[[9]] <- 0.8
+bflist[[10]] <- 0.8
+bflist[[11]] <- 0.8
+bflist[[12]] <- 0.87
+bflist[[13]] <- 0.8
+bflist[[14]] <- 0.8
+
+expvars = c(
+  "Habitat", # Site3 Habitat Substrate2 all similar
+  "Tide",
+  # "Season",
+  "LunarPhase",
+  # "Latitude",
+  # "Longitude",
+  "Depth_m",
+  "Temperature_C",
+  # "Hour",
+  "Yearday",
+  # "Month",
+  "DtDropOffLogNeg") # remove stl sex mature
+
+# for (i in 1:length(drumlist)) {
+for (i in 12:length(drumlist)) {
+  dir.create(paste0("../../Projects/2021-10_Drumline_Reefshark/BRT/CaribbeanReef_CPUE/Sex-maturity-size-combos/", i, "/"))
+  print(paste0("running loop ", i, " of 14"))
+  print(gbm.bfcheck(samples = as.data.frame(drumlist[[i]]), resvar = "CaribbeanReef_CPUE"))
+  gbm.auto(
+    grids = NULL,
+    samples = as.data.frame(drumlist[[i]]),       # [-which(is.na(drumline[resvar])),]
+    expvar = expvars,
+    resvar = "CaribbeanReef_CPUE",
+    tc = tclist[[i]],
+    lr = lrlist[[i]],
+    bf = bflist[[i]],
+    n.trees = 50,
+    fam1 = "bernoulli",
+    randomvar = TRUE,
+    simp = FALSE,
+    smooth = TRUE, # FALSE
+    savedir = paste0("../../Projects/2021-10_Drumline_Reefshark/BRT/CaribbeanReef_CPUE/Sex-maturity-size-combos/", i, "/"),
+    savegbm = FALSE,
+    gaus = FALSE,
+    MLEvaluate = TRUE)
+}
 
 
-gbm.bfcheck(samples = drumline, resvar = "CaribbeanReef")
-# [1] "  binary bag fraction must be at least 0.011. n = 1968"
-# [1] "Gaussian bag fraction must be at least 0.191 n = 110"
-# [1] 0.01067073 0.19090909
+# 2023-05-19 make results table, scrape folders for results, rerun only best
+resultstbl <- data.frame(combo = c("SexM",
+                                   "SexF",
+                                   "MatureTRUE",
+                                   "MatureFALSE",
+                                   "SexM_MatureTRUE",
+                                   "SexM_MatureFALSE",
+                                   "SexF_MatureTRUE",
+                                   "SexF_MatureFALSE",
+                                   "STL-lessEql-165",
+                                   "STL-grtr-165",
+                                   "SexM_STL-lessEql-165",
+                                   "SexM_STL-grtr-165",
+                                   "SexF_STL-lessEql-165",
+                                   "SexF_STL-grtr-165"),
+                         nsamples = c(2343,
+                                      2331,
+                                      2339,
+                                      2328,
+                                      2327,
+                                      2304,
+                                      2304,
+                                      2314,
+                                      2341,
+                                      2333,
+                                      2319,
+                                      2314,
+                                      2312,
+                                      2311),
+                         besttc = as.numeric(rep(NA, 14)),
+                         bestlr = as.numeric(rep(NA, 14)),
+                         bestbf = as.numeric(rep(NA, 14)),
+                         trees = as.numeric(rep(NA, 14)),
+                         TrainingDataCorrelation = as.numeric(rep(NA, 14)),
+                         TrainingDataAUCscore = as.numeric(rep(NA, 14)),
+                         CVAUCscore = as.numeric(rep(NA, 14)),
+                         CVAUCse = as.numeric(rep(NA, 14)),
+                         Overfitting = as.numeric(rep(NA, 14)),
+                         CVMeanDeviance = as.numeric(rep(NA, 14)),
+                         CVDevianceSE = as.numeric(rep(NA, 14)),
+                         CVDsquared = as.numeric(rep(NA, 14)),
+                         CVMeanCorrelation = as.numeric(rep(NA, 14)),
+                         CVCorrelationSE = as.numeric(rep(NA, 14)),
+                         CVRMSE = as.numeric(rep(NA, 14)),
+                         DevExplRelNullTrain = as.numeric(rep(NA, 14)),
+                         DevExplRelNullCV = as.numeric(rep(NA, 14)),
+                         TSS = as.numeric(rep(NA, 14)),
+                         Sensitivity = as.numeric(rep(NA, 14)),
+                         Specificity = as.numeric(rep(NA, 14)),
+                         Accuracy = as.numeric(rep(NA, 14)),
+                         Precision = as.numeric(rep(NA, 14)),
+                         Recall = as.numeric(rep(NA, 14)),
+                         OverallAccuracy = as.numeric(rep(NA, 14)),
+                         BalancedAccuracy = as.numeric(rep(NA, 14)),
+                         F1score = as.numeric(rep(NA, 14)),
+                         F2score = as.numeric(rep(NA, 14)))
+
+for (i in 1:length(drumlist)) { # i <- 1
+  tmp <- read.csv(file = paste0("../../Projects/2021-10_Drumline_Reefshark/BRT/CaribbeanReef_CPUE/Sex-maturity-size-combos/", i, "/CaribbeanReef_CPUE/Report.csv")) |>
+    select(Best.Binary.BRT)
+  resultstbl[i, "besttc"] <- as.numeric(str_sub(tmp[1,], start = 24, end = 25))
+  resultstbl[i, "bestlr"] <- as.numeric(str_sub(tmp[1,], start = 29, end = 32)) # was 33
+  resultstbl[i, "bestbf"] <- as.numeric(str_sub(tmp[1,], start = 37, end = -1L))
+  tmp <- tmp[2:15, 1]
+  for (j in 1:14) { # j <- 1
+    resultstbl[i, 5 + j] <- as.numeric(
+      str_sub(tmp[j],
+              start = str_locate(string = tmp[j], pattern = ": ")[[2]] + 1,
+              end = -1L)
+    )
+  }
+  metrics <- read.csv(file = paste0("../../Projects/2021-10_Drumline_Reefshark/BRT/CaribbeanReef_CPUE/Sex-maturity-size-combos/", i, "/CaribbeanReef_CPUE/MLEvalMetricsBin.csv"))
+  resultstbl[i, 20:29] <- metrics$Value[c(7:12, 13:14, 16:17)]
+}
+write.csv(x = resultstbl,
+          # file = paste0("../../Projects/2021-10_Drumline_Reefshark/BRT/CaribbeanReef_CPUE/Sex-maturity-size-combos/ResultsTable.csv"),
+          file = paste0("../../Projects/2021-10_Drumline_Reefshark/BRT/CaribbeanReef_CPUE/Sex-maturity-size-combos/ResultsTableBestonly-PruneVars.csv"),
+          row.names = FALSE)
+
+
+varsrelinf <- data.frame(var = as.character(),
+                         rel.inf = as.numeric(),
+                         combo = as.numeric())
+for (i in 1:length(drumlist)) { # i <- 1
+  tmp <- read.csv(file = paste0("../../Projects/2021-10_Drumline_Reefshark/BRT/CaribbeanReef_CPUE/Sex-maturity-size-combos/", i, "/CaribbeanReef_CPUE/Binary BRT Variable contributions.csv")) |>
+    mutate(Combo = i)
+  varsrelinf <- rbind(varsrelinf, tmp)
+}
+write.csv(x = varsrelinf,
+          # file = paste0("../../Projects/2021-10_Drumline_Reefshark/BRT/CaribbeanReef_CPUE/Sex-maturity-size-combos/ResultsTable.csv"),
+          file = paste0("../../Projects/2021-10_Drumline_Reefshark/BRT/CaribbeanReef_CPUE/Sex-maturity-size-combos/RelInfVarsAllCombos.csv"),
+          row.names = FALSE)
+varsrelinf |>
+  group_by(var) |>
+  summarise(rel.inf = sum(rel.inf)) |>
+  arrange(desc(rel.inf)) |>
+  write_csv(file = paste0("../../Projects/2021-10_Drumline_Reefshark/BRT/CaribbeanReef_CPUE/Sex-maturity-size-combos/RelInfVarsAllCombosSummary.csv"))
 
 
 
+# 2023-05-23 STL as resvar ####
+expvars = c(
+  "Habitat",
+  "Tide",
+  "LunarPhase",
+  "Depth_m",
+  "Temperature_C",
+  "Yearday",
+  "DtDropOffLogNeg"
+  # "Sex", #
+  # "STL" # is resvar
+)
+
+# Depth vs DtDropoff corr & import####
+gbm.auto(samples = as.data.frame(drumline |> filter(CaribbeanReef == 1, !is.na(STL))), # filter for only positive samples. n=90
+         expvar = expvars,
+         resvar = "STL",
+         randomvar = TRUE,
+         tc = 3,
+         lr = 0.008,
+         bf = 0.87,
+         fam2 = "gaussian", # since there are no zeroes
+         gaus = TRUE, # only run bin, gaus isn't working
+         smooth = TRUE,
+         simp = FALSE,
+         savegbm = FALSE,
+         MLEvaluate = TRUE, # until it's fixed.
+         savedir = paste0("../../Projects/2021-10_Drumline_Reefshark/BRT/"),
+         BnW = FALSE)
+# I'm SURE I've run just gaus before though? Maybe before I added extra conditions to the above?
+# fam1 = leave alone, fam2 = gaus, gaus=true
 
 
-# Gbm.loop####
-# library(magrittr) # %>% %<>% # %>% %<>%
-# library(dplyr) # %>% matches last filter mutate case_when relocate everything rename across last_col bind_cols group_by tally pull summarise n_distinct left_join arrange select bind_rows # %>% matches last filter mutate case_when relocate everything rename across last_col bind_cols group_by tally pull summarise n_distinct left_join arrange select bind_rows
-# library(tidyverse) # "No used functions found" # "No used functions found"
-# library(tidylog) # filter mutate relocate pivot_wider rename replace_na group_by tally summarise left_join drop_na select pivot_longer # filter mutate relocate pivot_wider rename replace_na group_by tally summarise left_join drop_na select pivot_longer
-# drumline <- list.files(path = "../../Data/") %>% # list all files in Data folder
-#   .[matches("_drumline_reefs.rds", vars = .)] %>% # filter for the right ones, all today() variants, will be ordered rising by date
-#   last() # last one is highest date i.e. latest
-# drumline <- readRDS(file = paste0("../../Data/", drumline))
-# library(remotes) # install_github # install_github
-# install_github("SimonDedman/gbm.auto")
-# library(gbm.auto) # gbm.bfcheck gbm.auto gbm.loop # gbm.bfcheck gbm.auto gbm.loop
-# expvars = c("Site3", "Habitat", "Substrate2", "Tide", "Season", "LunarPhase",
-#             "Latitude", "Longitude", "Depth_m", "Temperature_C", "Salinity", "DO_mg_L", "Yearday", "Month", "daylength")
-# drumline %<>%
-#   filter(Site3 != "Somerset") %>% #remove Somerset rows, n=103, 9% of data
-#   mutate(Site3 = factor(Site3, levels = levels(Site3)[2:6])) # remove Somerset as a factor level
-#
-# gbm.loop(savedir = "../../Projects/2021_06 Reef shark drumline CPUE/Results_Plots/BRT",
-#          samples = drumline,
-#          expvar = expvars,
-#          resvar = "CaribbeanReef",
-#          lr = list(0.01, 0.0001), #0.005
-#          bf = list(0.5, 0.9),
-#          runautos = FALSE)
+# 2023-05-30 LMplots####
+gbm.lmplots(
+  samples = as.data.frame(drumline),
+  expvar = expvars,
+  resvar = "CaribbeanReef_CPUE",
+  # expvarnames = NULL,
+  # resvarname = NULL,
+  savedir = paste0("../../Projects/2021-10_Drumline_Reefshark/BRT/CaribbeanReef_CPUE/LMplots/")
+  # plotname = NULL,
+  # pngtype = c("cairo-png", "quartz", "Xlib"),
+  # r2line = TRUE,
+  # pointtext = FALSE,
+  # pointlabs = resvar,
+  # pointcol = "black",
+  # ...
+)
+
+tmp <- drumline |> select(all_of(c("CaribbeanReef_CPUE", expvars)))
+tmp <- drumline |> select(all_of(c("CaribbeanReef_CPUE", "Depth_m", "Temperature_C", "Yearday", "DtDropOffLogNeg", "STL")))
+gbm.lmplots(
+  samples = as.data.frame(drumline),
+  expvar = expvars,
+  resvar = "CaribbeanReef_CPUE",
+  savedir = paste0("../../Projects/2021-10_Drumline_Reefshark/BRT/CaribbeanReef_CPUE/LMplots/"))
+
+for (i in expvars) {
+  gbm.auto::lmplot(
+    x = as.data.frame(drumline)[, i],
+    y = as.data.frame(drumline)[, "CaribbeanReef_CPUE"],
+    xname = i,
+    yname = "CaribbeanReef_CPUE",
+    savedir = paste0("../../Projects/2021-10_Drumline_Reefshark/BRT/CaribbeanReef_CPUE/LMplots/"),
+    # pngtype = c("cairo-png", "quartz", "Xlib"),
+    # xlab = xname, # x axis label, parsed from xname unless specified
+    # ylab = yname, # y axis label, parsed from yname unless specified
+    plotname = i, # filename for png, parsed from xname unless specified
+    r2line = TRUE, # plot rsquared trendline, default TRUE
+    pointtext = FALSE, # label each point? Default false
+    pointlabs = as.data.frame(drumline)[, i], # point labels, defaults to resvar value
+    pointcol = "black", # points colour
+  )
+}
+# for some reason manually looping lmplots.R works but gbm.lmplots doesn't work - makes Habitat (1st) then NA.png.
+# Next is Tide which works fine in the manual loop
+# Get gbm.auto on CRAN then sort this out.
+
+
+# 2023-05-30 PairPlots####
+source("~/Dropbox/Farallon Institute/FarallonInstitute/R/pairPlots.R")
+expvardf <- drumline |> select(all_of(c("CaribbeanReef_CPUE", expvars))) # select(all_of(expvars))
+pairs(expvardf,
+      lower.panel = panel.lm,
+      upper.panel = panel.cor,
+      diag.panel = panel.hist,
+      main = "pair plots of variables")
 
 
 # Henderson etal 2021 figures ####

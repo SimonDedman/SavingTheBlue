@@ -98,3 +98,43 @@ sharks %<>%
   mutate(DtDropOff = ifelse(is.na(DtShallows_1), DtDeeps_1, DtShallows_1)) %>%
   select(-DtShallows_1, -DtDeeps_1)
 write.csv(x = sharks, file = "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Maps & Surveys/Bathymetry/2022-09-14_reefsharks-notJupiter_NOAANAV_DtDropOff.csv")
+
+# write.csv(x = drumline,
+#           file = paste0("../../Data/", today(), "_drumline_reefs_getDistToDropoff.csv"),
+#           row.names = F)
+
+
+
+# 2023-02-16 update ####
+# add distance to dropoff
+# /home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Maps & Surveys/Bathymetry/2023-02-13 Bathy process.txt
+library(dplyr)
+library(tidyverse)
+library(magrittr)
+library(lubridate)
+dbaseloc <- "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Data/"
+dbasedate <- "2023-03-31"
+rootname <- "shark_capture_data" # CHOOSE ONE
+rootname <- "drumline_data"
+dtdropoff <- read_csv(file = paste0(dbaseloc, dbasedate, "_", rootname, "_dropoff.csv")) %>%
+  # tidy names
+  rename(DtDeeps = DtDeeps_1,
+         DtShallows = DtShallows_1) %>%
+  # Algorithmically populate non 1 or 9 values
+  mutate(DeepShallow = ifelse(DtDeeps > DtShallows, 9, 1),
+         # switch from 1 & 9 to Deep & Shallow
+         DeepShallow = case_when(DeepShallow == 1 ~ "Deep",
+                                 DeepShallow == 9 ~ "Shallow"),
+         # Invert DtShallows so deep sharks have dist to dropoff negative
+         DtShallows = -DtShallows,
+         # Create combined metric of distance to dropoff, not 2 columns
+         DtDropOff = ifelse(DtShallows == 0, DtDeeps, DtShallows),
+         # Invert DtDropoff so LHS of plot is further inshore & RHS is further offshore
+         DtDropOff = -DtDropOff) %>%
+  # remove prep columns
+  select(ID, DeepShallow, DtDropOff)
+
+rdsfile <- readRDS(file = paste0(dbaseloc, today(), "_", rootname, ".rds")) %>%
+  left_join(dtdropoff) %T>% # join by ID, note T pipe retains object
+  saveRDS(file = paste0(dbaseloc, dbasedate, "_", rootname, "_dropoff.rds")) %T>%
+  write_csv(file = paste0(dbaseloc, dbasedate, "_", rootname, "_dropoff.csv"))

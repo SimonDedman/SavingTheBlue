@@ -5,6 +5,7 @@
 { # run everything in one click
 library(openxlsx) # read.xlsx convertToDateTime
 library(stringr) # "No used functions found"
+library(dplyr)
 library(magrittr) # "No used functions found"
 library(data.table) # "No used functions found"
 library(lubridate) # today
@@ -12,7 +13,7 @@ library(tidylog) # verbose version of tidyverse
 # getwd() # Saving The Blue/Code/SavingTheBlue
 
 # latestdbase <- "../../Data/Database_2021-06-25.xlsx"
-latestdbase <- "../../Data/Database_2022_Sept_14.xlsx"
+latestdbase <- "../../Data/Database_2023-03-31.xlsx"
 # Shark Data ####
 shark <- read.xlsx(xlsxFile = latestdbase,
                    sheet = 1,
@@ -96,6 +97,11 @@ levels_Common <- c("Silky", "Dusky", # silky (Carcharhinus falciformis) and dusk
                    "Blacknose", "Sharpnose", # blacknose (Carcharhinus acronotus) and sharpnose (Rhizoprionodon terraenovae)
                    "Blacktip", "Caribbean Reef", "Lemon", "Nurse", # blacktip (Carcharhinus limbatus), reef (Carcharhinus perezi), and nurse (Ginglymostoma cirratum)
                    "Tiger", "Bull", "Great Hammerhead") # tiger (Galeocerdo cuvier), bull (Carcharhinus leucas), hammerhead (Sphyrna mokarran)
+# upper case second names
+shark %<>% mutate(Common = case_when(Common == "Caribbean reef" ~ "Caribbean Reef",
+                                     Common == "Great hammerhead" ~ "Great Hammerhead",
+                                     TRUE ~ Common))
+
 shark$Common <- factor(shark$Common, levels = levels_Common)
 
 
@@ -139,6 +145,9 @@ levels_Site2 <- c("Fresh Creek",
                   "AUTEC Channel",
                   "Cargill Creek",
                   "North Bight",
+                  "Ray Cay Channel",
+                  "Port Cay Channel",
+                  "Mary Rock Channel",
                   "Shark Hole",
                   "Isla's Spot",
                   "Bigwood Channel",
@@ -160,6 +169,103 @@ levels_Gear2 <- c("Hand",
                   "Drumline-top",
                   "Gillnet")
 
+# unique(drumline$Site2)
+# drumline %>%
+#   group_by(Site2) %>%
+#   summarise(n = n()) %>%
+#   arrange(desc(n))
+# 1 Green Cay              330  *
+# 2 Bigwood Channel        280  *
+# 3 North Bight             97  Bight
+# 4 AUTEC Channel           86  *
+# 5 Bristol Galley          70  *
+# 6 Shark Hole              35  Bight
+# 7 Somerset                30  Somerset
+# 8 Blackbeard's Channel    29  Bight
+#  9 High Cay                25  Somerset
+# 10 Gibson Cay              11  *
+# 11 Cargill Creek           10  Bight?
+# 12 Isla's Spot              7  Bight?
+
+shark %<>%
+  mutate(Site3 = factor(
+    case_when(
+      Site2 %in% c("North Bight", "Shark Hole", "Blackbeard's Channel", "Cargill Creek", "Isla's Spot", "Ray Cay Channel", "Port Cay Channel", "Mary Rock Channel") ~ "Bight", # Make values 1 when sharks caught
+      Site2 == "High Cay" ~ "Somerset",
+      TRUE ~ as.character(Site2)),
+    levels = c("Somerset", "Green Cay", "Bristol Galley", "AUTEC Channel", "Bight", "Bigwood Channel", "Gibson Cay")))
+
+# unique(drumline$Substrate)
+# drumline %>%
+#   group_by(Substrate) %>%
+#   summarise(n = n()) %>%
+#   arrange(desc(n))
+# 1 Sand & seagrass     315
+# 2 Sand                269
+# 3 Sand & patch reef   146
+# 4 Sand & octocorals   108
+# 5 Reef                 44
+# 6 Patch reef           33
+# 7 Silt                 29
+# 8 Hard bottom          23
+# 9 Sand & coral         19
+# 10 Silt & seagrass      10
+# 11 Sand & algae          7
+# 12 Seagrass              7
+
+shark %<>%
+  mutate(Substrate2 = factor(case_when(
+    Substrate %in% c("Sand & patch reef", "Patch reef", "Sand & octocorals", "Sand & coral") ~ "Reef",
+    Substrate %in% c("Silt & seagrass", "Sand & seagrass", "Sand & algae", "Seagrass") ~ "Vegetation",
+    Substrate %in% c("Sand", "Silt", "Hard bottom") ~ "Bare",
+    TRUE ~ as.character(Substrate)),
+    levels = c("Bare", "Vegetation", "Reef")))
+# could then mutate Substrate2 into a factor with levels I specify
+
+# unique(drumline$Habitat)
+# drumline %>%
+#   group_by(Habitat) %>%
+#   summarise(n = n()) %>%
+#   arrange(desc(n))
+# 1 Back reef   650
+# 2 Channel     143
+# 3 Flats       139
+# 4 Fore reef    68
+# 5 Blue Hole    10
+shark %<>%
+  mutate(Habitat2 = case_when(
+    Habitat == "Blue Hole" ~ "Flats",
+    Habitat == "Channel" & Site2 %in% c("Blackbeard's Channel", "North Bight", "Shark Hole", "Cargill Creek") ~ "Flats", # Cargill filtered out above
+    Habitat == "Channel" & Site3 %in% c("AUTEC Channel", "Bigwood Channel") ~ "Back reef",
+    TRUE ~ as.character(Habitat)))
+
+
+
+# temporal####
+# time of day. Midpoint of timein/timeout? Will be a posix tho.
+# can use hour as a lazy proxy. or minute
+shark %<>%
+  mutate(Minute = lubridate::minute(Time),
+         Hour = lubridate::hour(Time),
+         Yearday = lubridate::yday(Date),
+         Month = lubridate::month(Date),
+         Season = cut(Month,
+                      breaks = c(-Inf, 2, 5, 8, 11, Inf),
+                      labels = c("Winter", "Spring", "Summer", "Autumn", "Winter")))
+
+# Daylength
+source('~/Dropbox/Galway/Analysis/R/daylength/daylength.R')
+
+dl <- daylength(date = shark$Date,
+                lat = shark$Latitude,
+                lon = shark$Longitude,
+                tzs = "America/New_York")
+#dl has date lat lon sunrise sunset dawn dusk daylength, mostly "POSIXct" "POSIXt"
+shark %<>% bind_cols(dl[, 4:8]) # append sunrise sunset dawn dusk daylength
+rm(dl)
+# lunar cycle
+library(lunar) #lunar.phase
+shark %<>% mutate(LunarPhase = lunar.phase(x = Date, shift = -5, name = TRUE)) # Levels: New Waxing Full Waning
 
 write.csv(x = shark,
           file = paste0("../../Data/", today(), "_shark_capture_data.csv"),
@@ -184,6 +290,7 @@ drumline <- read.xlsx(xlsxFile = latestdbase,
   # cut off after last date, given there are now extra rows for vlookups to prevent data entry errors
   filter(!is.na(Date))
 drumline$Date <- as.Date(drumline$Date, origin = "1899-12-30")
+unique(drumline$Depth_m)
 drumline$Depth_m <- as.numeric(drumline$Depth_m)
 tmp <- as.POSIXct(rep(NA, nrow(drumline)), tz = "America/New_York")
 for (i in 1:nrow(drumline)) {
@@ -211,8 +318,8 @@ drumline$Soak_time <- drumline$Time_out - drumline$Time_in # time diff in mins
 # should not be included in analyses.
 ## Done in excel sheet.
 drumline$Bait_present <- as.logical(drumline$Bait_present)
+drumline[drumline$Bite_off == "1", "Bite_off"] <- "TRUE"
 drumline$Bite_off <- as.logical(drumline$Bite_off)
-unique(drumline$Depth_m)
 
 # convert things to factors with defined levels
 # convert substrate to sand grain size? Or just spatial lookup against the databases
@@ -302,6 +409,106 @@ drumline$Bottom_top <- factor(drumline$Bottom_top, levels = c("Bottom", "Top"))
 # drumline[which(is.na(drumline$PIT_Tag_Full_ID_no)), "Pit_Tag_no"]
 # NULL = none = good
 # drop_na(drumline[which(is.na(drumline$PIT_Tag_Full_ID_no)), "Pit_Tag_no"])
+
+
+# unique(drumline$Site2)
+# drumline %>%
+#   group_by(Site2) %>%
+#   summarise(n = n()) %>%
+#   arrange(desc(n))
+# 1 Green Cay              330  *
+# 2 Bigwood Channel        280  *
+# 3 North Bight             97  Bight
+# 4 AUTEC Channel           86  *
+# 5 Bristol Galley          70  *
+# 6 Shark Hole              35  Bight
+# 7 Somerset                30  Somerset
+# 8 Blackbeard's Channel    29  Bight
+#  9 High Cay                25  Somerset
+# 10 Gibson Cay              11  *
+# 11 Cargill Creek           10  Bight?
+# 12 Isla's Spot              7  Bight?
+
+drumline %<>%
+  mutate(Site3 = factor(
+    case_when(
+      Site2 %in% c("North Bight", "Shark Hole", "Blackbeard's Channel", "Cargill Creek", "Isla's Spot", "Ray Cay Channel", "Port Cay Channel", "Mary Rock Channel") ~ "Bight", # Make values 1 when sharks caught
+      Site2 == "High Cay" ~ "Somerset",
+      TRUE ~ as.character(Site2)),
+    levels = c("Somerset", "Green Cay", "Bristol Galley", "AUTEC Channel", "Bight", "Bigwood Channel", "Gibson Cay")))
+
+# unique(drumline$Substrate)
+# drumline %>%
+#   group_by(Substrate) %>%
+#   summarise(n = n()) %>%
+#   arrange(desc(n))
+# 1 Sand & seagrass     315
+# 2 Sand                269
+# 3 Sand & patch reef   146
+# 4 Sand & octocorals   108
+# 5 Reef                 44
+# 6 Patch reef           33
+# 7 Silt                 29
+# 8 Hard bottom          23
+# 9 Sand & coral         19
+# 10 Silt & seagrass      10
+# 11 Sand & algae          7
+# 12 Seagrass              7
+
+drumline %<>%
+  mutate(Substrate2 = factor(case_when(
+    Substrate %in% c("Sand & patch reef", "Patch reef", "Sand & octocorals", "Sand & coral") ~ "Reef",
+    Substrate %in% c("Silt & seagrass", "Sand & seagrass", "Sand & algae", "Seagrass") ~ "Vegetation",
+    Substrate %in% c("Sand", "Silt", "Hard bottom") ~ "Bare",
+    TRUE ~ as.character(Substrate)),
+    levels = c("Bare", "Vegetation", "Reef")))
+# could then mutate Substrate2 into a factor with levels I specify
+
+# unique(drumline$Habitat)
+# drumline %>%
+#   group_by(Habitat) %>%
+#   summarise(n = n()) %>%
+#   arrange(desc(n))
+# 1 Back reef   650
+# 2 Channel     143
+# 3 Flats       139
+# 4 Fore reef    68
+# 5 Blue Hole    10
+drumline %<>%
+  mutate(Habitat2 = case_when(
+    Habitat == "Blue Hole" ~ "Flats",
+    Habitat == "Channel" & Site2 %in% c("Blackbeard's Channel", "North Bight", "Shark Hole", "Cargill Creek") ~ "Flats", # Cargill filtered out above
+    Habitat == "Channel" & Site3 %in% c("AUTEC Channel", "Bigwood Channel") ~ "Back reef",
+    TRUE ~ as.character(Habitat)))
+
+
+
+# temporal####
+# time of day. Midpoint of timein/timeout? Will be a posix tho.
+# can use hour as a lazy proxy. or minute
+drumline %<>%
+  mutate(Minute = lubridate::minute(Time_in),
+         Hour = lubridate::hour(Time_in),
+         Yearday = lubridate::yday(Date),
+         Month = lubridate::month(Date),
+         Season = cut(Month,
+                      breaks = c(-Inf, 2, 5, 8, 11, Inf),
+                      labels = c("Winter", "Spring", "Summer", "Autumn", "Winter")))
+
+# Daylength
+source('~/Dropbox/Galway/Analysis/R/daylength/daylength.R')
+
+dl <- daylength(date = drumline$Date,
+                lat = drumline$Latitude,
+                lon = drumline$Longitude,
+                tzs = "America/New_York")
+#dl has date lat lon sunrise sunset dawn dusk daylength, mostly "POSIXct" "POSIXt"
+drumline %<>% bind_cols(dl[, 4:8]) # append sunrise sunset dawn dusk daylength
+
+# lunar cycle
+library(lunar) #lunar.phase
+drumline %<>% mutate(LunarPhase = lunar.phase(x = Date, shift = -5, name = TRUE)) # Levels: New Waxing Full Waning
+
 
 
 write.csv(x = drumline,
