@@ -1,3 +1,4 @@
+#TOP####
 # 2023-05-30 Simon Dedman simondedman@gmail.com
 # kmeans & movegroup aka dBBMM
 
@@ -20,7 +21,15 @@ library(beepr)
 library(rgl) # # sudo apt install libglu1-mesa-dev
 library(clusterSim)
 source('/home/simon/Dropbox/Blocklab Monterey/Blocklab/vanMoorter.etal.2010/p7_gap.statistic.r')
+# for movegroup
+library(sf)
+remotes::install_github("SimonDedman/movegroup")
+library(movegroup)
 saveloc <- "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/"
+
+
+
+# 1. Step Length & Turn Angles####
 
 hammers <- readRDS("/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Data/Hammerhead SPOT tags/Output_data_for_kMeans_and_dBBMM/Data_aniMotum_CRW_output_fitted_proj_WGS84_converted_with_coord_CIs_S.mokarran.rds") |>
   # create col from id, removing . & all after. Use for left_join
@@ -31,9 +40,6 @@ meta <- read_csv("../../Data/Hammerhead SPOT tags/Datasheet_Bahamas_Smok_Tagging
          FishLengthCm = stl)
 hammers %<>% left_join(meta) # , by = join_by(shark == id) # doesn't work naming columns, has gotten worse.
 
-
-
-# Step Length & Turn Angles####
 # blocklab, diveclassify1transit
 # > li5day {5 day linearity index. 1: linear paths, 0: tortuous paths}
 # > StepLengthKm {distance from previous day; Km}
@@ -41,7 +47,6 @@ hammers %<>% left_join(meta) # , by = join_by(shark == id) # doesn't work naming
 # > TurnAngleRelDeg {turning angle from previous day, relative to previous day at 0}
 # > TurnAngleAzimDeg  {turning angle from previous day, azimuthal degrees}
 # > FishLengthCm {fish length in cm}
-
 hammers$li5day <- as.numeric(rep(NA, nrow(hammers)))
 hammers$StepLengthKm <- as.numeric(rep(NA, nrow(hammers)))
 hammers$StepLengthBL <- as.numeric(rep(NA, nrow(hammers)))
@@ -60,7 +65,8 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
   df_nona <- df_nona[!is.na(df_nona$lat),] # omit rows with NA values for lat, downsample to days only
   df_nona <- df_nona[!is.na(df_nona$lon),] # omit rows with NA values for lon, downsample to days only
   fishlist <- unique(df_nona$id)
-# loop id, calc li5day, make track####
+
+  # loop id, calc li5day, make track####
   for (i in fishlist) { # i <- fishlist[1]
     df_nonai <- df_nona[which(df_nona$id == i),] #subset to each fish
     print(paste0(which(fishlist == i), " of ", length(fishlist), "; adding transit dive data to ", i))
@@ -100,9 +106,9 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
     #                                            t = df_nonai$age)
 
 
-      # then divide StepLengthKm to BL
-      # 1 km/day = 1000m/day = 100000cm/day
-      df_nonai$StepLengthBL <- (df_nonai$StepLengthKm * 100000) / df_nonai$FishLengthCm
+    # then divide StepLengthKm to BL
+    # 1 km/day = 1000m/day = 100000cm/day
+    df_nonai$StepLengthBL <- (df_nonai$StepLengthKm * 100000) / df_nonai$FishLengthCm
 
     # results is distance in body lengths per day.
     # Body lengths per second (mean value per day):
@@ -173,7 +179,7 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
 
 
 
-# Kmeans VanMoorter/SD####
+# 2. Kmeans VanMoorter/SD####
 # p7_analysis_suppl_BL.R
 # > kmeans2cluster {resident/transient	movement cluster based on body lengths}
 # > kmeansBinary {0/1	movement cluster based on body lengths}
@@ -231,9 +237,7 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
 
     # x <- data[,c("ACT1", "ACT2", "SL_METERS", "TURN_DEGRE")]
     # downsample df_i to days
-    # replace StepLengthBL with StepLengthBLlog1p in selection here down, 12 occurrences####
     x <- df_i[!is.na(df_i$StepLengthBLlog1p),] # omit NA rows
-
     x <- x[!is.na(x$TurnAngleRelDeg),] # ditto
     if (nrow(x) < 5) next # skip else kmeans will break. fish 28
     x <- x[,c("StepLengthBLlog1p", "TurnAngleRelDeg")] # , "Date", "Index"
@@ -300,7 +304,7 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
     # 1: KMeansAppend(loadlistcompare = F, machine = machine)
 
 
-    ###plots GAP stat per clusters +SE####
+    # plot GAP stat per clusters+SE####
     par(mfrow = c(1,1))
     k <- seq(1:length(res$GAP))
     png(filename = paste0(saveloc, "KmeansClusters_", i, ".png"), width = 4*480, height = 4*480, units = "px", pointsize = 4*12, bg = "white", res = NA, family = "", type = "cairo-png")
@@ -319,6 +323,7 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
 
     # then redo kmeans with selected number of clusters (kmeans output cl1 gets overwritten per i)
     # TODO make centers dynamic ####
+    # See L413 "Show how many clusters were chosen most commonly"
     # kstar & kstar2, might be different.
     kmeans2 <- kmeans(x, centers = 2, iter.max = 100) #run kmeans
     df_i[as.integer(names(kmeans2$cluster)), "kmeans2cluster"] <- kmeans2$cluster
@@ -400,18 +405,12 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
   clusterinfo <- round(clusterinfo, 1)
   clusterinfo <- bind_cols(id = fishlist, clusterinfo)
 
-  # TODO test & fix /500 issue####
-  hammers |>
-    dplyr::filter(id == "177940.1") |>
-    pull(StepLengthBLlog1p) |>
-    mean(na.rm = TRUE)
-
   write.csv(x = clusterinfo, file = paste0(saveloc, "KmeansClusterinfo.csv"), row.names = FALSE)
 } else {# close if (!all(is.na(alldaily$lat)))
   print("all new days missing latitude data, can't get external data, nothing to do")
 }
 
-# Show how amny clusters were chosen most commonly
+# Show how many clusters were chosen most commonly
 clustersvec <- c(clusterinfo$nClustersTolerance1, clusterinfo$nClustersTolerance2)
 clustersvec <- clustersvec[!is.infinite(clustersvec)]
 clustersvec %>%
@@ -424,6 +423,7 @@ clustersvec %>%
 #     3     4
 #     1     3
 # could do this more systematically. Could also weight the Tolerance1/2 differently? Leave it for now, perfect enemy of good.
+# See L325 TOT make centers dynamic
 
 # wrap up####
 setDF(hammers)
@@ -434,9 +434,280 @@ beep(8) #notify completion
 lapply(names(sessionInfo()$loadedOnly), require, character.only = TRUE)
 invisible(lapply(paste0('package:', names(sessionInfo()$otherPkgs)), detach, character.only = TRUE, unload = TRUE, force = TRUE))
 
+
+
+
+
+# 3. movegroup dBBMMs ####
+hammers <- readRDS(paste0(saveloc, "Hammers_KMeans.Rds"))
+
+# moveLocError ####
+# calcs from /home/simon/Dropbox/Blocklab Monterey/Blocklab/ConfidenceIntervalPointsToPoly.R
+reproject <- function(x, coorda, coordb, latloncrs, projectedcrs) {
+  x <- sf::st_as_sf(x, coords = c(coorda, coordb)) |>
+    sf::st_set_crs(latloncrs) |> # latlon degrees sf object
+    st_transform(projectedcrs) |> # eastings northings units metres
+    dplyr::select(-everything()) # remove all columns. Geometry is protected and retained
+  return(x)
+}
+
+loncol = "lon"
+latcol = "lat"
+lon025 = "lon025"
+lon975 = "lon975"
+lat025 = "lat025"
+lat975 = "lat975"
+latloncrs = 4326
+projectedcrs = 32617
+
+tracksfmean <- reproject(x = hammers,
+                         coorda = loncol,
+                         coordb = latcol,
+                         latloncrs = latloncrs,
+                         projectedcrs = projectedcrs)
+
+meanMoveLocDist <- list(
+  c(loncol, lat975), # U
+  c(lon975, latcol), # R
+  c(loncol, lat025), # D
+  c(lon025, latcol) # L
+) |>
+  lapply(function(x) reproject(x = hammers,
+                               coorda = x[1],
+                               coordb = x[2],
+                               latloncrs = latloncrs,
+                               projectedcrs = projectedcrs
+  )) |>
+  set_names(c("U", "R", "D", "L")) |> # set names of list elements
+  lapply(
+    function(vertextrack) { # distance from vertices to centre
+      st_distance(
+        x = tracksfmean,
+        y = vertextrack,
+        by_element = TRUE
+      )
+    }
+  ) |>
+  purrr::map_df(~.x) |> # collapse list to df of 4 columns
+  rowMeans()# make row means
+# (make overall mean of them?)
+
+
+
+# timeDiffLong ####
+hammers$diffmins <- c(as.numeric(NA), as.numeric(hammers$date[2:length(hammers$date)] - hammers$date[1:length(hammers$date) - 1]))
+# gives error but still works
+# get index of first row per id
+firstrows <- hammers |>
+  mutate(Index = 1:nrow(hammers)) |>
+  group_by(id) |>
+  summarise(firstrowid = first(Index))
+# use this to blank out the diffmins since it's the time difference between 1 shark ending & another staring which is meaningless
+hammers[firstrows$firstrowid, "diffmins"] <- NA
+
+
+# FROM HERE####
+
+hammers |>
+  group_by(id) %T>%
+  # {hist(.$diffmins)} |>
+  ggplot(aes(x = diffmins)) +
+  geom_histogram() |>
+  dplyr::summarise(meandiffmins = mean(diffmins, na.rm = TRUE),
+            sd3 = sd(diffmins, na.rm = TRUE) * 3) |>
+  ungroup()
+# id       meandiffmins    sd3
+# 177940.1         448    4212
+# 177941.1         643    4509
+# 177942.1         452    2934
+# 183623.1         443    2590
+# 200368.1         453    2994
+# 200369.1        2910   16222
+# 200369.2        1274    8642
+# 209020.1        2725   13285
+# 222133.1         662    3321
+#  23596.1         581    2580
+
+# can plot within pipe using %T>% but doesn't respect group_by
+# see https://stackoverflow.com/questions/76443954/how-to-use-magrittr-tee-pipe-t-to-create-multiple-ggplots-for-grouped-data-in
+# mtcars |>
+#   group_by(cyl) %T>%
+#   group_walk(~ print(
+#     ggplot(.) + geom_histogram(aes(x = carb))
+#   )) |>
+#   summarise(
+#     meancarb = mean(carb, na.rm = TRUE),
+#     sd3 = sd(carb, na.rm = TRUE) * 3
+#   )
+# # Works. Tee pipe only working on 1 command (group_walk), which is only being given "1" command, but it's a formula for a print chain.
+# mtcars |>
+#   group_by(cyl) |>
+#   group_walk(~ {
+#     print(ggplot(.x) + geom_histogram(aes(x = carb)))
+#     .x
+#   }) |>
+#   summarise(
+#     meancarb = mean(carb, na.rm = TRUE),
+#     sd3 = sd(carb, na.rm = TRUE) * 3
+#   )
+# # Works, doesn't need tee pipe. Uses braces to evaluate that bit immediately
+hammers |>
+  group_by(id) |>
+  group_walk(~ {
+    p <- ggplot(.x) + geom_histogram(aes(x = diffmins))
+    ggsave(plot = p, filename = paste0(saveloc, lubridate::today(), "_diffMinsHistGG_", .y$id, ".png"))
+    .x
+  }) |>
+  summarise(meandiffmins = mean(diffmins, na.rm = TRUE),
+            sd3 = sd(diffmins, na.rm = TRUE) * 3)
+# Following discussion, trying 24 hours, doing in mins since they're already in mins
+
+# rasterResolution ####
+# With default = 6: Error: cannot allocate vector of size 2286.7 Gb
+2 * mean(meanMoveLocDist) # 8466.051
+hist(meanMoveLocDist) # very left skewed
+summary(meanMoveLocDist) # median 1742
+# choose 1000
+
+length(unique(hammers$shark))
+
+movegroup(
+  data = hammers,
+  ID = "shark",
+  Datetime = "date", # DateTime
+  Lat = "lat",
+  Lon = "lon",
+  # Group = NULL,
+  # dat.TZ = "US/Eastern",
+  # proj = sp::CRS("+proj=longlat +datum=WGS84"),
+  projectedCRS = "+init=epsg:32617", # https://epsg.io/32617 Bimini, Florida
+  # sensor = "VR2W",
+  moveLocError = meanMoveLocDist,
+  timeDiffLong = (24 * 60),
+  # Single numeric value. Threshold value in timeDiffUnits designating the length of long breaks in re-locations. Used for bursting a movement track into segments, thereby removing long breaks from the movement track. See ?move::bursted for details.
+  timeDiffUnits = "mins",
+  # center = TRUE,
+  buffpct = 0.6, # Buffer extent for raster creation, proportion of 1.
+  # rasterExtent = NULL,
+  # rasterCRS = sp::CRS("+proj=utm +zone=17 +datum=WGS84"),
+  rasterResolution = 1000,
+  # Single numeric value to set raster resolution - cell size in metres? 111000: 1 degree lat = 111km.
+  # Tradeoff between small res = big file & processing time.
+  # Should be a function of the spatial resolution of your receivers or positioning tags.
+  # Higher resolution will lead to more precision in the volume areas calculations.
+  # Try using 2*dbblocationerror.
+  dbblocationerror = meanMoveLocDist,
+  dbbext = 0.3, # Ext param in the 'brownian.bridge.dyn' function in the 'move' package. Extends bounding box around track. Numeric single (all edges), double (x & y), or 4 (xmin xmax ymin ymax). Default 0.3.
+  # dbbwindowsize = 23,
+  # writeRasterFormat = "ascii",
+  # writeRasterExtension = ".asc",
+  # writeRasterDatatype = "FLT4S",
+  # absVolumeAreaSaveName = "VolumeArea_AbsoluteScale.csv",
+  savedir = "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/movegroup dBBMMs/",
+  alerts = TRUE
+)
+
+scaleraster(
+  path = "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/movegroup dBBMMs/",
+  pathsubsets = "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/movegroup dBBMMs/", # will be able to leave NULL following change I just made
+  # pattern = ".asc",
+  # weighting = 1,
+  # format = "ascii",
+  # datatype = "FLT4S",
+  # bylayer = TRUE,
+  # overwrite = TRUE,
+  # scalefolder = "Scaled",
+  # weightedsummedname = "All_Rasters_Weighted_Summed",
+  # scaledweightedname = "All_Rasters_Scaled_Weighted",
+  crsloc = "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/movegroup dBBMMs/" # will be able to leave NULL following change I just made
+  # , returnObj = FALSE
+)
+
+# ggmap::register_google()
+dBBMMplot(
+  x = paste0("/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/movegroup dBBMMs/Scaled/All_Rasters_Scaled_Weighted_UDScaled.asc"),
+  crsloc = "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/movegroup dBBMMs/",
+  # trim = TRUE,
+  # myLocation = NULL,
+  googlemap = TRUE,
+  # gmapsAPI = NULL,
+  expandfactor = 1,
+  mapzoom = 7,
+  # mapsource = "google",
+  # maptype = "satellite",
+  # contour1colour = "red",
+  # contour2colour = "orange",
+  # plottitle = "Aggregated 95% and 50% UD contours",
+  plotsubtitle = "Scaled contours. n = 10",
+  # legendtitle = "Percent UD Contours",
+  # plotcaption = paste0("movegroup, ", lubridate::today()),
+  # axisxlabel = "Longitude",
+  # axisylabel = "Latitude",
+  legendposition = c(0.9, 0.89),
+  # fontsize = 12,
+  # fontfamily = "Times New Roman",
+  # filesavename = paste0(lubridate::today(), "_dBBMM-contours.png"),
+  savedir = "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/movegroup dBBMMs/Scaled/Plot",
+  # receiverlats = NULL,
+  # receiverlons = NULL,
+  # receivernames = NULL,
+  # receiverrange = NULL,
+  # recpointscol = "black",
+  # recpointsfill = "white",
+  # recpointsalpha = 0.5,
+  # recpointssize = 1,
+  # recpointsshape = 21,
+  # recbufcol = "grey75",
+  # recbuffill = "grey",
+  # recbufalpha = 0.5,
+  # reclabcol = "black",
+  # reclabfill = NA,
+  # reclabnudgex = 0,
+  # reclabnudgey = -200,
+  # reclabpad = 0,
+  # reclabrad = 0.15,
+  # reclabbord = 0,
+  surface = TRUE
+)
+
+# 01. worked, extents too large. Change buffpct to 0.3 from 1:
+# Error in .local(object, raster, location.error = location.error, ext = ext,: Lower x grid not large enough, consider extending the raster in that direction or enlarging the ext argument
+# Try 0.6
+# 02. exactly the same. Try crop in plot.R.
+# 03. expandfactor from 1.6 to 1. no change
+# 04. mapzoom from 5 to 10, 8, 7. Moved legend to right
+# 05. from hammers$id to hammers$shark, n=10 to 9
+
+
+# per shark, scaled:
+for (thisshark in make.names(unique(hammers$shark))) {
+  dBBMMplot(
+    x = paste0("/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/movegroup dBBMMs/Scaled/", thisshark, ".asc"),
+    crsloc = "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/movegroup dBBMMs/",
+    googlemap = TRUE,
+    expandfactor = 1,
+    mapzoom = 7,
+    plotsubtitle = "Scaled contours. n = 10",
+    legendposition = c(0.9, 0.89),
+    filesavename = paste0(lubridate::today(), "_", thisshark, "_dBBMM-contours.png"),
+    savedir = "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/movegroup dBBMMs/Scaled/Plot")}
+
+# per shark, unscaled:
+for (thisshark in make.names(unique(hammers$shark))) {
+  dBBMMplot(
+    x = paste0("/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/movegroup dBBMMs/", thisshark, ".asc"),
+    crsloc = "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/movegroup dBBMMs/",
+    googlemap = TRUE,
+    expandfactor = 1,
+    mapzoom = 7,
+    plotsubtitle = "Scaled contours. n = 10",
+    legendposition = c(0.9, 0.89),
+    filesavename = paste0(lubridate::today(), "_", thisshark, "_dBBMM-contours.png"),
+    savedir = "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/movegroup dBBMMs/Plot")}
+
+
+
 # TODOLIST####
-
-
 # transit shorter steplengthBL than resident. But transit angles all (bar1) smaller.
 
 # if kstar1 & 2 both = 2, great. But what if they both = 3? Or are different? Or are Inf?
@@ -445,16 +716,6 @@ invisible(lapply(paste0('package:', names(sessionInfo()$otherPkgs)), detach, cha
 
 # Documentation
 # kstar / tolerance, from VanM paper
-# Tolerance T is analogous to setting the alpha level in the
-# standard hypothesis testing framework, where increased
-# tolerance is similar to selecting a smaller alpha rejection
-# region. Tibshirani et al. (2001) used a tolerance of 1, but
-# larger values of tolerance increase the strength of evidence
-# required to include additional clusters (see Tibshirani et al. 2001 for full details and formulations). Tibshirani et al.
-# (2001) demonstrated that the gap statistic performed well in
-# detecting number of clusters when clusters are well
-# separated; however, it was sensitive to the amount of
-# overlap between clusters. Fortunately, the bias in sensitivity
-# is such that it is likely to identify fewer clusters than there
-# are in truth
-# Tibshirani, R., G. Walther, and T. Hastie. 2001. Estimating the number of clusters in a dataset via the gap statistic. Journal of the Royal Statistical Society B 63:411–423.
+# Tolerance T is analogous to setting the alpha level in the standard hypothesis testing framework, where increased tolerance is similar to selecting a smaller alpha rejection region. Tibshirani et al. (2001) used a tolerance of 1, but larger values of tolerance increase the strength of evidence
+# required to include additional clusters (see Tibshirani et al. 2001 for full details and formulations). Tibshirani et al. (2001) demonstrated that the gap statistic performed well in detecting number of clusters when clusters are well separated; however, it was sensitive to the amount of overlap
+# between clusters. Fortunately, the bias in sensitivity is such that it is likely to identify fewer clusters than there are in truth (Tibshirani, R., G. Walther, and T. Hastie. 2001. Estimating the number of clusters in a dataset via the gap statistic. Journal of the Royal Statistical Society B 63:411–423)
