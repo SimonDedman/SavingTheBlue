@@ -583,7 +583,7 @@ expvars = c(
   "Sex", # only for size sex vars, comparison
   "STL" # only for size sex vars, comparison
   # "Mature" # only for size sex vars, comparison. Also remove: autocorr w/ STL
-  )
+)
 
 # Fran Farabaugh idea, add random var to compare to BRT outputs
 # 2023-02-15 is this now done in gbm.auto as an option
@@ -961,6 +961,105 @@ varsrelinf |>
   write_csv(file = paste0("../../Projects/2021-10_Drumline_Reefshark/BRT/CaribbeanReef_CPUE/Sex-maturity-size-combos/RelInfVarsAllCombosSummary.csv"))
 
 
+varsrelinf <- read_csv(file = paste0("../../Projects/2021-10_Drumline_Reefshark/BRT/CaribbeanReef_CPUE/Sex-maturity-size-combos/RelInfVarsAllCombos.csv")) # |>
+# mutate(Sex = case_match(Combo,
+#            c(1,5,6,11,12) ~ "Male",
+#            c(2,7,8,13,14) ~ "Female",
+#            .default = NA),
+#        Mature = case_match(Combo,
+#                            c(3,5,7) ~ "Mature",
+#                            c(4,6,8) ~ "Immature",
+#                            .default = NA),
+#        Size = case_match(Combo,
+#                         c(10,12,14) ~ "Large",
+#                         c(9,11,13) ~ "Small",
+#                         .default = NA),
+#        ) %T>%
+# write_csv(paste0("../../Projects/2021-10_Drumline_Reefshark/BRT/CaribbeanReef_CPUE/Sex-maturity-size-combos/RelInfVarsAllCombos.csv"))
+
+# barplot vars all
+library(ggplot2)
+# tmp <-
+varsrelinf |>
+  group_by(var) |>
+  summarise(rel.inf = sum(rel.inf, na.rm = TRUE)) |>
+  arrange(desc(rel.inf)) |>
+  mutate(var = ordered(var, levels = var)) |>
+  ggplot(aes(x = var, y = rel.inf)) +
+  geom_col() +
+  labs(title = "All data") +
+  ggsave(filename = paste0("../../Projects/2021-10_Drumline_Reefshark/BRT/CaribbeanReef_CPUE/Sex-maturity-size-combos/", today(), "_RelInfVars-All.png"))
+
+# barplot vars by sex
+varsrelinf |>
+  filter(Sex == "Male") |>
+  group_by(var) |>
+  summarise(rel.inf = sum(rel.inf, na.rm = TRUE)) |>
+  arrange(desc(rel.inf)) |>
+  mutate(var = ordered(var, levels = var)) |>
+  ggplot(aes(x = var, y = rel.inf)) +
+  geom_col() +
+  labs(title = "All data") +
+  ggsave(filename = paste0("../../Projects/2021-10_Drumline_Reefshark/BRT/CaribbeanReef_CPUE/Sex-maturity-size-combos/", today(), "_RelInfVars-Sex-Male.png"))
+varsrelinf |>
+  filter(Sex == "Female") |>
+  group_by(var) |>
+  summarise(rel.inf = sum(rel.inf, na.rm = TRUE)) |>
+  arrange(desc(rel.inf)) |>
+  mutate(var = ordered(var, levels = var)) |>
+  ggplot(aes(x = var, y = rel.inf)) +
+  geom_col() +
+  labs(title = "All data") +
+  ggsave(filename = paste0("../../Projects/2021-10_Drumline_Reefshark/BRT/CaribbeanReef_CPUE/Sex-maturity-size-combos/", today(), "_RelInfVars-Sex-Female.png"))
+
+# barplot vars by maturity
+varsrelinf |>
+  filter(Mature == "Mature") |>
+  group_by(var) |>
+  summarise(rel.inf = sum(rel.inf, na.rm = TRUE)) |>
+  arrange(desc(rel.inf)) |>
+  mutate(var = ordered(var, levels = var)) |>
+  ggplot(aes(x = var, y = rel.inf)) +
+  geom_col() +
+  labs(title = "All data") +
+  ggsave(filename = paste0("../../Projects/2021-10_Drumline_Reefshark/BRT/CaribbeanReef_CPUE/Sex-maturity-size-combos/", today(), "_RelInfVars-Maturity-Mature.png"))
+varsrelinf |>
+  filter(Mature == "Immature") |>
+  group_by(var) |>
+  summarise(rel.inf = sum(rel.inf, na.rm = TRUE)) |>
+  arrange(desc(rel.inf)) |>
+  mutate(var = ordered(var, levels = var)) |>
+  ggplot(aes(x = var, y = rel.inf)) +
+  geom_col() +
+  labs(title = "All data") +
+  ggsave(filename = paste0("../../Projects/2021-10_Drumline_Reefshark/BRT/CaribbeanReef_CPUE/Sex-maturity-size-combos/", today(), "_RelInfVars-Maturity-Immature.png"))
+
+# barplot vars by size
+varsrelinf |>
+  filter(Size == "Large") |>
+  group_by(var) |>
+  summarise(rel.inf = sum(rel.inf, na.rm = TRUE)) |>
+  arrange(desc(rel.inf)) |>
+  mutate(var = ordered(var, levels = var)) |>
+  ggplot(aes(x = var, y = rel.inf)) +
+  geom_col() +
+  labs(title = "All data") +
+  ggsave(filename = paste0("../../Projects/2021-10_Drumline_Reefshark/BRT/CaribbeanReef_CPUE/Sex-maturity-size-combos/", today(), "_RelInfVars-Size-Large.png"))
+varsrelinf |>
+  filter(Size == "Small") |>
+  group_by(var) |>
+  summarise(rel.inf = sum(rel.inf, na.rm = TRUE)) |>
+  arrange(desc(rel.inf)) |>
+  mutate(var = ordered(var, levels = var)) |>
+  ggplot(aes(x = var, y = rel.inf)) +
+  geom_col() +
+  labs(title = "All data") +
+  ggsave(filename = paste0("../../Projects/2021-10_Drumline_Reefshark/BRT/CaribbeanReef_CPUE/Sex-maturity-size-combos/", today(), "_RelInfVars-Size-Small.png"))
+
+
+
+
+
 
 # 2023-05-23 STL as resvar ####
 expvars = c(
@@ -980,9 +1079,9 @@ gbm.auto(samples = as.data.frame(drumline |> filter(CaribbeanReef == 1, !is.na(S
          expvar = expvars,
          resvar = "STL",
          randomvar = TRUE,
-         tc = 3,
-         lr = 0.008,
-         bf = 0.87,
+         tc = 7, # c(2,3,4,5,6,7)
+         lr = 0.001, # c(0.001, 0.0005, 0.0001, 0.00005, 0.00001)
+         bf = 0.9, # c(0.5, 0.7, 0.85, 0.87, 0.9, 0.92)
          fam2 = "gaussian", # since there are no zeroes
          gaus = TRUE, # only run bin, gaus isn't working
          smooth = TRUE,
@@ -997,12 +1096,14 @@ gbm.auto(samples = as.data.frame(drumline |> filter(CaribbeanReef == 1, !is.na(S
 
 # 2023-05-30 LMplots####
 gbm.lmplots(
-  samples = as.data.frame(drumline),
-  expvar = expvars,
+  samples = as.data.frame(drumline |> filter(CaribbeanReef_CPUE != 0) |> select(CaribbeanReef_CPUE, all_of(expvars))),
+  # expvar = expvars,
+  # expvar = c("Habitat", "Tide", "LunarPhase", "Depth_m", "Temperature_C", "Yearday", "DtDropOffLogNeg"),
+  expvar = c("DtDropOffLogNeg"),
   resvar = "CaribbeanReef_CPUE",
   # expvarnames = NULL,
   # resvarname = NULL,
-  savedir = paste0("../../Projects/2021-10_Drumline_Reefshark/BRT/CaribbeanReef_CPUE/LMplots/")
+  savedir = paste0("../../Projects/2021-10_Drumline_Reefshark/BRT/CaribbeanReef_CPUE/LMplots PairPlots/")
   # plotname = NULL,
   # pngtype = c("cairo-png", "quartz", "Xlib"),
   # r2line = TRUE,
@@ -1011,6 +1112,10 @@ gbm.lmplots(
   # pointcol = "black",
   # ...
 )
+# BUG####
+# does Habitat (expvar 1) then NA.png & none more.
+# forced by typing em all out & deleting one by one from the front.
+# something not closing properly after the first one is saved?
 
 tmp <- drumline |> select(all_of(c("CaribbeanReef_CPUE", expvars)))
 tmp <- drumline |> select(all_of(c("CaribbeanReef_CPUE", "Depth_m", "Temperature_C", "Yearday", "DtDropOffLogNeg", "STL")))
@@ -1039,17 +1144,18 @@ for (i in expvars) {
 }
 # for some reason manually looping lmplots.R works but gbm.lmplots doesn't work - makes Habitat (1st) then NA.png.
 # Next is Tide which works fine in the manual loop
-# Get gbm.auto on CRAN then sort this out.
+
 
 
 # 2023-05-30 PairPlots####
 source("~/Dropbox/Farallon Institute/FarallonInstitute/R/pairPlots.R")
-expvardf <- drumline |> select(all_of(c("CaribbeanReef_CPUE", expvars))) # select(all_of(expvars))
+expvardf <- drumline |> filter(CaribbeanReef_CPUE != 0) |> select(all_of(c("CaribbeanReef_CPUE", expvars))) # select(all_of(expvars))
 pairs(expvardf,
       lower.panel = panel.lm,
       upper.panel = panel.cor,
       diag.panel = panel.hist,
       main = "pair plots of variables")
+# (manually save)
 
 
 # Henderson etal 2021 figures ####

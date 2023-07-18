@@ -23,7 +23,7 @@ library(clusterSim)
 source('/home/simon/Dropbox/Blocklab Monterey/Blocklab/vanMoorter.etal.2010/p7_gap.statistic.r')
 # for movegroup
 library(sf)
-remotes::install_github("SimonDedman/movegroup")
+# remotes::install_github("SimonDedman/movegroup")
 library(movegroup)
 saveloc <- "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/"
 
@@ -31,9 +31,12 @@ saveloc <- "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/
 
 # 1. Step Length & Turn Angles####
 
-hammers <- readRDS("/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Data/Hammerhead SPOT tags/Output_data_for_kMeans_and_dBBMM/Data_aniMotum_CRW_output_fitted_proj_WGS84_converted_with_coord_CIs_S.mokarran.rds") |>
-  # create col from id, removing . & all after. Use for left_join
-  mutate(shark = as.numeric(str_sub(id, start = 1, end = str_locate(id, "\\.")[,1] - 1)))
+# hammers <- readRDS("/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Data/Hammerhead SPOT tags/Output_data_for_kMeans_and_dBBMM/Data_aniMotum_CRW_output_fitted_proj_WGS84_converted_with_coord_CIs_S.mokarran.rds") |> # pre 2023-07-07
+# create col from id, removing . & all after. Use for left_join
+# mutate(shark = as.numeric(str_sub(id, start = 1, end = str_locate(id, "\\.")[,1] - 1)))
+hammers <- readRDS("/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/CTCRW/Data_aniMotum_CRW_output_fitted_proj_WGS84_converted_with_coord_CIs_S.mokarran_with_Argosfilter_data.rds") |> # 2023-07-07 & post
+  mutate(shark = as.numeric(str_sub(id, start = 1, end = str_locate(id, "\\_")[,1] - 1)))
+
 
 meta <- read_csv("../../Data/Hammerhead SPOT tags/Datasheet_Bahamas_Smok_Tagging_Metadata_NEW.csv") |>
   rename(shark = ptt_id,
@@ -405,7 +408,7 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
   clusterinfo <- round(clusterinfo, 1)
   clusterinfo <- bind_cols(id = fishlist, clusterinfo)
 
-  write.csv(x = clusterinfo, file = paste0(saveloc, "KmeansClusterinfo.csv"), row.names = FALSE)
+  write.csv(x = clusterinfo, file = paste0(saveloc, today(), "_KmeansClusterinfo.csv"), row.names = FALSE)
 } else {# close if (!all(is.na(alldaily$lat)))
   print("all new days missing latitude data, can't get external data, nothing to do")
 }
@@ -419,16 +422,16 @@ clustersvec %>%
   summarise(n = n()) %>%
   arrange(desc(n))
 # value     n
-#     2    12
-#     3     4
-#     1     3
+#     2     8
+#     3     7
+#     1     2
 # could do this more systematically. Could also weight the Tolerance1/2 differently? Leave it for now, perfect enemy of good.
-# See L325 TOT make centers dynamic
+# See L325 TOT make centres dynamic
 
 # wrap up####
 setDF(hammers)
 hammers$StepLengthBLlog1p <-  expm1(hammers$StepLengthBLlog1p + logmean)
-saveRDS(object = hammers, file = paste0(saveloc, "Hammers_KMeans.Rds"))
+saveRDS(object = hammers, file = paste0(saveloc, "/kmeans/Hammers_KMeans.Rds"))
 rm(list = ls()) #remove all objects
 beep(8) #notify completion
 lapply(names(sessionInfo()$loadedOnly), require, character.only = TRUE)
@@ -439,7 +442,7 @@ invisible(lapply(paste0('package:', names(sessionInfo()$otherPkgs)), detach, cha
 
 
 # 3. movegroup dBBMMs ####
-hammers <- readRDS(paste0(saveloc, "Hammers_KMeans.Rds"))
+hammers <- readRDS(paste0(saveloc, "/kmeans/Hammers_KMeans.Rds"))
 
 # moveLocError ####
 # calcs from /home/simon/Dropbox/Blocklab Monterey/Blocklab/ConfidenceIntervalPointsToPoly.R
@@ -491,7 +494,7 @@ meanMoveLocDist <- list(
   purrr::map_df(~.x) |> # collapse list to df of 4 columns
   rowMeans()# make row means
 # (make overall mean of them?)
-
+hammers$meanMoveLocDist <- meanMoveLocDist
 
 
 # timeDiffLong ####
@@ -506,16 +509,14 @@ firstrows <- hammers |>
 hammers[firstrows$firstrowid, "diffmins"] <- NA
 
 
-# FROM HERE####
-
-hammers |>
-  group_by(id) %T>%
-  # {hist(.$diffmins)} |>
-  ggplot(aes(x = diffmins)) +
-  geom_histogram() |>
-  dplyr::summarise(meandiffmins = mean(diffmins, na.rm = TRUE),
-            sd3 = sd(diffmins, na.rm = TRUE) * 3) |>
-  ungroup()
+# hammers |>
+#   group_by(id) %T>%
+#   # {hist(.$diffmins)} |>
+#   ggplot(aes(x = diffmins)) +
+#   geom_histogram() |>
+#   dplyr::summarise(meandiffmins = mean(diffmins, na.rm = TRUE),
+#                    sd3 = sd(diffmins, na.rm = TRUE) * 3) |>
+#   ungroup()
 # id       meandiffmins    sd3
 # 177940.1         448    4212
 # 177941.1         643    4509
@@ -555,7 +556,7 @@ hammers |>
   group_by(id) |>
   group_walk(~ {
     p <- ggplot(.x) + geom_histogram(aes(x = diffmins))
-    ggsave(plot = p, filename = paste0(saveloc, lubridate::today(), "_diffMinsHistGG_", .y$id, ".png"))
+    ggsave(plot = p, filename = paste0(saveloc, "movegroup dBBMMs/timeDiffLong histograms/", lubridate::today(), "_diffMinsHistGG_", .y$id, ".png"))
     .x
   }) |>
   summarise(meandiffmins = mean(diffmins, na.rm = TRUE),
@@ -564,147 +565,187 @@ hammers |>
 
 # rasterResolution ####
 # With default = 6: Error: cannot allocate vector of size 2286.7 Gb
-2 * mean(meanMoveLocDist) # 8466.051
+2 * mean(meanMoveLocDist) # 8265.945
 hist(meanMoveLocDist) # very left skewed
-summary(meanMoveLocDist) # median 1742
+summary(meanMoveLocDist) # median 1927.83
 # choose 1000
 
 length(unique(hammers$shark))
+# 9
 
-movegroup(
-  data = hammers,
-  ID = "shark",
-  Datetime = "date", # DateTime
-  Lat = "lat",
-  Lon = "lon",
-  # Group = NULL,
-  # dat.TZ = "US/Eastern",
-  # proj = sp::CRS("+proj=longlat +datum=WGS84"),
-  projectedCRS = "+init=epsg:32617", # https://epsg.io/32617 Bimini, Florida
-  # sensor = "VR2W",
-  moveLocError = meanMoveLocDist,
-  timeDiffLong = (24 * 60),
-  # Single numeric value. Threshold value in timeDiffUnits designating the length of long breaks in re-locations. Used for bursting a movement track into segments, thereby removing long breaks from the movement track. See ?move::bursted for details.
-  timeDiffUnits = "mins",
-  # center = TRUE,
-  buffpct = 0.6, # Buffer extent for raster creation, proportion of 1.
-  # rasterExtent = NULL,
-  # rasterCRS = sp::CRS("+proj=utm +zone=17 +datum=WGS84"),
-  rasterResolution = 1000,
-  # Single numeric value to set raster resolution - cell size in metres? 111000: 1 degree lat = 111km.
-  # Tradeoff between small res = big file & processing time.
-  # Should be a function of the spatial resolution of your receivers or positioning tags.
-  # Higher resolution will lead to more precision in the volume areas calculations.
-  # Try using 2*dbblocationerror.
-  dbblocationerror = meanMoveLocDist,
-  dbbext = 0.3, # Ext param in the 'brownian.bridge.dyn' function in the 'move' package. Extends bounding box around track. Numeric single (all edges), double (x & y), or 4 (xmin xmax ymin ymax). Default 0.3.
-  # dbbwindowsize = 23,
-  # writeRasterFormat = "ascii",
-  # writeRasterExtension = ".asc",
-  # writeRasterDatatype = "FLT4S",
-  # absVolumeAreaSaveName = "VolumeArea_AbsoluteScale.csv",
-  savedir = "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/movegroup dBBMMs/",
-  alerts = TRUE
-)
+mysubsets <- c("All", "Andros", "Bimini", "Summer", "Winter")
 
-scaleraster(
-  path = "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/movegroup dBBMMs/",
-  pathsubsets = "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/movegroup dBBMMs/", # will be able to leave NULL following change I just made
-  # pattern = ".asc",
-  # weighting = 1,
-  # format = "ascii",
-  # datatype = "FLT4S",
-  # bylayer = TRUE,
-  # overwrite = TRUE,
-  # scalefolder = "Scaled",
-  # weightedsummedname = "All_Rasters_Weighted_Summed",
-  # scaledweightedname = "All_Rasters_Scaled_Weighted",
-  crsloc = "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/movegroup dBBMMs/" # will be able to leave NULL following change I just made
-  # , returnObj = FALSE
-)
+for (thissubset in mysubsets[5]) { # all worked, had to make edits to hammersubset$meanMoveLocDist for the others. Then Andros
+  # subset of interest. case_match returns a vector not a df/anything else
+  if (thissubset == "All") hammersubset <- hammers
+  if (thissubset == "Andros") hammersubset <- hammers |> filter(group == "Andros")
+  if (thissubset == "Bimini") hammersubset <- hammers |> filter(group == "Bimini")
+  if (thissubset == "Summer") hammersubset <- hammers |> filter(month(date) %in% c(5:10))
+  if (thissubset == "Winter") hammersubset <- hammers |> filter(month(date) %in% c(11:12, 1:4))
 
-# ggmap::register_google()
-dBBMMplot(
-  x = paste0("/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/movegroup dBBMMs/Scaled/All_Rasters_Scaled_Weighted_UDScaled.asc"),
-  crsloc = "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/movegroup dBBMMs/",
-  # trim = TRUE,
-  # myLocation = NULL,
-  googlemap = TRUE,
-  # gmapsAPI = NULL,
-  expandfactor = 1,
-  mapzoom = 7,
-  # mapsource = "google",
-  # maptype = "satellite",
-  # contour1colour = "red",
-  # contour2colour = "orange",
-  # plottitle = "Aggregated 95% and 50% UD contours",
-  plotsubtitle = "Scaled contours. n = 10",
-  # legendtitle = "Percent UD Contours",
-  # plotcaption = paste0("movegroup, ", lubridate::today()),
-  # axisxlabel = "Longitude",
-  # axisylabel = "Latitude",
-  legendposition = c(0.9, 0.89),
-  # fontsize = 12,
-  # fontfamily = "Times New Roman",
-  # filesavename = paste0(lubridate::today(), "_dBBMM-contours.png"),
-  savedir = "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/movegroup dBBMMs/Scaled/Plot",
-  # receiverlats = NULL,
-  # receiverlons = NULL,
-  # receivernames = NULL,
-  # receiverrange = NULL,
-  # recpointscol = "black",
-  # recpointsfill = "white",
-  # recpointsalpha = 0.5,
-  # recpointssize = 1,
-  # recpointsshape = 21,
-  # recbufcol = "grey75",
-  # recbuffill = "grey",
-  # recbufalpha = 0.5,
-  # reclabcol = "black",
-  # reclabfill = NA,
-  # reclabnudgex = 0,
-  # reclabnudgey = -200,
-  # reclabpad = 0,
-  # reclabrad = 0.15,
-  # reclabbord = 0,
-  surface = TRUE
-)
+  dir.create(paste0(saveloc, "movegroup dBBMMs/", thissubset, "/"))
 
-# 01. worked, extents too large. Change buffpct to 0.3 from 1:
-# Error in .local(object, raster, location.error = location.error, ext = ext,: Lower x grid not large enough, consider extending the raster in that direction or enlarging the ext argument
-# Try 0.6
-# 02. exactly the same. Try crop in plot.R.
-# 03. expandfactor from 1.6 to 1. no change
-# 04. mapzoom from 5 to 10, 8, 7. Moved legend to right
-# 05. from hammers$id to hammers$shark, n=10 to 9
+  for (TDL in 1200) { # c(18, 24, 36, 1000)
+    dir.create(paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/"))
+    movegroup(
+      data = hammersubset,
+      ID = "shark",
+      Datetime = "date", # DateTime
+      Lat = "lat",
+      Lon = "lon",
+      # Group = NULL,
+      # dat.TZ = "US/Eastern",
+      # proj = sp::CRS("+proj=longlat +datum=WGS84"),
+      projectedCRS = "+init=epsg:32617", # https://epsg.io/32617 Bimini, Florida
+      # sensor = "VR2W",
+      moveLocError = hammersubset$meanMoveLocDist,
+      # timeDiffLong 18 24 36 trials####
+      timeDiffLong = (TDL * 60),
+      # Single numeric value. Threshold value in timeDiffUnits designating the length of long breaks in re-locations. Used for bursting a movement track into segments, thereby removing long breaks from the movement track. See ?move::bursted for details.
+      timeDiffUnits = "mins",
+      # center = TRUE,
+      buffpct = 0.6, # Buffer extent for raster creation, proportion of 1.
+      # rasterExtent = NULL,
+      # rasterCRS = sp::CRS("+proj=utm +zone=17 +datum=WGS84"),
+      rasterResolution = 1000,
+      # Single numeric value to set raster resolution - cell size in metres? 111000: 1 degree lat = 111km.
+      # Tradeoff between small res = big file & processing time.
+      # Should be a function of the spatial resolution of your receivers or positioning tags.
+      # Higher resolution will lead to more precision in the volume areas calculations.
+      # Try using 2*dbblocationerror.
+      dbblocationerror = hammersubset$meanMoveLocDist,
+      dbbext = 0.3, # Ext param in the 'brownian.bridge.dyn' function in the 'move' package. Extends bounding box around track. Numeric single (all edges), double (x & y), or 4 (xmin xmax ymin ymax). Default 0.3.
+      # dbbwindowsize = 23,
+      # writeRasterFormat = "ascii",
+      # writeRasterExtension = ".asc",
+      # writeRasterDatatype = "FLT4S",
+      # absVolumeAreaSaveName = "VolumeArea_AbsoluteScale.csv",
+      savedir = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/"),
+      alerts = TRUE
+    )
+
+    scaleraster(
+      path = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/"),
+      pathsubsets = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/"), # will be able to leave NULL following change I just made
+      # pattern = ".asc",
+      # weighting = 1,
+      # format = "ascii",
+      # datatype = "FLT4S",
+      # bylayer = TRUE,
+      # overwrite = TRUE,
+      # scalefolder = "Scaled",
+      # weightedsummedname = "All_Rasters_Weighted_Summed",
+      # scaledweightedname = "All_Rasters_Scaled_Weighted",
+      crsloc = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/") # will be able to leave NULL following change I just made
+      # , returnObj = FALSE
+    )
+
+    dir.create(paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/Scaled/Plot"))
+
+    # ggmap::register_google()
+    dBBMMplot(
+      x = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/Scaled/All_Rasters_Scaled_Weighted_UDScaled.asc"),
+      crsloc = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/"),
+      # trim = TRUE,
+      # myLocation = NULL,
+      googlemap = TRUE,
+      # gmapsAPI = NULL,
+      expandfactor = 1,
+      mapzoom = 7,
+      # mapsource = "google",
+      # maptype = "satellite",
+      # contour1colour = "red",
+      # contour2colour = "orange",
+      # plottitle = "Aggregated 95% and 50% UD contours",
+      plotsubtitle = "Scaled contours. n = 10",
+      # legendtitle = "Percent UD Contours",
+      # plotcaption = paste0("movegroup, ", lubridate::today()),
+      # axisxlabel = "Longitude",
+      # axisylabel = "Latitude",
+      legendposition = c(0.9, 0.89),
+      # fontsize = 12,
+      # fontfamily = "Times New Roman",
+      # filesavename = paste0(lubridate::today(), "_dBBMM-contours.png"),
+      savedir = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/Scaled/Plot"),
+      # receiverlats = NULL,
+      # receiverlons = NULL,
+      # receivernames = NULL,
+      # receiverrange = NULL,
+      # recpointscol = "black",
+      # recpointsfill = "white",
+      # recpointsalpha = 0.5,
+      # recpointssize = 1,
+      # recpointsshape = 21,
+      # recbufcol = "grey75",
+      # recbuffill = "grey",
+      # recbufalpha = 0.5,
+      # reclabcol = "black",
+      # reclabfill = NA,
+      # reclabnudgex = 0,
+      # reclabnudgey = -200,
+      # reclabpad = 0,
+      # reclabrad = 0.15,
+      # reclabbord = 0,
+      surface = TRUE
+    )
+
+    # 01. worked, extents too large. Change buffpct to 0.3 from 1:
+    # Error in .local(object, raster, location.error = location.error, ext = ext,: Lower x grid not large enough, consider extending the raster in that direction or enlarging the ext argument
+    # Try 0.6
+    # 02. exactly the same. Try crop in plot.R.
+    # 03. expandfactor from 1.6 to 1. no change
+    # 04. mapzoom from 5 to 10, 8, 7. Moved legend to right
+    # 05. from hammers$id to hammers$shark, n=10 to 9
 
 
-# per shark, scaled:
-for (thisshark in make.names(unique(hammers$shark))) {
-  dBBMMplot(
-    x = paste0("/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/movegroup dBBMMs/Scaled/", thisshark, ".asc"),
-    crsloc = "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/movegroup dBBMMs/",
-    googlemap = TRUE,
-    expandfactor = 1,
-    mapzoom = 7,
-    plotsubtitle = "Scaled contours. n = 10",
-    legendposition = c(0.9, 0.89),
-    filesavename = paste0(lubridate::today(), "_", thisshark, "_dBBMM-contours.png"),
-    savedir = "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/movegroup dBBMMs/Scaled/Plot")}
+    # # per shark, scaled:
+    # for (thisshark in make.names(unique(hammers$shark))) {
+    #   dBBMMplot(
+    #     x = paste0(saveloc, "movegroup dBBMMs/Scaled/", thisshark, ".asc"),
+    #     crsloc = paste0(saveloc, "movegroup dBBMMs/"),
+    #     googlemap = TRUE,
+    #     expandfactor = 1,
+    #     mapzoom = 7,
+    #     plotsubtitle = "Scaled contours. n = 10",
+    #     legendposition = c(0.9, 0.89),
+    #     filesavename = paste0(lubridate::today(), "_", thisshark, "_dBBMM-contours.png"),
+    #     savedir = paste0(saveloc, "movegroup dBBMMs/Scaled/Plot"))}
 
-# per shark, unscaled:
-for (thisshark in make.names(unique(hammers$shark))) {
-  dBBMMplot(
-    x = paste0("/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/movegroup dBBMMs/", thisshark, ".asc"),
-    crsloc = "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/movegroup dBBMMs/",
-    googlemap = TRUE,
-    expandfactor = 1,
-    mapzoom = 7,
-    plotsubtitle = "Scaled contours. n = 10",
-    legendposition = c(0.9, 0.89),
-    filesavename = paste0(lubridate::today(), "_", thisshark, "_dBBMM-contours.png"),
-    savedir = "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/movegroup dBBMMs/Plot")}
+    # No difference, same as unscaled
 
+    # per shark, unscaled:
+    for (thisshark in make.names(unique(hammersubset$shark))) {
+      # ISSUE####
+      # Summer subset, ID = "X177942", not created by movegroup, thus can't be found to be plotted
+      # movegroup said: "processing 7 of 7" i.e. not 8 of 8
+      dBBMMplot(
+        x = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/", thisshark, ".asc"),
+        crsloc = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/"),
+        googlemap = TRUE,
+        expandfactor = 1,
+        mapzoom = 7,
+        plotsubtitle = "Scaled contours. n = 10",
+        legendposition = c(0.9, 0.89),
+        filesavename = paste0(lubridate::today(), "_", thisshark, "_dBBMM-contours.png"),
+        savedir = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/Scaled/Plot"))}
+
+
+  } # close for loop 18 24 36 1000 1200h
+} # close for (thissubset in mysubsets)
+
+# compare movegroup volumeareas####
+compare <- read_csv(paste0(saveloc, "movegroup dBBMMs/timeDiffLong_comparison.csv"))
+compare |>
+  filter(str_sub(string = ID, start = 1, end = 1) == "X") |>  # filter out scaled summaries, remain only sharks
+  # `absolute-scaled` == "scaled") |> # scaled only
+  group_by(hours,
+           `absolute-scaled`) |>
+  summarise_all(mean) |>
+  ggplot() +
+  geom_point(mapping = aes(x = hours, y = core.use, colour = as.factor(hours), shape = `absolute-scaled`)) +
+  theme_minimal() %+replace% theme(plot.background = element_rect(fill = "white"),
+                                   panel.background = element_rect(fill = "white"))
+ggsave(filename = paste0(saveloc, "movegroup dBBMMs/", lubridate::today(), "_timeDiffLong_comparison.png"))
 
 
 # TODOLIST####
