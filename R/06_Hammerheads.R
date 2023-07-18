@@ -572,6 +572,7 @@ summary(meanMoveLocDist) # median 1927.83
 
 length(unique(hammers$shark))
 # 9
+saveRDS(hammers,file = paste0(saveloc, "/EEZoverlap/Hammers.Rds"))
 
 mysubsets <- c("All", "Andros", "Bimini", "Summer", "Winter")
 
@@ -746,6 +747,67 @@ compare |>
   theme_minimal() %+replace% theme(plot.background = element_rect(fill = "white"),
                                    panel.background = element_rect(fill = "white"))
 ggsave(filename = paste0(saveloc, "movegroup dBBMMs/", lubridate::today(), "_timeDiffLong_comparison.png"))
+
+
+
+
+
+
+
+
+# 4. %Days in Bahamas EEZ####
+# ▪ Simple %. Spatial overlap R code, easy.
+# ▪ Do we have EEZ shapefile? TG www.marineregions.org
+# see /home/simon/Documents/Si Work/PostDoc Work/movegroup help/Liberty Boyd/Points in UD contours/PointsInWhichUDcontour.R
+hammerssf <- readRDS(file = paste0(saveloc, "/EEZoverlap/Hammers.Rds")) |>
+  sf::st_as_sf(coords = c("lon","lat")) |> sf::st_set_crs(4326) |> # Convert points to sf
+  mutate(Index = row_number()) # for indexing later
+maploc = "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Maps & Surveys/Bahamas EEZ Shapefile/"
+EEZ <- sf::st_read(paste0(maploc,"eez.shp")) # polygon
+
+# pointsinpolysubset <- points[polygon,] #sf objects subset points occurring in poly
+hammerssfinEEZ <- hammerssf[EEZ,]
+hammerssfinAndros <- hammerssf |> filter(group == "Andros")
+hammerssfinBimini <- hammerssf |> filter(group == "Bimini")
+hammerssfinSummer <- hammerssf |> filter(month(date) %in% c(5:10))
+hammerssfinWinter <- hammerssf |> filter(month(date) %in% c(11:12, 1:4))
+hammerssfinEEZAndros <- hammerssfinAndros[EEZ,]
+hammerssfinEEZBimini <- hammerssfinBimini[EEZ,]
+hammerssfinEEZSummer <- hammerssfinSummer[EEZ,]
+hammerssfinEEZWinter <- hammerssfinWinter[EEZ,]
+
+hammerssf$EEZ <- as.logical(FALSE)
+hammerssf[hammerssf$Index %in% hammerssfinEEZ$Index, "EEZ"] <- as.logical(TRUE)
+
+hammerssfinAndros$EEZAndros <- as.logical(FALSE)
+hammerssfinAndros[hammerssfinAndros$Index %in% hammerssfinEEZAndros$Index, "EEZAndros"] <- as.logical(TRUE)
+hammerssf[hammerssf$Index %in% hammerssfinAndros$Index, "EEZAndros"] <- hammerssfinAndros$EEZAndros
+
+hammerssfinBimini$EEZBimini <- as.logical(FALSE)
+hammerssfinBimini[hammerssfinBimini$Index %in% hammerssfinEEZBimini$Index, "EEZBimini"] <- as.logical(TRUE)
+hammerssf[hammerssf$Index %in% hammerssfinBimini$Index, "EEZBimini"] <- hammerssfinBimini$EEZBimini
+
+hammerssfinSummer$EEZSummer <- as.logical(FALSE)
+hammerssfinSummer[hammerssfinSummer$Index %in% hammerssfinEEZSummer$Index, "EEZSummer"] <- as.logical(TRUE)
+hammerssf[hammerssf$Index %in% hammerssfinSummer$Index, "EEZSummer"] <- hammerssfinSummer$EEZSummer
+
+hammerssfinWinter$EEZWinter <- as.logical(FALSE)
+hammerssfinWinter[hammerssfinWinter$Index %in% hammerssfinEEZWinter$Index, "EEZWinter"] <- as.logical(TRUE)
+hammerssf[hammerssf$Index %in% hammerssfinWinter$Index, "EEZWinter"] <- hammerssfinWinter$EEZWinter
+
+print(paste0("Percent of days in Bahamas EEZ, all data: ", round(length(which(hammerssf$EEZ)) / length(hammerssf$EEZ) * 100, 1), "%; ", length(hammerssf$EEZ), " days"))
+# Percent of days in Bahamas EEZ, all data: 65.6%; 3733 days
+print(paste0("Percent of days in Bahamas EEZ, Andros-tagged: ", round(length(which(hammerssfinAndros$EEZAndros)) / length(hammerssfinAndros$EEZAndros) * 100, 1), "%; ", length(hammerssfinAndros$EEZAndros), " days"))
+# Percent of days in Bahamas EEZ, Andros-tagged: 68%; 2211 days
+print(paste0("Percent of days in Bahamas EEZ, Bimini-tagged: ", round(length(which(hammerssfinBimini$EEZBimini)) / length(hammerssfinBimini$EEZBimini) * 100, 1), "%; ", length(hammerssfinBimini$EEZBimini), " days"))
+# Percent of days in Bahamas EEZ, Bimini-tagged: 62%; 1522 days
+print(paste0("Percent of days in Bahamas EEZ, Summer: ", round(length(which(hammerssfinSummer$EEZSummer)) / length(hammerssfinSummer$EEZSummer) * 100, 1), "%; ", length(hammerssfinSummer$EEZSummer), " days"))
+# Percent of days in Bahamas EEZ, Summer: 59.1%; 1659 days
+print(paste0("Percent of days in Bahamas EEZ, Winter: ", round(length(which(hammerssfinWinter$EEZWinter)) / length(hammerssfinWinter$EEZWinter) * 100, 1), "%; ", length(hammerssfinWinter$EEZWinter), " days"))
+# Percent of days in Bahamas EEZ, Winter: 70.7%; 2074 days
+
+
+
 
 
 # TODOLIST####
