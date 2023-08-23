@@ -41,7 +41,8 @@ hammers <- readRDS("/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/P
 meta <- read_csv("../../Data/Hammerhead SPOT tags/Datasheet_Bahamas_Smok_Tagging_Metadata_NEW.csv") |>
   rename(shark = ptt_id,
          FishLengthCm = stl)
-hammers %<>% left_join(meta) # , by = join_by(shark == id) # doesn't work naming columns, has gotten worse.
+hammers %<>% left_join(meta)  # , by = join_by(shark == id) # doesn't work naming columns, has gotten worse.
+hammers %<>% filter(group != "Bimini") # 2023-08-08 remove Bimini sharks
 
 # blocklab, diveclassify1transit
 # > li5day {5 day linearity index. 1: linear paths, 0: tortuous paths}
@@ -79,11 +80,11 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
                                                          roll = 5)
     # 1: linear paths, 0: tortuous paths
     if (!nrow(df_nonai) > 1) next # track etc breaks with < 2 points
-    track <- mk_track(df_nonai,
-                      .x = lon,
-                      .y = lat,
-                      .t = date, # was DateTimeUTCmin5
-                      crs = 4326) %>%  #crs = sp::CRS("+init=epsg:4326")) %>%
+    track <- amt::mk_track(df_nonai,
+                           .x = lon,
+                           .y = lat,
+                           .t = date, # was DateTimeUTCmin5
+                           crs = 4326) %>%  #crs = sp::CRS("+init=epsg:4326")) %>%
       transform_coords(6931)
     stps <- steps(track)
     # step  length  (sl;  in  CRSunits), 6931=m
@@ -428,6 +429,11 @@ clustersvec %>%
 # could do this more systematically. Could also weight the Tolerance1/2 differently? Leave it for now, perfect enemy of good.
 # See L325 TOT make centres dynamic
 
+# 2023-08-08 remove Bimini sharks
+# value     n
+#     3     6   #more k=3 than k=2
+#     2     4
+
 # wrap up####
 setDF(hammers)
 hammers$StepLengthBLlog1p <-  expm1(hammers$StepLengthBLlog1p + logmean)
@@ -574,9 +580,11 @@ length(unique(hammers$shark))
 # 9
 saveRDS(hammers,file = paste0(saveloc, "/EEZoverlap/Hammers.Rds"))
 
-mysubsets <- c("All", "Andros", "Bimini", "Summer", "Winter")
+# mysubsets <- c("All", "Andros", "Bimini", "Summer", "Winter")
+mysubsets <- c("All", "Summer", "Winter") # 2023-08-08 remove Bimini sharks, and thus Andros also since ANdros = All
 
-for (thissubset in mysubsets[5]) { # all worked, had to make edits to hammersubset$meanMoveLocDist for the others. Then Andros
+
+for (thissubset in mysubsets) { # all worked, had to make edits to hammersubset$meanMoveLocDist for the others. Then Andros
   # subset of interest. case_match returns a vector not a df/anything else
   if (thissubset == "All") hammersubset <- hammers
   if (thissubset == "Andros") hammersubset <- hammers |> filter(group == "Andros")
@@ -588,7 +596,7 @@ for (thissubset in mysubsets[5]) { # all worked, had to make edits to hammersubs
 
   for (TDL in 1200) { # c(18, 24, 36, 1000)
     dir.create(paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/"))
-    movegroup(
+    movegroup::movegroup(
       data = hammersubset,
       ID = "shark",
       Datetime = "date", # DateTime
@@ -614,7 +622,6 @@ for (thissubset in mysubsets[5]) { # all worked, had to make edits to hammersubs
       # Should be a function of the spatial resolution of your receivers or positioning tags.
       # Higher resolution will lead to more precision in the volume areas calculations.
       # Try using 2*dbblocationerror.
-      dbblocationerror = hammersubset$meanMoveLocDist,
       dbbext = 0.3, # Ext param in the 'brownian.bridge.dyn' function in the 'move' package. Extends bounding box around track. Numeric single (all edges), double (x & y), or 4 (xmin xmax ymin ymax). Default 0.3.
       # dbbwindowsize = 23,
       # writeRasterFormat = "ascii",
@@ -644,7 +651,7 @@ for (thissubset in mysubsets[5]) { # all worked, had to make edits to hammersubs
     dir.create(paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/Scaled/Plot"))
 
     # ggmap::register_google()
-    dBBMMplot(
+    plotraster(
       x = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/Scaled/All_Rasters_Scaled_Weighted_UDScaled.asc"),
       crsloc = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/"),
       # trim = TRUE,
@@ -701,7 +708,7 @@ for (thissubset in mysubsets[5]) { # all worked, had to make edits to hammersubs
 
     # # per shark, scaled:
     # for (thisshark in make.names(unique(hammers$shark))) {
-    #   dBBMMplot(
+    #   plotraster(
     #     x = paste0(saveloc, "movegroup dBBMMs/Scaled/", thisshark, ".asc"),
     #     crsloc = paste0(saveloc, "movegroup dBBMMs/"),
     #     googlemap = TRUE,
@@ -719,7 +726,7 @@ for (thissubset in mysubsets[5]) { # all worked, had to make edits to hammersubs
       # ISSUE####
       # Summer subset, ID = "X177942", not created by movegroup, thus can't be found to be plotted
       # movegroup said: "processing 7 of 7" i.e. not 8 of 8
-      dBBMMplot(
+      plotraster(
         x = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/", thisshark, ".asc"),
         crsloc = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/"),
         googlemap = TRUE,
@@ -771,10 +778,19 @@ hammerssfinAndros <- hammerssf |> filter(group == "Andros")
 hammerssfinBimini <- hammerssf |> filter(group == "Bimini")
 hammerssfinSummer <- hammerssf |> filter(month(date) %in% c(5:10))
 hammerssfinWinter <- hammerssf |> filter(month(date) %in% c(11:12, 1:4))
+hammerssfinAndrosSummer <- hammerssf |> filter(group == "Andros", month(date) %in% c(5:10))
+hammerssfinAndrosWinter <- hammerssf |> filter(group == "Andros", month(date) %in% c(11:12, 1:4))
+hammerssfinBiminiSummer <- hammerssf |> filter(group == "Bimini", month(date) %in% c(5:10))
+hammerssfinBiminiWinter <- hammerssf |> filter(group == "Bimini", month(date) %in% c(11:12, 1:4))
+
 hammerssfinEEZAndros <- hammerssfinAndros[EEZ,]
 hammerssfinEEZBimini <- hammerssfinBimini[EEZ,]
 hammerssfinEEZSummer <- hammerssfinSummer[EEZ,]
 hammerssfinEEZWinter <- hammerssfinWinter[EEZ,]
+hammerssfinEEZAndrosSummer <- hammerssfinAndrosSummer[EEZ,]
+hammerssfinEEZAndrosWinter <- hammerssfinAndrosWinter[EEZ,]
+hammerssfinEEZBiminiSummer <- hammerssfinBiminiSummer[EEZ,]
+hammerssfinEEZBiminiWinter <- hammerssfinBiminiWinter[EEZ,]
 
 hammerssf$EEZ <- as.logical(FALSE)
 hammerssf[hammerssf$Index %in% hammerssfinEEZ$Index, "EEZ"] <- as.logical(TRUE)
@@ -795,6 +811,22 @@ hammerssfinWinter$EEZWinter <- as.logical(FALSE)
 hammerssfinWinter[hammerssfinWinter$Index %in% hammerssfinEEZWinter$Index, "EEZWinter"] <- as.logical(TRUE)
 hammerssf[hammerssf$Index %in% hammerssfinWinter$Index, "EEZWinter"] <- hammerssfinWinter$EEZWinter
 
+hammerssfinAndrosSummer$EEZAndrosSummer <- as.logical(FALSE)
+hammerssfinAndrosSummer[hammerssfinAndrosSummer$Index %in% hammerssfinEEZAndrosSummer$Index, "EEZAndrosSummer"] <- as.logical(TRUE)
+hammerssf[hammerssf$Index %in% hammerssfinAndrosSummer$Index, "EEZAndrosSummer"] <- hammerssfinAndrosSummer$EEZAndrosSummer
+
+hammerssfinAndrosWinter$EEZAndrosWinter <- as.logical(FALSE)
+hammerssfinAndrosWinter[hammerssfinAndrosWinter$Index %in% hammerssfinEEZAndrosWinter$Index, "EEZAndrosWinter"] <- as.logical(TRUE)
+hammerssf[hammerssf$Index %in% hammerssfinAndrosWinter$Index, "EEZAndrosWinter"] <- hammerssfinAndrosWinter$EEZAndrosWinter
+
+hammerssfinBiminiSummer$EEZBiminiSummer <- as.logical(FALSE)
+hammerssfinBiminiSummer[hammerssfinBiminiSummer$Index %in% hammerssfinEEZBiminiSummer$Index, "EEZBiminiSummer"] <- as.logical(TRUE)
+hammerssf[hammerssf$Index %in% hammerssfinBiminiSummer$Index, "EEZBiminiSummer"] <- hammerssfinBiminiSummer$EEZBiminiSummer
+
+hammerssfinBiminiWinter$EEZBiminiWinter <- as.logical(FALSE)
+hammerssfinBiminiWinter[hammerssfinBiminiWinter$Index %in% hammerssfinEEZBiminiWinter$Index, "EEZBiminiWinter"] <- as.logical(TRUE)
+hammerssf[hammerssf$Index %in% hammerssfinBiminiWinter$Index, "EEZBiminiWinter"] <- hammerssfinBiminiWinter$EEZBiminiWinter
+
 print(paste0("Percent of days in Bahamas EEZ, all data: ", round(length(which(hammerssf$EEZ)) / length(hammerssf$EEZ) * 100, 1), "%; ", length(hammerssf$EEZ), " days"))
 # Percent of days in Bahamas EEZ, all data: 65.6%; 3733 days
 print(paste0("Percent of days in Bahamas EEZ, Andros-tagged: ", round(length(which(hammerssfinAndros$EEZAndros)) / length(hammerssfinAndros$EEZAndros) * 100, 1), "%; ", length(hammerssfinAndros$EEZAndros), " days"))
@@ -805,7 +837,14 @@ print(paste0("Percent of days in Bahamas EEZ, Summer: ", round(length(which(hamm
 # Percent of days in Bahamas EEZ, Summer: 59.1%; 1659 days
 print(paste0("Percent of days in Bahamas EEZ, Winter: ", round(length(which(hammerssfinWinter$EEZWinter)) / length(hammerssfinWinter$EEZWinter) * 100, 1), "%; ", length(hammerssfinWinter$EEZWinter), " days"))
 # Percent of days in Bahamas EEZ, Winter: 70.7%; 2074 days
-
+print(paste0("Percent of days in Bahamas EEZ, Andros-tagged, Summer: ", round(length(which(hammerssfinAndrosSummer$EEZAndrosSummer)) / length(hammerssfinAndrosSummer$EEZAndrosSummer) * 100, 1), "%; ", length(hammerssfinAndrosSummer$EEZAndrosSummer), " days"))
+# Percent of days in Bahamas EEZ, Andros-tagged, Summer: 61.3%; 1013 days
+print(paste0("Percent of days in Bahamas EEZ, Andros-tagged, Winter: ", round(length(which(hammerssfinAndrosWinter$EEZAndrosWinter)) / length(hammerssfinAndrosWinter$EEZAndrosWinter) * 100, 1), "%; ", length(hammerssfinAndrosWinter$EEZAndrosWinter), " days"))
+# Percent of days in Bahamas EEZ, Andros-tagged, Winter: 73.6%; 1198 days
+print(paste0("Percent of days in Bahamas EEZ, Bimini-tagged, Summer: ", round(length(which(hammerssfinBiminiSummer$EEZBiminiSummer)) / length(hammerssfinBiminiSummer$EEZBiminiSummer) * 100, 1), "%; ", length(hammerssfinBiminiSummer$EEZBiminiSummer), " days"))
+# Percent of days in Bahamas EEZ, Bimini-tagged, Summer: 55.6%; 646 days
+print(paste0("Percent of days in Bahamas EEZ, Bimini-tagged, Winter: ", round(length(which(hammerssfinBiminiWinter$EEZBiminiWinter)) / length(hammerssfinBiminiWinter$EEZBiminiWinter) * 100, 1), "%; ", length(hammerssfinBiminiWinter$EEZBiminiWinter), " days"))
+# Percent of days in Bahamas EEZ, Bimini-tagged, Winter: 66.8%; 876 days
 
 
 
