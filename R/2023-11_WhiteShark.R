@@ -267,8 +267,8 @@ ggmap::ggmap(myMap) +
 
 
 
-  scale_fill_gradientn(colours = rev(rainbow(12)), limits = c(1, 12), # month colour controls
-                       labels = month.abb, breaks = 1:12) +
+scale_fill_gradientn(colours = rev(rainbow(12)), limits = c(1, 12), # month colour controls
+                     labels = month.abb, breaks = 1:12) +
   geom_point(aes(x = longitude,
                  y = latitude,
                  shape = Name), # add deploy triangle & last diamond
@@ -368,19 +368,50 @@ shark |>
 # Abacus plot ####
 ggplot(data = shark |>
          mutate(Date = as.Date(datecollected),
-                Shark = factor(fieldnumber)) |>
-         rename(Station = "station")) +
+                Shark = factor(fieldnumber, levels = metadata |> # colour-ordered by shark size (default is shark ID ("fieldnumber")): Shark factor order by size
+                                 arrange(SizeM) |>
+                                 pull(fieldnumber))) |> # ,Shark = factor(fieldnumber)
+         rename(Station = "station") |>
+         group_by(Shark) |>
+         filter(n() > 1) |> # remove 4975 only 1 hit
+         ungroup() |>
+         droplevels() |> # drop unused factor levels but the NA is because 4976 is missing from metadata
+         left_join(metadata |> select(fieldnumber, SEX, locationTagged)) # icon shape could relate to sex
+) +
   geom_point(mapping = aes(x = Date,
-                 y = Station,
-                 colour = Shark), # col = '#5e7692'
-             size = 2) +
-  theme_classic() +
-  scale_x_date(date_labels = "%b %Y",
+                           y = Station,
+                           colour = Shark, # colour = fill for pch != 21:24.
+                           # fill = Shark, # definitely edits fill but all legend items are black (pch 21:24)
+                           # colour = factor(locationTagged, levels = c("New Brunswick, Canada", # definitely edits border colour but legend icons are filled  (pch 21:24)
+                           #                                            "Cape Cod, USA",
+                           #                                            "South Carolina, USA")),
+                           # search as bug ####
+                           shape = SEX),
+             size = 3,
+             # colour = "black",
+             alpha = 0.35
+             ) +
+  # scale_fill_manual(values = c("blue", "black", "pink", "grey")) +
+  # scale_shape_manual(values = c(21:24)) + # have to be the shapes which have fill and colour
+  scale_x_date(date_labels = "%b %y",
                date_breaks = "3 months",
-               date_minor_breaks = "1 month")
+               date_minor_breaks = "1 month") +
+  theme_classic() %+replace% theme(
+    axis.text = element_text(size = rel(1.3)),
+    axis.title = element_text(size = rel(2)),
+    legend.text = element_text(size = rel(1.5)),
+    plot.background = element_rect(fill = "white", colour = "grey50"), # white background
+    strip.text.x = element_text(size = rel(2)),
+    panel.border = element_rect(colour = "black", fill = NA, size = 1),
+    legend.title = element_blank(),
+    legend.spacing.x = unit(0, "cm"), # compress spacing between legend items, this is min
+    legend.background = element_blank(),
+    panel.background = element_rect(fill = "white", colour = "grey50"),
+    panel.grid = element_line(colour = "grey90"),
+    legend.key = element_blank()) # removed whitespace buffer around legend boxes which is nice
 
 ggsave(paste0(today(), "_GWS-Abacus.png"),
        plot = last_plot(), device = "png", path = loadloc, scale = 1.75, #changes how big lines & legend items & axes & titles are relative to basemap. Smaller number = bigger items
        width = 8, # 8 for Med # 7 normal # 3.8 miwingWhotspot, 7 wholearea 6 gsl 5 gom 5.5 centralAtl
-       height = 4, #NA default; Then ggsave with defaults, changes from 7x7" to e.g.
+       height = 3, #NA default; Then ggsave with defaults, changes from 7x7" to e.g.
        units = "in", dpi = 600, limitsize = TRUE)
