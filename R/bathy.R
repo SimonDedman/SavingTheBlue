@@ -113,9 +113,9 @@ library(tidyverse)
 library(magrittr)
 library(lubridate)
 dbaseloc <- "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Data/"
-dbasedate <- "2023-03-31"
+dbasedate <- "2023-12-18"
 rootname <- "shark_capture_data" # CHOOSE ONE
-rootname <- "drumline_data"
+rootname <- "drumline_reefs"
 dtdropoff <- read_csv(file = paste0(dbaseloc, dbasedate, "_", rootname, "_dropoff.csv")) %>%
   # tidy names
   rename(DtDeeps = DtDeeps_1,
@@ -135,6 +135,7 @@ dtdropoff <- read_csv(file = paste0(dbaseloc, dbasedate, "_", rootname, "_dropof
   select(ID, DeepShallow, DtDropOff)
 
 rdsfile <- readRDS(file = paste0(dbaseloc, today(), "_", rootname, ".rds")) %>%
+  # select(-DeepShallow, -DtDropOff) %>% # need to remove existing data before adding updated inc new
   left_join(dtdropoff) %T>% # join by ID, note T pipe retains object
   saveRDS(file = paste0(dbaseloc, dbasedate, "_", rootname, "_dropoff.rds")) %T>%
   write_csv(file = paste0(dbaseloc, dbasedate, "_", rootname, "_dropoff.csv"))

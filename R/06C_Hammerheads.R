@@ -622,6 +622,7 @@ for (thissubset in mysubsets) { # all worked, had to make edits to hammersubset$
       # Should be a function of the spatial resolution of your receivers or positioning tags.
       # Higher resolution will lead to more precision in the volume areas calculations.
       # Try using 2*dbblocationerror.
+      # Why did we choose 1000m?####
       dbbext = 0.3, # Ext param in the 'brownian.bridge.dyn' function in the 'move' package. Extends bounding box around track. Numeric single (all edges), double (x & y), or 4 (xmin xmax ymin ymax). Default 0.3.
       # dbbwindowsize = 23,
       # writeRasterFormat = "ascii",
