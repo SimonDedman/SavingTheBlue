@@ -192,7 +192,10 @@ shark <- openxlsx::read.xlsx(xlsxFile = file.path(loadloc, "Skomal_White shark_D
     datecollected = as.POSIXct(datecollected * 3600 * 24,
                                origin = "1899-12-30",
                                tz = "UTC"),
-    station = factor(station, levels = c("DROP5", "DROP4", "DROP3", "DROP2", "DROP1", "CCDROP", "BWCDROP"))
+    station = factor(station, levels = c("DROP5", "DROP4", "DROP3", "DROP2", "DROP1", "CCDROP", "BWCDROP")),
+    fieldnumber = case_match(fieldnumber,
+                             "A69-9002-4976" ~ "A69-9002-4975",
+                             .default = fieldnumber)
   )
 metadata <- openxlsx::read.xlsx(xlsxFile = file.path(loadloc, "Skomal_White shark_Detections_ALL_Andros.xlsx"),
                                 sheet = 2)
@@ -359,7 +362,7 @@ shark |>
 # DROP4   A69-9002-4975      1
 # DROP3   A69-9001-6893      6
 # DROP2   A69-9001-17866     2
-# DROP2   A69-9002-4976      3
+# DROP2   A69-9002-4975      3
 # DROP1   A69-9001-17866     2
 # CCDROP  A69-9001-5287      4
 # CCDROP  A69-9001-60747     2
@@ -403,10 +406,9 @@ shark |>
 # A69-9001-62514     7
 # A69-9001-60747     6
 # A69-9001-6893      6
-# A69-9002-4976      3
+# A69-9002-4975      4
 # A69-9001-17848     2
 # A69-9001-3077      2
-# A69-9002-4975      1
 
 
 # Abacus plot ####
@@ -423,39 +425,41 @@ ggplot(data = shark |>
          left_join(metadata |> select(fieldnumber, SEX, locationTagged)) # icon shape could relate to sex
 ) +
   # fill & shape
-  geom_point(mapping = aes(x = Date,
-                           y = Station,
-                           colour = Shark, # colour = fill for pch != 21:24. Correctly sets legend colours but nothing on plot
-                           fill = Shark, # definitely edits fill but all legend items are black (pch 21:24). Setting colour AND fill makes it look 'normal'
-                           # colour = factor(locationTagged, levels = c("New Brunswick, Canada", # definitely edits border colour but legend icons are filled  (pch 21:24)
-                           #                                            "Cape Cod, USA",
-                           #                                            "South Carolina, USA")),
-                           shape = SEX),
-             size = 3,
-             # fill = "white",
-             # stroke = 0, # point border width
-             # alpha = 0.35
-  ) +
-  # border & shape
   # geom_point(mapping = aes(x = Date,
   #                          y = Station,
-  #                          # colour = Shark, # colour = fill for pch != 21:24.
-  #                          # fill = Shark, # definitely edits fill but all legend items are black (pch 21:24)
-  #                          colour = factor(locationTagged, levels = c("New Brunswick, Canada", # definitely edits border colour but legend icons are filled  (pch 21:24)
-  #                                                                     "Cape Cod, USA",
-  #                                                                     "South Carolina, USA")),
+  #                          colour = Shark, # colour = fill for pch != 21:24. Correctly sets legend colours but nothing on plot
+  #                          fill = Shark, # definitely edits fill but all legend items are black (pch 21:24). Setting colour AND fill makes it look 'normal'
+  #                          # colour = factor(locationTagged, levels = c("New Brunswick, Canada", # definitely edits border colour but legend icons are filled  (pch 21:24)
+  #                          #                                            "Cape Cod, USA",
+  #                          #                                            "South Carolina, USA")),
   #                          shape = SEX),
   #            size = 3,
-  #            fill = "white",
-#            stroke = 1.5, # point border width
-#            alpha = 0.35
-#            ) +
-# scale_fill_manual(values = c("blue", "black", "pink", "grey")) +
-geom_point(data = receivers,
-           mapping = aes(x = as.Date(deploydate),
-                         y = station),
-           shape = 4) +
+  #            # fill = "white",
+  #            # stroke = 0, # point border width
+  #            # alpha = 0.35
+  # ) +
+  # border & shape
+  geom_point(mapping = aes(x = Date,
+                           y = Station,
+                           # colour = Shark, # colour = fill for pch != 21:24.
+                           fill = Shark, # definitely edits fill but all legend items are black (pch 21:24)
+                           colour = factor(locationTagged, levels = c("New Brunswick, Canada", # definitely edits border colour but legend icons are filled  (pch 21:24)
+                                                                      "Cape Cod, USA",
+                                                                      "South Carolina, USA")),
+                           shape = SEX),
+             size = 6,
+             # fill = "white",
+             stroke = 0.7, # point border width
+             # alpha = 0.35
+  ) +
+  # scale_fill_manual(values = c("blue", "black", "pink", "grey")) +
+  scale_colour_manual(values = c("black", "blue", "red")) +
+  geom_point(data = receivers,
+             mapping = aes(x = as.Date(deploydate),
+                           y = station),
+             shape = 4) +
   scale_shape_manual(values = c(21:24)) + # have to be the shapes which have fill and colour
+  guides(fill = guide_legend(override.aes = list(shape = 21))) + # https://stackoverflow.com/questions/77883100/ggplot-buggy-fill-and-colour-legends-for-shapes-pch-2125
   scale_x_date(date_labels = "%b %y",
                date_breaks = "3 months",
                date_minor_breaks = "1 month") +
@@ -475,8 +479,8 @@ geom_point(data = receivers,
 
 ggsave(paste0(today(), "_GWS-Abacus.png"),
        plot = last_plot(), device = "png", path = loadloc, scale = 1.75, #changes how big lines & legend items & axes & titles are relative to basemap. Smaller number = bigger items
-       width = 8, # 8 for Med # 7 normal # 3.8 miwingWhotspot, 7 wholearea 6 gsl 5 gom 5.5 centralAtl
-       height = 3, #NA default; Then ggsave with defaults, changes from 7x7" to e.g.
+       width = 8.5, # 8 for Med # 7 normal # 3.8 miwingWhotspot, 7 wholearea 6 gsl 5 gom 5.5 centralAtl
+       height = 2.8, #NA default; Then ggsave with defaults, changes from 7x7" to e.g.
        units = "in", dpi = 600, limitsize = TRUE)
 
 
