@@ -204,6 +204,17 @@ receivers <- shark |>
             rcvrcatnumber = first(rcvrcatnumber),
             sensorname = first(sensorname),
             the_geom = first(the_geom))
+
+allreceivers <- openxlsx::read.xlsx(xlsxFile = file.path("/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Data/Acoustic/", "otn-instrument-deployment-short-form_GUTTRIDGE_2023_August.xlsx"),
+                                    sheet = 2) |>
+  group_by(STATION_NO) |>
+  summarise(deploydate = min(`DEPLOY_DATE_TIME.(yyyy-mm-ddThh:mm:ss)`),
+            bottomdepth = mean(BOTTOM_DEPTH, na.rm = TRUE)) |>
+  rename(station = STATION_NO)
+
+receivers <- receivers |>
+  left_join(allreceivers)
+
 # Map
 # Detection/movement locations
 ## colour track by shark: fieldnumber
@@ -245,53 +256,86 @@ myMap <- ggmap::get_map(location = myLocation,
 # attr(myMap, "bb")[[3]] - attr(myMap, "bb")[[1]] # latitude, y, height
 autoheight <- (6 / (attr(myMap, "bb")[[4]] - attr(myMap, "bb")[[2]])) * (attr(myMap, "bb")[[3]] - attr(myMap, "bb")[[1]]) * 1.2
 
+allpings <- shark |>
+  select(fieldnumber,
+         datecollected,
+         station,
+         latitude,
+         longitude) |>
+  group_by(station) |>
+  summarise(longitude = mean(longitude),
+            latitude = mean(latitude),
+            nHits = n()) |>
+  select(longitude, latitude, everything())
+
+sharkpings <- shark |>
+  select(fieldnumber,
+         datecollected,
+         station,
+         latitude,
+         longitude) |>
+  group_by(station, fieldnumber) |>
+  summarise(longitude = mean(longitude),
+            latitude = mean(latitude),
+            nSharks = n()) |>
+  select(longitude, latitude, everything()) |>
+  group_by(station) |>
+  summarise(longitude = mean(longitude),
+            latitude = mean(latitude),
+            nSharks = n()) |>
+  select(longitude, latitude, everything())
+
+
 ggmap::ggmap(myMap) +
-  geom_point(aes(x = longitude,
-                 y = latitude), # points per hit, coloured by month   fill = monthcollected
-             data = shark,
-             shape = 21,
-             colour = "white",
-             size = 2) +
+  geom_point(data = allpings,
+             aes(x = longitude,
+                 y = latitude,
+                 size = nHits), # points per hit, coloured by month   fill = monthcollected
+             shape = 19,
+             # size = 2,
+             colour = "black") +
+  geom_point(data = sharkpings,
+             aes(x = longitude,
+                 y = latitude,
+                 size = nSharks), # points per hit, coloured by month   fill = monthcollected
+             shape = 19,
+             # size = 2,
+             colour = "red") +
   # nobody but us care a out the receiver station ID names
   # though we need them to link to other non-map plots
-  geom_label(aes(x = longitude,
+  geom_label(data = receivers,
+             aes(x = longitude,
                  y = latitude,
                  label = station), # points per hit, coloured by month   fill = monthcollected
-             data = receivers,
-             nudge_x = 0.015,
-             size = 2)
+             nudge_x = -0.01,
+             size = 2.2) +
 
-
-
-
-
-
-
-scale_fill_gradientn(colours = rev(rainbow(12)), limits = c(1, 12), # month colour controls
-                     labels = month.abb, breaks = 1:12) +
-  geom_point(aes(x = longitude,
-                 y = latitude,
-                 shape = Name), # add deploy triangle & last diamond
-             data = receivers,
-             fill = "white",
-             colour = "black",
-             size = 4) +
+  # scale_fill_gradientn(colours = rev(rainbow(12)), limits = c(1, 12), # month colour controls
+  #                      labels = month.abb, breaks = 1:12) +
+  # geom_point(aes(x = longitude,
+  #                y = latitude,
+  #                shape = Name), # add deploy triangle & last diamond
+  #            data = receivers,
+  #            fill = "white",
+  #            colour = "black",
+  #            size = 4) +
   scale_shape_manual(values = c(24, 23)) + # choose shapes manually, in order, deploy then last
   # geom_text(aes(x = Longitude - 0.3, y = Latitude, label = Date), # add deploy & last labels, shift location
   #           data = DeployLast, colour = "white") +
   labs(x = "Longitude", y = "Latitude", caption = paste0("Saving The Blue, ", lubridate::today())) +
-  ggtitle(paste0("Hammerhead movement off East Andros, shark: ", hammerdirs)) +
+  ggtitle(paste0("White shark acoustic detections off East Andros, Bahamas")) +
   theme(legend.position = c(0.1, 0.16), #%dist (of middle? of legend box) from L to R, %dist from Bot to Top
         legend.spacing.x = unit(0, 'cm'), #compress spacing between legend items, this is min
         legend.spacing.y = unit(0.1, 'cm'), #compress spacing between legend items, this is min
         legend.background = element_rect(fill = "white", colour = NA), # element_blank(),
         panel.background = element_rect(fill = "white", colour = "grey50"), # white background
-        legend.key = element_blank()) + # removed whitespace buffer around legend boxes which is nice
-  ggsave(paste0(today(), "_Hammertrack_", hammerdirs, ".png"),
-         plot = last_plot(), device = "png", path = "../../Maps & Surveys/R_Plot_Outputs", scale = 1.75, #changes how big lines & legend items & axes & titles are relative to basemap. Smaller number = bigger items
-         width = 6, # 8 for Med # 7 normal # 3.8 miwingWhotspot, 7 wholearea 6 gsl 5 gom 5.5 centralAtl
-         height = autoheight, #NA default; Then ggsave with defaults, changes from 7x7" to e.g.
-         units = "in", dpi = 600, limitsize = TRUE)
+        legend.key = element_blank()) # removed whitespace buffer around legend boxes which is nice
+
+ggsave(paste0(today(), "_GWS-Map.png"),
+       plot = last_plot(), device = "png", path = loadloc, scale = 1.75, #changes how big lines & legend items & axes & titles are relative to basemap. Smaller number = bigger items
+       width = 5, # 8 for Med # 7 normal # 3.8 miwingWhotspot, 7 wholearea 6 gsl 5 gom 5.5 centralAtl
+       height = 5, #NA default; Then ggsave with defaults, changes from 7x7" to e.g.
+       units = "in", dpi = 600, limitsize = TRUE)
 
 # Receiver locations with deployment dates [need from T]
 # Shark Detection locations
@@ -370,29 +414,48 @@ ggplot(data = shark |>
          mutate(Date = as.Date(datecollected),
                 Shark = factor(fieldnumber, levels = metadata |> # colour-ordered by shark size (default is shark ID ("fieldnumber")): Shark factor order by size
                                  arrange(SizeM) |>
-                                 pull(fieldnumber))) |> # ,Shark = factor(fieldnumber)
-         rename(Station = "station") |>
+                                 pull(fieldnumber)),
+                Station = factor(station, levels = c("BWCDROP", "CCDROP", "DROP1", "DROP2", "DROP3", "DROP4", "DROP5"))) |> # ,Shark = factor(fieldnumber)
          group_by(Shark) |>
          filter(n() > 1) |> # remove 4975 only 1 hit
          ungroup() |>
          droplevels() |> # drop unused factor levels but the NA is because 4976 is missing from metadata
          left_join(metadata |> select(fieldnumber, SEX, locationTagged)) # icon shape could relate to sex
 ) +
+  # fill & shape
   geom_point(mapping = aes(x = Date,
                            y = Station,
-                           colour = Shark, # colour = fill for pch != 21:24.
-                           # fill = Shark, # definitely edits fill but all legend items are black (pch 21:24)
+                           colour = Shark, # colour = fill for pch != 21:24. Correctly sets legend colours but nothing on plot
+                           fill = Shark, # definitely edits fill but all legend items are black (pch 21:24). Setting colour AND fill makes it look 'normal'
                            # colour = factor(locationTagged, levels = c("New Brunswick, Canada", # definitely edits border colour but legend icons are filled  (pch 21:24)
                            #                                            "Cape Cod, USA",
                            #                                            "South Carolina, USA")),
-                           # search as bug ####
                            shape = SEX),
              size = 3,
-             # colour = "black",
-             alpha = 0.35
-             ) +
-  # scale_fill_manual(values = c("blue", "black", "pink", "grey")) +
-  # scale_shape_manual(values = c(21:24)) + # have to be the shapes which have fill and colour
+             # fill = "white",
+             # stroke = 0, # point border width
+             # alpha = 0.35
+  ) +
+  # border & shape
+  # geom_point(mapping = aes(x = Date,
+  #                          y = Station,
+  #                          # colour = Shark, # colour = fill for pch != 21:24.
+  #                          # fill = Shark, # definitely edits fill but all legend items are black (pch 21:24)
+  #                          colour = factor(locationTagged, levels = c("New Brunswick, Canada", # definitely edits border colour but legend icons are filled  (pch 21:24)
+  #                                                                     "Cape Cod, USA",
+  #                                                                     "South Carolina, USA")),
+  #                          shape = SEX),
+  #            size = 3,
+  #            fill = "white",
+#            stroke = 1.5, # point border width
+#            alpha = 0.35
+#            ) +
+# scale_fill_manual(values = c("blue", "black", "pink", "grey")) +
+geom_point(data = receivers,
+           mapping = aes(x = as.Date(deploydate),
+                         y = station),
+           shape = 4) +
+  scale_shape_manual(values = c(21:24)) + # have to be the shapes which have fill and colour
   scale_x_date(date_labels = "%b %y",
                date_breaks = "3 months",
                date_minor_breaks = "1 month") +
@@ -415,3 +478,59 @@ ggsave(paste0(today(), "_GWS-Abacus.png"),
        width = 8, # 8 for Med # 7 normal # 3.8 miwingWhotspot, 7 wholearea 6 gsl 5 gom 5.5 centralAtl
        height = 3, #NA default; Then ggsave with defaults, changes from 7x7" to e.g.
        units = "in", dpi = 600, limitsize = TRUE)
+
+
+
+# raise issue as bug for ggplot ####
+# https://stackoverflow.com/questions/77883100/ggplot-buggy-fill-and-colour-legends-for-shapes-pch-2125
+data(mtcars)
+mtcars$makeModel <- rownames(mtcars)
+# shape - plot & legend as anticipated
+ggplot(data = mtcars) +
+  geom_point(mapping = aes(x = mpg,
+                           y = makeModel,
+                           shape = factor(gear))
+  ) +
+  scale_shape_manual(values = c(21:23))
+
+# colour - plot & legend as anticipated
+ggplot(data = mtcars) +
+  geom_point(mapping = aes(x = mpg,
+                           y = makeModel,
+                           colour = factor(carb))
+  )
+
+# fill - does nothing on standard pch - plot & legend both black
+ggplot(data = mtcars) +
+  geom_point(mapping = aes(x = mpg,
+                           y = makeModel,
+                           fill = factor(carb))
+  )
+
+# shape & fill - fills correctly on plot but legend colours all black. Bug candidate.
+ggplot(data = mtcars) +
+  geom_point(mapping = aes(x = mpg,
+                           y = makeModel,
+                           shape = factor(gear),
+                           fill = factor(carb))
+  ) +
+  scale_shape_manual(values = c(21:23))
+
+# shape & colour - colours correctly on plot, legend colours are correct but fills not borders. Bug candidate 2.
+ggplot(data = mtcars) +
+  geom_point(mapping = aes(x = mpg,
+                           y = makeModel,
+                           shape = factor(gear),
+                           colour = factor(carb))
+  ) +
+  scale_shape_manual(values = c(21:23))
+
+# shape & colour & fill - colours correctly on plot, legend colours are correct but fills not borders. Fills are correct on plot but legend colours all black. Both bugs together.
+ggplot(data = mtcars) +
+  geom_point(mapping = aes(x = mpg,
+                           y = makeModel,
+                           shape = factor(gear),
+                           fill = factor(cyl),
+                           colour = factor(carb))
+  ) +
+  scale_shape_manual(values = c(21:23))
