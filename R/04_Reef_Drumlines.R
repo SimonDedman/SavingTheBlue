@@ -377,6 +377,9 @@ unique(drumline$Site3)
 # Bigwood Channel     Bight               AUTEC Channel       Bristol Galley      Green Cay           Central Cays East   Central Andros East
 # Levels: Central Andros East Green Cay Bristol Galley AUTEC Channel Bight Bigwood Channel Central Cays East
 
+unique(drumline$Substrate)
+# Hard bottom Patch reef Reef Rock Sand Sand & algae Sand & coral Sand & octocorals Sand & patch reef Sand & seagrass Seagrass Seagrass & mud Silt Silt & seagrass Silt and seagrass
+
 # # 2021-09-08 PM remove Somerset suggestion
 # drumline %<>%
 #   filter(Site3 != "Somerset") %>% #remove Somerset rows, n=103, 9% of data

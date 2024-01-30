@@ -424,35 +424,17 @@ ggplot(data = shark |>
          droplevels() |> # drop unused factor levels but the NA is because 4976 is missing from metadata
          left_join(metadata |> select(fieldnumber, SEX, locationTagged)) # icon shape could relate to sex
 ) +
-  # fill & shape
-  # geom_point(mapping = aes(x = Date,
-  #                          y = Station,
-  #                          colour = Shark, # colour = fill for pch != 21:24. Correctly sets legend colours but nothing on plot
-  #                          fill = Shark, # definitely edits fill but all legend items are black (pch 21:24). Setting colour AND fill makes it look 'normal'
-  #                          # colour = factor(locationTagged, levels = c("New Brunswick, Canada", # definitely edits border colour but legend icons are filled  (pch 21:24)
-  #                          #                                            "Cape Cod, USA",
-  #                          #                                            "South Carolina, USA")),
-  #                          shape = SEX),
-  #            size = 3,
-  #            # fill = "white",
-  #            # stroke = 0, # point border width
-  #            # alpha = 0.35
-  # ) +
   # border & shape
   geom_point(mapping = aes(x = Date,
                            y = Station,
-                           # colour = Shark, # colour = fill for pch != 21:24.
                            fill = Shark, # definitely edits fill but all legend items are black (pch 21:24)
                            colour = factor(locationTagged, levels = c("New Brunswick, Canada", # definitely edits border colour but legend icons are filled  (pch 21:24)
                                                                       "Cape Cod, USA",
                                                                       "South Carolina, USA")),
                            shape = SEX),
              size = 6,
-             # fill = "white",
              stroke = 0.7, # point border width
-             # alpha = 0.35
   ) +
-  # scale_fill_manual(values = c("blue", "black", "pink", "grey")) +
   scale_colour_manual(values = c("black", "blue", "red")) +
   geom_point(data = receivers,
              mapping = aes(x = as.Date(deploydate),
@@ -469,7 +451,7 @@ ggplot(data = shark |>
     legend.text = element_text(size = rel(1.5)),
     plot.background = element_rect(fill = "white", colour = "grey50"), # white background
     strip.text.x = element_text(size = rel(2)),
-    panel.border = element_rect(colour = "black", fill = NA, size = 1),
+    panel.border = element_rect(colour = "black", fill = NA, linewidth = 1),
     legend.title = element_blank(),
     legend.spacing.x = unit(0, "cm"), # compress spacing between legend items, this is min
     legend.background = element_blank(),
