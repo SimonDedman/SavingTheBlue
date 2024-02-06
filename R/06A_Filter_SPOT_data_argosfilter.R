@@ -21,7 +21,7 @@
 ### [A] Setwd, paths and parameters ----
 ### ....................................................................................................
 
-#!!!!!! IMPRTOANT THAT YOU CHECK FOR Z LOCATIONS BEING ACTUALLY REMOVED!!!!! ADD LINE OF CODE
+# !!!!!! IMPRTOANT THAT YOU CHECK FOR Z LOCATIONS BEING ACTUALLY REMOVED!!!!! ADD LINE OF CODE
 # SIMILAR TO CODE FROM CFAL SCRIPT FOR BRENDAN
 
 #### PROBABLY CHANGE SCRIPT TO ADD SMAJ,SMINEOR DATA HERE ALREADY BEFORE FILTER#
@@ -34,7 +34,7 @@ rm(list = ls())
 # A2: load necessary packages ----
 
 ## install
-#install.packages("devtools")
+# install.packages("devtools")
 require("devtools")
 
 # devtools::install_version("argosfilter", version = "0.70")
@@ -66,17 +66,17 @@ library(ggspatial)
 library(RColorBrewer)
 library(xts)
 library(argosfilter) # to filter raw Argos data, i.e. SPOT tag data
-#library(trip)
+# library(trip)
 
 # A3: Specify needed functions
 
 ## Function to deal with near duplicate  Argos observations
 make_unique <- function(x) {
-  xts::make.time.unique(x$date,eps = 10) # eps = number of seconds to make unique
+  xts::make.time.unique(x$date, eps = 10) # eps = number of seconds to make unique
 }
 
 # A4: Specify data and saveloc ----
-saveloc <- "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Bahamas_Hammerheads_2022/OutputData/Initial_filter_data/" #Adjust this
+saveloc <- "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Bahamas_Hammerheads_2022/OutputData/Initial_filter_data/" # Adjust this
 
 ### ...............................................................................................
 ### [B] Data import and initial check and filtering of missing information ----
@@ -85,37 +85,37 @@ saveloc <- "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Bah
 # B1: Import data ----
 
 ## Movement data
-mov_all ="C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Bahamas_Hammerheads_2022/InputData/"
-all_csv = dir(mov_all, recursive=T, full.names=T, pattern="\\-Locations.csv$") # import files in folders in path directory all at once
-mydata = lapply(all_csv, read.csv,sep=",",dec=".",stringsAsFactor=F,header=T) # import all .csv files containing TAT-Hiso data, but skip header lines
-mydets <- do.call("rbind",mydata)
+mov_all <- "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Bahamas_Hammerheads_2022/InputData/"
+all_csv <- dir(mov_all, recursive = T, full.names = T, pattern = "\\-Locations.csv$") # import files in folders in path directory all at once
+mydata <- lapply(all_csv, read.csv, sep = ",", dec = ".", stringsAsFactor = F, header = T) # import all .csv files containing TAT-Hiso data, but skip header lines
+mydets <- do.call("rbind", mydata)
 #> sort(unique(mydets$Ptt))
-#[1] 183623 200368 200369 209020 222133 235283 244608
+# [1] 183623 200368 200369 209020 222133 235283 244608
 
 ## Shark metadata
-tags_all <- read.table("C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Bahamas_Hammerheads_2022/InputData/Datasheet_Andros_Smok_Tagging_Metadata.csv",sep=",",dec=".",header=T,na.strings=c(""," ",NA))
-tags_all$datetime_deployment <- as.POSIXct(tags_all$datetime_deployment,format="%Y-%m-%d %H:%M",tz="US/Eastern")
+tags_all <- read.table("C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Bahamas_Hammerheads_2022/InputData/Datasheet_Andros_Smok_Tagging_Metadata.csv", sep = ",", dec = ".", header = T, na.strings = c("", " ", NA))
+tags_all$datetime_deployment <- as.POSIXct(tags_all$datetime_deployment, format = "%Y-%m-%d %H:%M", tz = "US/Eastern")
 attr(tags_all$datetime_deployment, "tzone") <- "UTC"
 tags <- dplyr::select(tags_all, ptt_id, species, sex, datetime_deployment, deployment_lat, deployment_lon, pcl, fl, stl)
 colnames(tags) <- c("id", "species", "sex", "date", "lat", "lon", "pcl", "fl", "stl")
 tags$lc <- "G" # we add a location class criteria for later joining with the movement data. we define the LC as "G" for gps, so that we do not need to worry about smaj,smin,eor
 tags$id <- as.character(tags$id)
 
-tagging_date <- tags[,c(1,4)] # df for filtering of osbervations pre-deployment
+tagging_date <- tags[, c(1, 4)] # df for filtering of osbervations pre-deployment
 
-tagging_location <- tags[,c(1,4,10,6,5)] # df to add tagging location as observation for ctcrw fitting
+tagging_location <- tags[, c(1, 4, 10, 6, 5)] # df to add tagging location as observation for ctcrw fitting
 tagging_location$smaj <- 50
 tagging_location$smin <- 50
 tagging_location$eor <- 0
 colnames(tagging_location) <- c("id", "date", "lc", "lon", "lat", "smaj", "smin", "eor")
-#head(tagging_location)
+# head(tagging_location)
 
 ### make a df with all the potential post-release mortalities
 pprm <- tags_all[which(tags_all$status == "pprm"), 1]
 
 # B2: Basic housekeeping ----
 
-ddet <-mydets %>%
+ddet <- mydets %>%
   dplyr::select( # select relevant columns, here: id, date, location class (lc), lon, lat,
     Ptt,
     Date,
@@ -133,7 +133,7 @@ ddet <-mydets %>%
     !Ptt %in% pprm
   ) %>%
   mutate( # define Date format
-    Date = as.POSIXct(Date,format="%H:%M:%S %d-%b-%Y", tz="UTC", usetz = T),
+    Date = as.POSIXct(Date, format = "%H:%M:%S %d-%b-%Y", tz = "UTC", usetz = T),
     Ptt = as.character(Ptt) # define tag id as character class
   ) %>%
   dplyr::rename( # rename the columns so they fit the requirements for the fit functions
@@ -153,7 +153,7 @@ ddet <-mydets %>%
 ## add tagging date for subsequent filtering
 ddet$tagging.date <- NA
 
-for (i in 1:nrow(ddet)){
+for (i in 1:nrow(ddet)) {
   ddet[i, 9] <- as.character(tagging_date[which(tagging_date$id == ddet[i, 1]), 2])
 }
 
@@ -162,13 +162,13 @@ ddet %<>%
   filter( # remove occurences that happened before the release time
     date >= tagging.date
   ) %>%
-  dplyr::select( #get rid of unneeded columns
+  dplyr::select( # get rid of unneeded columns
     -tagging.date
   ) %>%
   bind_rows( # add tagging location as observation of class "gps"
     semi_join(tagging_location, ddet, by = "id")
   ) %>%
-    arrange( # arrange by timestamp by individual so df can be used for fit_() functions
+  arrange( # arrange by timestamp by individual so df can be used for fit_() functions
     id,
     date
   )
@@ -177,16 +177,18 @@ ddet %<>%
 ## this is useful if you have active tags, but need to write a report or plan on submitting a manuscript soon
 
 filter_needed <- "yes" # change this
-max_date <- as.POSIXct("2024-02-01 00:00:00",format="%Y-%m-%d %H:%M:%S", tz="UTC", usetz = T) # change this
+max_date <- as.POSIXct("2024-02-01 00:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "UTC", usetz = T) # change this
 
-if (filter_needed == "yes"){ # do NOT change this
+if (filter_needed == "yes") { # do NOT change this
   ddet <- ddet %>%
     dplyr::filter(
       !date >= as.POSIXct(max_date)
     )
-} else (
-  ddet <- ddet
-)
+} else {
+  (
+    ddet <- ddet
+  )
+}
 
 
 # B3: Deal with near duplicate observations ----
@@ -201,60 +203,74 @@ if (filter_needed == "yes"){ # do NOT change this
 # xts::make.time.unique() function.
 
 ddet_tc <- ddet %>% # create time corrected df
-  dplyr::arrange(id,date) %>%
-  dplyr::group_by(id) %>% tidyr::nest() %>%
+  dplyr::arrange(id, date) %>%
+  dplyr::group_by(id) %>%
+  tidyr::nest() %>%
   dplyr::mutate(unique_time = purrr::map(data, make_unique)) %>%
   tidyr::unnest(cols = c(data, unique_time)) %>%
-  dplyr::select(-date) %>% rename(date = unique_time)
+  dplyr::select(-date) %>%
+  rename(date = unique_time)
 
-dup_times <- ddet_tc %>% group_by(id) %>%
+dup_times <- ddet_tc %>%
+  group_by(id) %>%
   filter(duplicated(date)) # should be 0 after correcting for near duplicates
 
 ## data summary
-ddet_tc %>% dplyr::group_by(id) %>%
-  dplyr::summarise(num_locs = n(),
-                   start_date = min(date),
-                   end_date = max(date)) ## We see that there are also datapoints in there from the tag initiation, we will deal with this later
+ddet_tc %>%
+  dplyr::group_by(id) %>%
+  dplyr::summarise(
+    num_locs = n(),
+    start_date = min(date),
+    end_date = max(date)
+  ) ## We see that there are also datapoints in there from the tag initiation, we will deal with this later
 
 ### write data summary to .csv
-write.csv(ddet_tc %>% dplyr::group_by(id) %>%
-            dplyr::summarise(num_locs = n(),
-                             start_date = min(date),
-                             end_date = max(date)),
-          paste0(saveloc, "Data_Smok_Andros_SPOT_location_summary_first_to_last.csv"))
+write.csv(
+  ddet_tc %>% dplyr::group_by(id) %>%
+    dplyr::summarise(
+      num_locs = n(),
+      start_date = min(date),
+      end_date = max(date)
+    ),
+  paste0(saveloc, "Data_Smok_Andros_SPOT_location_summary_first_to_last.csv")
+)
 
 # B4: visualise raw data ----
 
-sf_ddet <- sf::st_as_sf(ddet_tc, coords = c("lon","lat")) %>%
+sf_ddet <- sf::st_as_sf(ddet_tc, coords = c("lon", "lat")) %>%
   sf::st_set_crs(4326)
 
 sf_lines <- sf_ddet %>%
   dplyr::arrange(id, date) %>%
   sf::st_geometry() %>%
-  sf::st_cast("MULTIPOINT",ids = as.integer(as.factor(sf_ddet$id))) %>%
+  sf::st_cast("MULTIPOINT", ids = as.integer(as.factor(sf_ddet$id))) %>%
   sf::st_cast("MULTILINESTRING") %>%
   sf::st_sf(deployid = as.factor(unique(sf_ddet$id)))
 
-esri_ocean <- paste0('https://services.arcgisonline.com/arcgis/rest/services/',
-                     'Ocean/World_Ocean_Base/MapServer/tile/${z}/${y}/${x}.jpeg')
+esri_ocean <- paste0(
+  "https://services.arcgisonline.com/arcgis/rest/services/",
+  "Ocean/World_Ocean_Base/MapServer/tile/${z}/${y}/${x}.jpeg"
+)
 
 ## Define the number of colors you want
 nb.cols <- length(unique(ddet$id))
 mycolors <- colorRampPalette(brewer.pal(nb.cols, "YlOrRd"))(nb.cols)
 
 ggplot() +
-  annotation_map_tile(type = esri_ocean,zoomin = 1,progress = "none") +
+  annotation_map_tile(type = esri_ocean, zoomin = 1, progress = "none", cachedir = saveloc) +
   layer_spatial(sf_ddet, size = 0.5) +
-  layer_spatial(sf_lines, size = 0.75,aes(color = deployid)) +
+  layer_spatial(sf_lines, size = 0.75, aes(color = deployid)) +
   scale_x_continuous(expand = expansion(mult = c(.6, .6))) +
   scale_fill_manual(values = mycolors) +
   theme() +
   ggtitle("Observed Argos Location Paths - Raw data",
-          subtitle = paste0("SPOT tagged S.mokarran from Andros (n = ", length(unique(ddet_tc$id)), ")"))
+    subtitle = paste0("SPOT tagged S.mokarran from Andros (n = ", length(unique(ddet_tc$id)), ")")
+  )
 
 ## save if needed
-ggsave(paste0(saveloc,"Raw_argos_detections_pre_sda_filter.tiff"),
-       width = 21, height = 15, units = "cm", device ="tiff", dpi=300)
+ggsave(paste0(saveloc, "Raw_argos_detections_pre_sda_filter.tiff"),
+  width = 21, height = 15, units = "cm", device = "tiff", dpi = 300
+)
 
 ### ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ### [C] Filter data based on speed, distance and turning angles using argosfilter::sdafilter() ----
@@ -308,7 +324,7 @@ ddet_af <- ddet_tc %>%
   dplyr::group_by(id) %>%
   tidyr::nest()
 
-#tbl_locs %>% dplyr::summarise(n = n())
+# tbl_locs %>% dplyr::summarise(n = n())
 
 ddet_af <- ddet_af %>%
   dplyr::mutate(filtered = furrr::future_map(data, ~ argosfilter::sdafilter(
@@ -317,51 +333,59 @@ ddet_af <- ddet_af %>%
     dtime = .x$date,
     lc = .x$lc,
     vmax = 2.1,
-    ang = c(15,25),
-    distlim = c(5000,8000)
+    ang = c(15, 25),
+    distlim = c(5000, 8000)
   ))) %>%
   tidyr::unnest(cols = c(data, filtered)) %>%
   dplyr::filter(filtered %in% c("not", "end_location")) %>%
   dplyr::select(-filtered) %>%
-  dplyr::arrange(id,date)
+  dplyr::arrange(id, date)
 
-cat("You removed ", nrow(prefilter_obs)-nrow(ddet_af)," locations.")
-prefilter_obs %>% group_by(id) %>% dplyr::summarise(n = n())
+cat("You removed ", nrow(prefilter_obs) - nrow(ddet_af), " locations.")
+prefilter_obs %>%
+  group_by(id) %>%
+  dplyr::summarise(n = n())
 ddet_af %>% dplyr::summarise(n = n())
 
 ## write csv to show new data structte
-write.csv(ddet_af %>% dplyr::summarise(n = n()),
-          paste0(saveloc, "Data_Smok_Andros_SPOT_nr_locataions_post_sda_filter.csv"))
+write.csv(
+  ddet_af %>% dplyr::summarise(n = n()),
+  paste0(saveloc, "Data_Smok_Andros_SPOT_nr_locataions_post_sda_filter.csv")
+)
 
 ## Visualise the filtered tracks
 
-esri_ocean <- paste0('https://services.arcgisonline.com/arcgis/rest/services/',
-                     'Ocean/World_Ocean_Base/MapServer/tile/${z}/${y}/${x}.jpeg')
+esri_ocean <- paste0(
+  "https://services.arcgisonline.com/arcgis/rest/services/",
+  "Ocean/World_Ocean_Base/MapServer/tile/${z}/${y}/${x}.jpeg"
+)
 
-af_sf <- sf::st_as_sf(ddet_af, coords = c("lon","lat")) %>%
+af_sf <- sf::st_as_sf(ddet_af, coords = c("lon", "lat")) %>%
   sf::st_set_crs(4326)
 
 af_lines <- af_sf %>%
   dplyr::arrange(id, date) %>%
   sf::st_geometry() %>%
-  sf::st_cast("MULTIPOINT",ids = as.integer(as.factor(af_sf$id))) %>%
+  sf::st_cast("MULTIPOINT", ids = as.integer(as.factor(af_sf$id))) %>%
   sf::st_cast("MULTILINESTRING") %>%
   sf::st_sf(id = as.factor(unique(af_sf$id)))
 
 ggplot() +
-  annotation_map_tile(type = esri_ocean,zoomin = 1,progress = "none") +
+  annotation_map_tile(type = esri_ocean, zoomin = 1, progress = "none", cachedir = saveloc) +
   layer_spatial(sf_ddet, size = 0.5) +
-  layer_spatial(af_lines, size = 0.75,aes(color = id)) +
+  layer_spatial(af_lines, size = 0.75, aes(color = id)) +
   scale_x_continuous(expand = expansion(mult = c(.6, .6))) +
-  #scale_fill_manual() +
+  # scale_fill_manual() +
   theme() +
   ggtitle("Argos detections with argosfilter::sdafilter()",
-          subtitle = paste0("SPOT tagged S.mokarran from Andros (n = ", length(unique(ddet$id)), ");
-argsofilter::sdafilter() removes ", nrow(prefilter_obs)-nrow(ddet_af)," locations."))
+    subtitle = paste0("SPOT tagged S.mokarran from Andros (n = ", length(unique(ddet$id)), ");
+argsofilter::sdafilter() removes ", nrow(prefilter_obs) - nrow(ddet_af), " locations.")
+  )
 
 ## save if needed
-ggsave(paste0(saveloc,"Argos_detections_with_argosfilter_sdafilter.tiff"),
-       width = 21, height = 15, units = "cm", device ="tiff", dpi=300)
+ggsave(paste0(saveloc, "Argos_detections_with_argosfilter_sdafilter.tiff"),
+  width = 21, height = 15, units = "cm", device = "tiff", dpi = 300
+)
 
 # C2: Save the data ----
 
@@ -369,13 +393,13 @@ start <- as.Date(min(ddet_af$date), format = "%Y-%m")
 end <- as.Date(max(ddet_af$date), format = "%Y-%m")
 
 ## txt
-#write.table(ddet_af, paste0(saveloc, "Argosfilter_filtered_Sphyrna_SPOT_tracks_multiID_", start, "_", end,".txt"), row.names=F,sep=",",dec=".")
+# write.table(ddet_af, paste0(saveloc, "Argosfilter_filtered_Sphyrna_SPOT_tracks_multiID_", start, "_", end,".txt"), row.names=F,sep=",",dec=".")
 
 ## csv
-write.table(ddet_af, paste0(saveloc, "Argosfilter_filtered_Sphyrna_SPOT_tracks_multiID_", start, "_", end,".csv"), row.names=F,sep=",",dec=".")
+write.table(ddet_af, paste0(saveloc, "Argosfilter_filtered_Sphyrna_SPOT_tracks_multiID_", start, "_", end, ".csv"), row.names = F, sep = ",", dec = ".")
 
 ## RDS
-saveRDS(ddet_af, paste0(saveloc, "Argosfilter_filtered_Sphyrna_SPOT_tracks_multiID_", start, "_", end,".R"))
+saveRDS(ddet_af, paste0(saveloc, "Argosfilter_filtered_Sphyrna_SPOT_tracks_multiID_", start, "_", end, ".R"))
 
 
 #### STOP HERE BASED ON M/M 2023-09-11

@@ -35,7 +35,7 @@ library("remotes")
 # install.packages("tidyverse")
 # install.packages("magrittr")
 # #install.packages("TMB", type = "source") # if package version inconsistency detected during loading of foieGras
-# install.packages("aniMotum", 
+# install.packages("aniMotum",
 #                  repos = c("https://cloud.r-project.org",
 #                            "https://ianjonsen.r-universe.dev"),
 #                  dependencies = "Suggests") #foiegras was removed from CRAN and replaced with Animotum on 12-12-2022
@@ -86,8 +86,8 @@ speedfilter <- "Argosfilter" # choices: "Argosfilter" or "TripSDA"
 
 # B1: Import the filtered data ----
 
-mydets_f <- list.files(path = "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Bahamas_Hammerheads_2022/OutputData/Initial_filter_data/", 
-                     pattern = paste0(speedfilter,"_.+.R"), 
+mydets_f <- list.files(path = "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Bahamas_Hammerheads_2022/OutputData/Initial_filter_data/",
+                     pattern = paste0(speedfilter,"_.+.R"),
                      full.names = TRUE ) %>%
   purrr::map_dfr(readRDS)
 
@@ -110,7 +110,7 @@ mydets_f <- list.files(path = "C:/Users/Vital Heim/switchdrive/Science/Projects_
 
 ## Basic housekeeping
 det_f <-mydets_f %>%
-  dplyr::select( # select relevant columns, here: id, date, location class (lc), lon, lat, 
+  dplyr::select( # select relevant columns, here: id, date, location class (lc), lon, lat,
     id,
     date,
     lc,
@@ -119,7 +119,7 @@ det_f <-mydets_f %>%
     smaj,
     smin,
     eor,
-    ) 
+    )
 
 ## check if there are Z locations left (should not!)
 print(paste0("There are ", length(which(det_f$lc == "Z")), " Z-locations left."))
@@ -128,12 +128,12 @@ print(paste0("There are ", length(which(det_f$lc == "Z")), " Z-locations left.")
 
 ## we already added tagging locations in a previous step. If you have no FastLoc data
 ## and no GPS location classes, then the tagging locations can be filtered
-## by going for lc == G. If there is GPS data this section needs to be updated using the 
+## by going for lc == G. If there is GPS data this section needs to be updated using the
 ## type == "user" argument.
 
 det_f <- det_f %>%
   dplyr::mutate(
-    smaj = ifelse(lc == 'G', 50, # double check with Dean for LL length
+    smaj = ifelse(lc == 'G', 50,
                   smaj),
     smin = ifelse(lc == 'G', 50,
                   smin),
@@ -156,37 +156,39 @@ nb.cols <- length(unique(det_f$id))
 mycolors <- viridis(6)
 
 ### Tracks
-sf_locs <- sf::st_as_sf(det_f, coords = c("lon","lat")) %>% 
+sf_locs <- sf::st_as_sf(det_f, coords = c("lon","lat")) %>%
   sf::st_set_crs(4326)
 
-sf_lines <- sf_locs %>% 
-  dplyr::arrange(id, date) %>% 
-  sf::st_geometry() %>% 
-  sf::st_cast("MULTIPOINT",ids = as.integer(as.factor(sf_locs$id))) %>% 
-  sf::st_cast("MULTILINESTRING") %>% 
+sf_lines <- sf_locs %>%
+  dplyr::arrange(id, date) %>%
+  sf::st_geometry() %>%
+  sf::st_cast("MULTIPOINT",ids = as.integer(as.factor(sf_locs$id))) %>%
+  sf::st_cast("MULTILINESTRING") %>%
   sf::st_sf(id = as.factor(unique(det_f$id)))
 
-sf_points <- sf_locs %>% 
-  dplyr::arrange(id, date) %>% 
-  sf::st_geometry() %>% 
-  sf::st_cast("MULTIPOINT",ids = as.integer(as.factor(sf_locs$id))) %>% 
+sf_points <- sf_locs %>%
+  dplyr::arrange(id, date) %>%
+  sf::st_geometry() %>%
+  sf::st_cast("MULTIPOINT",ids = as.integer(as.factor(sf_locs$id))) %>%
   sf::st_sf(id = as.factor(unique(det_f$id)))
 
 for (i in 1:6){
-  
+  # TO DO: change i in 1:6 so it automatically deals with number sharks ----
+
   # plot the filtered locations by individual
-  ggplot() + 
-    annotation_map_tile(type = esri_ocean,zoomin = 1,progress = "none") +
+  ggplot() +
+    annotation_map_tile(type = esri_ocean,zoomin = 1,progress = "none", cachedir = saveloc) +
     layer_spatial(sf_points[i,], size = 0.5) +
     layer_spatial(sf_lines[i,], size = 0.75,aes(color = id)) +
     #scale_x_continuous(expand = expansion(mult = c(.6, .6))) +
     scale_colour_manual(values = mycolors[i]) +
     theme() +
-    ggtitle("Speedfiltered (argosfilter::sdafilter()) Argos Location Paths", 
+    ggtitle("Speedfiltered (argosfilter::sdafilter()) Argos Location Paths",
             subtitle = "S. mokarran from Andros (n = 6)")
-  
+
   # save it
-  ggsave(paste0(saveloc,"Speedfiltered_Argos_data_individual_", i, ".tiff"), 
+  ggsave(paste0(saveloc,"Speedfiltered_Argos_data_individual_", i, ".tiff"),
+         # TO DO: USE i as an index for the shark PTT ID rather than shark number
          width = 21, height = 15, units = "cm", device ="tiff", dpi=300)
 }
 
@@ -195,7 +197,7 @@ for (i in 1:6){
 ## unreasonable.
 
 ## Notes from comparing individual plots.
-## Most individuals are fine. Some have locations on land in Andros, but given that 
+## Most individuals are fine. Some have locations on land in Andros, but given that
 ## the island is small in relation to available instrument accuray, these can be left in for now.
 
 ## 235283 has 1 spurious location at around 35°W and 34°N
@@ -210,52 +212,52 @@ det_f <- det_f %>%
   ))
 
 ## Visualise manually improved tracks again:
-sf_locs_clean <- sf::st_as_sf(det_f, coords = c("lon","lat")) %>% 
+sf_locs_clean <- sf::st_as_sf(det_f, coords = c("lon","lat")) %>%
   sf::st_set_crs(4326)
 
-sf_lines_clean <- sf_locs_clean %>% 
-  dplyr::arrange(id, date) %>% 
-  sf::st_geometry() %>% 
-  sf::st_cast("MULTIPOINT",ids = as.integer(as.factor(det_f$id))) %>% 
-  sf::st_cast("MULTILINESTRING") %>% 
+sf_lines_clean <- sf_locs_clean %>%
+  dplyr::arrange(id, date) %>%
+  sf::st_geometry() %>%
+  sf::st_cast("MULTIPOINT",ids = as.integer(as.factor(det_f$id))) %>%
+  sf::st_cast("MULTILINESTRING") %>%
   sf::st_sf(id = as.factor(unique(det_f$id)))
 
-sf_points_clean <- sf_locs_clean %>% 
-  dplyr::arrange(id, date) %>% 
-  sf::st_geometry() %>% 
-  sf::st_cast("MULTIPOINT",ids = as.integer(as.factor(sf_locs_clean$id))) %>% 
+sf_points_clean <- sf_locs_clean %>%
+  dplyr::arrange(id, date) %>%
+  sf::st_geometry() %>%
+  sf::st_cast("MULTIPOINT",ids = as.integer(as.factor(sf_locs_clean$id))) %>%
   sf::st_sf(id = as.factor(unique(det_f$id)))
 
 #esri_ocean <- paste0('https://services.arcgisonline.com/arcgis/rest/services/',
 #'Ocean/World_Ocean_Base/MapServer/tile/${z}/${y}/${x}.jpeg')
 
 ### ALL
-ggplot() + 
+ggplot() +
   annotation_map_tile(type = esri_ocean,zoomin = 1,progress = "none") +
   layer_spatial(sf_points_clean, size = 0.5) +
   layer_spatial(sf_lines_clean, size = 0.75,aes(color = id)) +
   scale_x_continuous(expand = expansion(mult = c(.6, .6))) +
   scale_fill_manual(values = mycolors) +
   theme() +
-  ggtitle("Speedfiltered (argosfilter::sdafilter()) and manually checked Argos Location Paths", 
+  ggtitle("Speedfiltered (argosfilter::sdafilter()) and manually checked Argos Location Paths",
           subtitle = "S. mokarran from Andros (n = 6)")
 
 ### IND
 for (i in 1:6){
-  
+
   # plot the filtered locations by individual
-  ggplot() + 
+  ggplot() +
     annotation_map_tile(type = esri_ocean,zoomin = 1,progress = "none") +
     layer_spatial(sf_points_clean[i,], size = 0.5) +
     layer_spatial(sf_lines_clean[i,], size = 0.75,aes(color = id)) +
     #scale_x_continuous(expand = expansion(mult = c(.6, .6))) +
     scale_colour_manual(values = mycolors[i]) +
     theme() +
-    ggtitle("Speedfiltered (argosfilter::sdafilter()) and manually checked Argos Location Paths", 
+    ggtitle("Speedfiltered (argosfilter::sdafilter()) and manually checked Argos Location Paths",
             subtitle = "S. mokarran from Andros (n = 6)")
-  
+
   # save it
-  ggsave(paste0(saveloc,"Speedfiltered_Argos_data_individual_", i, "_clean.tiff"), 
+  ggsave(paste0(saveloc,"Speedfiltered_Argos_data_individual_", i, "_clean.tiff"),
          width = 21, height = 15, units = "cm", device ="tiff", dpi=150)
 }
 
@@ -271,7 +273,7 @@ det_f$tdiff.days <- unlist(tapply(det_f$date, INDEX = det_f$id,
                                  FUN = function(x) c(0, `units<-`(diff(x), "days"))))
 
 ## Find the maximum values
-max(det_f$tdiff.days)
+max(det_f$tdiff.days) # 51.53301
 
 # Assign different segments if the time difference is larger than the cutoff
 det_seg <- det_f %>%
@@ -281,13 +283,13 @@ det_seg <- det_f %>%
 
 ## Based on Logan et al. 2020, segments of <20 days should be removed
 ## Count number of rows per id
-tracklengths <- det_seg %>% 
-  group_by(id) %>% 
+tracklengths <- det_seg %>%
+  group_by(id) %>%
   summarise(
     num_locs = n(),
     start_date = min(as.Date(date)),
     end_date = max(as.Date(date)),
-  ) %>% 
+  ) %>%
   mutate(tracklength_in_days = as.numeric(end_date - start_date) + 1)
 
 print(tracklengths, n = 100)
@@ -298,7 +300,7 @@ print(tracklengths, n = 100)
 del_obs <- dplyr::filter(tracklengths, num_locs < 23 | tracklength_in_days < 10) # find suitable parameters
 del_obs; nrow(del_obs); sum(del_obs$num_locs)
 
-det_seg_tl <- det_seg %>% 
+det_seg_tl <- det_seg %>%
   inner_join(., tracklengths) %>%
   dplyr::filter( # remove tracks shorter than X days and/or less than 10 total observations
     !(tracklength_in_days < 10 | num_locs < 23)
@@ -311,11 +313,12 @@ det_seg_tl <- det_seg %>%
 
 ## Find the distribution of time gaps between detections
 #ddet_f_cleaner$tdiff.days[ddet_f_cleaner$tdiff.days < 0] <- 0
+# TO DO: resolve error here ----
 hist <- hist(det_seg_tl$tdiff.days
              , breaks = c(seq(from = 0, to = 47, by = .5))
              , plot = F)
 
-hist$density <- hist$counts / sum(hist$counts)*100   
+hist$density <- hist$counts / sum(hist$counts)*100
 hist$density
 
 plot(hist, freq = F
@@ -338,7 +341,7 @@ world <- ne_countries(scale = "medium", returnclass = "sf")
 ggplot(data = world) +
   geom_sf() +
   geom_point(data = det_seg_tl, aes(x = lon, y = lat, colour = id), size = 2, shape = 20) +
-  coord_sf(xlim = c(min(det_seg_tl$lon - 0.5), max(det_seg_tl$lon + 0.5)), 
+  coord_sf(xlim = c(min(det_seg_tl$lon - 0.5), max(det_seg_tl$lon + 0.5)),
            ylim = c(min(det_seg_tl$lat - 0.5), max(det_seg_tl$lat + 0.5)), expand = F)
 #dev.off()
 ## Define parameters
@@ -368,7 +371,7 @@ ggplot(data = world) +
 
 ## Data
 ## fit_ssm expects 'd' to be a dataframe or tiblle or sf-tibble (with projection info) with 5,7, or 8 columns
-## The data should have  5 columns in the following order: "id", "date", "lc", "lon", "lat". 
+## The data should have  5 columns in the following order: "id", "date", "lc", "lon", "lat".
 ## Where "date" can be a POSIX object or text string in YYYY-MM-DD HH:MM:SS format
 ## Argos Kalman Filter (or Kalman Smoother) data should have 8 columns, including the above 5 plus
 ## "smaj", "smin", "eor" that contain Argos error ellipse variables (in m for "smaj", "smin" and deg for "eor").
@@ -376,7 +379,7 @@ dpf <- det_f
 
 ## Speedfilter
 ## For the prefiltering of the data we need a speedfilter. While other Sphyrna papers use the same speed
-## as Vaudo et al. 2017 for mako sharks, this possibly is too high. 
+## as Vaudo et al. 2017 for mako sharks, this possibly is too high.
 ## Based on Ryan et al. 2015: https://link.springer.com/article/10.1007/s00227-015-2670-4
 ## we could use speed as function of FL, i.e. speed = 1xFL [m] * s^-1
 ## Calculate the mean FL
@@ -416,7 +419,7 @@ mod.crw_f <- fit_ssm(
     optim = optim,
     maxit = maxit,
     verbose = verbose), # shows parameter trace, 0: silent, 1: optimizer trace, 2: parametre trace (default)
-  #map = list(psi = factor(NA)) 
+  #map = list(psi = factor(NA))
 )
 
 ##Plot the mp model with normalised values
@@ -425,13 +428,13 @@ mod.crw_f <- fit_ssm(
 map(mod.crw_f, what = "f", normalise = TRUE, silent = TRUE)
 #dev.off()
 
-# The `normalise` argument rescales the estimates to span the interval 0,1. 
-# Move persistence estimates from `fit_ssm()` tend to be smoothed more extremely compared 
-# those obtained from `fit_mpm()` and can lack contrast. Normalising the estimates provides a 
-# clearer view of changes in movement behaviour along tracks, highlighting regions where animals 
-# spend disproportionately more or less time. When fitting to a collection of individuals, 
-# the normalisation can be applied separately to each individual or collectively via 
-# `normalise = TRUE, group = TRUE`. In the latter case, the relative magnitudes of move persistence 
+# The `normalise` argument rescales the estimates to span the interval 0,1.
+# Move persistence estimates from `fit_ssm()` tend to be smoothed more extremely compared
+# those obtained from `fit_mpm()` and can lack contrast. Normalising the estimates provides a
+# clearer view of changes in movement behaviour along tracks, highlighting regions where animals
+# spend disproportionately more or less time. When fitting to a collection of individuals,
+# the normalisation can be applied separately to each individual or collectively via
+# `normalise = TRUE, group = TRUE`. In the latter case, the relative magnitudes of move persistence
 # are preserved across individuals.
 
 # B6: re-route path to account for land lcoations
@@ -441,23 +444,24 @@ map(mod.crw_f, what = "f", normalise = TRUE, silent = TRUE)
 mod.crw_f_rr <- route_path(mod.crw_f,
                          what = "fitted",
                          map_scale = 10, # scale of rnaturalearth map to use for land mass - if you want 10, you need the package "rnaturalearthhires"
-                         buffer = 1000 # buffer distance (m) to add around track locations. The convex hull of these buffered locations defines the size of land polygon used to aid re-routing of points on land. 
+                         buffer = 1000 # buffer distance (m) to add around track locations. The convex hull of these buffered locations defines the size of land polygon used to aid re-routing of points on land.
                          )
+# TO DO. FIND MOST APPROPRIATE VALUE FOR BUFFER FOR ANDROS SHARKS ----
 
 ## map the locations to check if it improved
 my.aes <- aes_lst(line = T,
                   conf = F,
                   mp = F,
                   obs = T)
-m1 <- map(mod.crw_f, 
-          what = "fitted", 
+m1 <- map(mod.crw_f,
+          what = "fitted",
           aes = my.aes,
           ext.rng = c(0.3, 0.1),
           silent = TRUE)
 
-m2 <- map(mod.crw_f_rr, 
-          what = "rerouted", 
-          aes = my.aes, 
+m2 <- map(mod.crw_f_rr,
+          what = "rerouted",
+          aes = my.aes,
           ext.rng = c(0.3, 0.1),
           silent = TRUE)
 
@@ -471,14 +475,14 @@ m2 + labs(title = "Fitted & re-routed locations") &
 
 # B7: check goodness of fit of your ssm/mpm model ----
 
-# Validating SSM fits to tracking data is an essential part of any analysis. 
+# Validating SSM fits to tracking data is an essential part of any analysis.
 # SSM fits can be visualized quickly using the generic `plot` function on model fit objects.
 
-# Both fitted and predicted locations (gold) can be plotted as 1-D time-series on top of the observations 
-# (blue) to visually detect any lack of fit. Observations that failed to pass the `prefilter` stage prior 
-# to SSM fitting (black x's) can be included (default) or omitted with the `outlier` argument. 
-# Uncertainty is displayed as a $\pm$ 2 SE envelope (pale gold) around estimates. A rug plot along the 
-#x-axis aids detection of data gaps in the time-series. Note, in second plot, the larger standard errors for 
+# Both fitted and predicted locations (gold) can be plotted as 1-D time-series on top of the observations
+# (blue) to visually detect any lack of fit. Observations that failed to pass the `prefilter` stage prior
+# to SSM fitting (black x's) can be included (default) or omitted with the `outlier` argument.
+# Uncertainty is displayed as a $\pm$ 2 SE envelope (pale gold) around estimates. A rug plot along the
+#x-axis aids detection of data gaps in the time-series. Note, in second plot, the larger standard errors for
 #predicted locations through small data gaps.
 
 #plot(mod.crw_pf, what = "fitted", type = 2)
@@ -491,38 +495,39 @@ plottype = 2 # change accordingly, save plottype 1 and 2
 IDs <- (mod.crw_f_rr$id) ## change accordingly
 
 for (i in 1:length(IDs)){
-  
+  # TO DO: INCLUDE PLOT TYPE IN LOOP AND RUN BOTH PLOTTYPES IN 1  LOOP ----
+
   # open plot window
   png(file = paste0(saveloc,"Validation/Goodness_of_fitted_rerouted_", model, "_locations_", IDs[i],"_fitted_with_", optim, "_",maxit,"iterations_", speedfilter, "_filter_type_",plottype,"_plot.png"), res = 150, height = 20, width = 30, units = "cm")
-  
+
   # plot the fitted locations by individual
   print(plot(mod.crw_f_rr[i,], "rerouted", type = plottype, alpha = 0.1)) # "f" for fitted and type=2 for 2-D
-  
+
   # save it
   dev.off()
 }
 
-# Residual plots are important for validating models, but classical Pearson residuals, 
-# for example, are not appropriate for state-space models. Instead, a one-step-ahead prediction 
-# residual, provides a useful if computationally demanding alternative. 
-# In `aniMotum`, prediction residuals from state-space model fits are calculated using the 
-# `osar` function and can be visualized as time-series plots, Q-Q plots, or autocorrelation 
+# Residual plots are important for validating models, but classical Pearson residuals,
+# for example, are not appropriate for state-space models. Instead, a one-step-ahead prediction
+# residual, provides a useful if computationally demanding alternative.
+# In `aniMotum`, prediction residuals from state-space model fits are calculated using the
+# `osar` function and can be visualized as time-series plots, Q-Q plots, or autocorrelation
 # functions:
 
 ## calculate & plot residuals
 
 for (i in 1:length(IDs)){
-  
+
   # subset individual tracks
   res.s <- osar(mod.crw_f_rr[i,]) ## change accordingly
-  
+
   # open plot window
   png(file = paste0(saveloc,"Validation/Prediction_", model,"_residuals_for_validation_", IDs[i],"_fitted_with_", optim, "_",maxit,"iterations_", speedfilter, "_filter.png"), res = 150, height = 20, width = 30, units = "cm")
-  
+
   #plot
-  print((plot(res.s, type = "ts") | plot(res.s, type = "qq")) / 
+  print((plot(res.s, type = "ts") | plot(res.s, type = "qq")) /
           (plot(res.s, type = "acf") | plot_spacer()))
-  
+
   # save it
   dev.off()
 }
@@ -539,7 +544,7 @@ floc.proj <- grab(mod.crw_pf, what = "fitted", as_sf = T)
 # ## predicted locations
 # ### non-projected form
 # ploc<- grab(mod.crw_pf, what = "predicted")
-# 
+#
 # ### projected form
 # ploc.proj <- grab(mod.crw_pf, what = "predicted", as_sf = T)
 
@@ -571,15 +576,15 @@ saveRDS(floc_r.proj, paste0(saveloc,"Data_aniMotum_CTCRW_output_fitted_rerouted_
 
 ## According to Lea et al. 2013
 
-## "because each raw position has a different error field according to its Argos location class, we needed to 
-## decide the most probable location for each point within its error field. We achieved this by using a Bayesian 
-## state-space model (SSM) that adjusted the filtered tracks by producing regular positions based on the Argos location class, 
+## "because each raw position has a different error field according to its Argos location class, we needed to
+## decide the most probable location for each point within its error field. We achieved this by using a Bayesian
+## state-space model (SSM) that adjusted the filtered tracks by producing regular positions based on the Argos location class,
 ## mean turning angle, and autocorrelation in speed and direction, producing the most probable track through the error fields"
 
 ## "Argos tracks only have locations for when the sharks were at the surface; consequently there is high
-## variability in the number of locations in a given area, as a result of the shark’s varied surfacing behaviour 
-## rather than because of its actual location. This would introduce a bias into the analysis of time spent in different 
-## areas. To correct this bias, linear interpolation was used to normalise the transmission fre- quency by generating 
+## variability in the number of locations in a given area, as a result of the shark’s varied surfacing behaviour
+## rather than because of its actual location. This would introduce a bias into the analysis of time spent in different
+## areas. To correct this bias, linear interpolation was used to normalise the transmission fre- quency by generating
 ## points at 12 hour intervals along track gaps of <20 days."
 
 
@@ -590,12 +595,12 @@ saveRDS(floc_r.proj, paste0(saveloc,"Data_aniMotum_CTCRW_output_fitted_rerouted_
 
 ### make a map of your raw data before model fitting
 # world <- ne_countries(scale = "medium", returnclass = "sf")
-# 
+#
 # #tiff(paste0(saveloc, "Initial_filter_data/SPOT_tracks_",spp.f,"_argosfilter_raw.tiff"), width = 20, height = 30, units = "cm",res = 150)
 # ggplot(data = world) +
 #   geom_sf() +
 #   geom_point(data = det_seg_tl, aes(x = lon, y = lat, colour = id), size = 2, shape = 20) +
-#   coord_sf(xlim = c(min(det_seg_tl$lon - 0.5), max(det_seg_tl$lon + 0.5)), 
+#   coord_sf(xlim = c(min(det_seg_tl$lon - 0.5), max(det_seg_tl$lon + 0.5)),
 #            ylim = c(min(det_seg_tl$lat - 0.5), max(det_seg_tl$lat + 0.5)), expand = F)
 #dev.off()
 
@@ -626,7 +631,7 @@ saveRDS(floc_r.proj, paste0(saveloc,"Data_aniMotum_CTCRW_output_fitted_rerouted_
 
 ## Data
 ## fit_ssm expects 'd' to be a dataframe or tiblle or sf-tibble (with projection info) with 5,7, or 8 columns
-## The data should have  5 columns in the following order: "id", "date", "lc", "lon", "lat". 
+## The data should have  5 columns in the following order: "id", "date", "lc", "lon", "lat".
 ## Where "date" can be a POSIX object or text string in YYYY-MM-DD HH:MM:SS format
 ## Argos Kalman Filter (or Kalman Smoother) data should have 8 columns, including the above 5 plus
 ## "smaj", "smin", "eor" that contain Argos error ellipse variables (in m for "smaj", "smin" and deg for "eor").
@@ -636,7 +641,7 @@ dpf <- det_seg_tl
 
 ## Speedfilter
 ## For the prefiltering of the data we need a speedfilter. While other Sphyrna papers use the same speed
-## as Vaudo et al. 2017 for mako sharks, this possibly is too high. 
+## as Vaudo et al. 2017 for mako sharks, this possibly is too high.
 ## Based on Ryan et al. 2015: https://link.springer.com/article/10.1007/s00227-015-2670-4
 ## we could use speed as function of FL, i.e. speed = 1xFL [m] * s^-1
 ## Calculate the mean FL
@@ -676,7 +681,7 @@ mod.crw_p <- fit_ssm(
     optim = optim,
     maxit = maxit,
     verbose = verbose), # shows parameter trace, 0: silent, 1: optimizer trace, 2: parametre trace (default)
-  #map = list(psi = factor(NA)) 
+  #map = list(psi = factor(NA))
 )
 
 ##Plot the mp model with normalised values
@@ -685,13 +690,13 @@ mod.crw_p <- fit_ssm(
 map(mod.crw_p, what = "p", normalise = TRUE, silent = TRUE)
 #dev.off()
 
-# The `normalise` argument rescales the estimates to span the interval 0,1. 
-# Move persistence estimates from `fit_ssm()` tend to be smoothed more extremely compared 
-# those obtained from `fit_mpm()` and can lack contrast. Normalising the estimates provides a 
-# clearer view of changes in movement behaviour along tracks, highlighting regions where animals 
-# spend disproportionately more or less time. When fitting to a collection of individuals, 
-# the normalisation can be applied separately to each individual or collectively via 
-# `normalise = TRUE, group = TRUE`. In the latter case, the relative magnitudes of move persistence 
+# The `normalise` argument rescales the estimates to span the interval 0,1.
+# Move persistence estimates from `fit_ssm()` tend to be smoothed more extremely compared
+# those obtained from `fit_mpm()` and can lack contrast. Normalising the estimates provides a
+# clearer view of changes in movement behaviour along tracks, highlighting regions where animals
+# spend disproportionately more or less time. When fitting to a collection of individuals,
+# the normalisation can be applied separately to each individual or collectively via
+# `normalise = TRUE, group = TRUE`. In the latter case, the relative magnitudes of move persistence
 # are preserved across individuals.
 
 # C2: re-route path to account for land lcoations
@@ -701,7 +706,7 @@ map(mod.crw_p, what = "p", normalise = TRUE, silent = TRUE)
 mod.crw_p_rr <- route_path(mod.crw_p,
                            what = "predicted",
                            map_scale = 10, # scale of rnaturalearth map to use for land mass - if you want 10, you need the package "rnaturalearthhires"
-                           buffer = 1000 # buffer distance (m) to add around track locations. The convex hull of these buffered locations defines the size of land polygon used to aid re-routing of points on land. 
+                           buffer = 1000 # buffer distance (m) to add around track locations. The convex hull of these buffered locations defines the size of land polygon used to aid re-routing of points on land.
 )
 
 ## map the locations to check if it improved
@@ -709,15 +714,15 @@ my.aes <- aes_lst(line = T,
                   conf = F,
                   mp = F,
                   obs = T)
-m1 <- map(mod.crw_p, 
-          what = "predicted", 
+m1 <- map(mod.crw_p,
+          what = "predicted",
           aes = my.aes,
           ext.rng = c(0.3, 0.1),
           silent = TRUE)
 
-m2 <- map(mod.crw_p_rr, 
-          what = "rerouted", 
-          aes = my.aes, 
+m2 <- map(mod.crw_p_rr,
+          what = "rerouted",
+          aes = my.aes,
           ext.rng = c(0.3, 0.1),
           silent = TRUE)
 
@@ -731,14 +736,14 @@ m2 + labs(title = "Predicted & re-routed locations") &
 
 # C3: check goodness of fit of your ssm/mpm model ----
 
-# Validating SSM fits to tracking data is an essential part of any analysis. 
+# Validating SSM fits to tracking data is an essential part of any analysis.
 # SSM fits can be visualized quickly using the generic `plot` function on model fit objects.
 
-# Both fitted and predicted locations (gold) can be plotted as 1-D time-series on top of the observations 
-# (blue) to visually detect any lack of fit. Observations that failed to pass the `prefilter` stage prior 
-# to SSM fitting (black x's) can be included (default) or omitted with the `outlier` argument. 
-# Uncertainty is displayed as a $\pm$ 2 SE envelope (pale gold) around estimates. A rug plot along the 
-#x-axis aids detection of data gaps in the time-series. Note, in second plot, the larger standard errors for 
+# Both fitted and predicted locations (gold) can be plotted as 1-D time-series on top of the observations
+# (blue) to visually detect any lack of fit. Observations that failed to pass the `prefilter` stage prior
+# to SSM fitting (black x's) can be included (default) or omitted with the `outlier` argument.
+# Uncertainty is displayed as a $\pm$ 2 SE envelope (pale gold) around estimates. A rug plot along the
+#x-axis aids detection of data gaps in the time-series. Note, in second plot, the larger standard errors for
 #predicted locations through small data gaps.
 
 #plot(mod.crw_pf, what = "fitted", type = 2)
@@ -749,40 +754,40 @@ m2 + labs(title = "Predicted & re-routed locations") &
 plottype = 2 # change accordingly, save plottype 1 and 2
 
 IDs <- (mod.crw_p_rr$id) # or mod.crw_p if no re-routing needed
-
+# TO DO: CHANGE SO BOTH TYPES ARE RUN IN SAME LOOP AS ABOVE ----
 for (i in 1:length(IDs)){
-  
+
   # open plot window
   png(file = paste0(saveloc,"Validation/Goodness_of_fitted_rerouted_", model, "_locations_", IDs[i],"_fitted_with_", optim, "_",maxit,"iterations_", speedfilter, "_filter_type_",plottype,"_plot.png"), res = 150, height = 20, width = 30, units = "cm")
-  
+
   # plot the fitted locations by individual
   print(plot(mod.crw_p_rr[i,], "rerouted", type = plottype, alpha = 0.1)) # "f" for fitted and type=2 for 2-D
-  
+
   # save it
   dev.off()
 }
 
-# Residual plots are important for validating models, but classical Pearson residuals, 
-# for example, are not appropriate for state-space models. Instead, a one-step-ahead prediction 
-# residual, provides a useful if computationally demanding alternative. 
-# In `aniMotum`, prediction residuals from state-space model fits are calculated using the 
-# `osar` function and can be visualized as time-series plots, Q-Q plots, or autocorrelation 
+# Residual plots are important for validating models, but classical Pearson residuals,
+# for example, are not appropriate for state-space models. Instead, a one-step-ahead prediction
+# residual, provides a useful if computationally demanding alternative.
+# In `aniMotum`, prediction residuals from state-space model fits are calculated using the
+# `osar` function and can be visualized as time-series plots, Q-Q plots, or autocorrelation
 # functions:
 
 ## calculate & plot residuals
 
 for (i in 1:length(IDs)){
-  
+
   # susbet individual tracks
   res.s <- osar(mod.crw_p_rr[i,])
-  
+
   # open plot window
   png(file = paste0(saveloc,"Validation/Prediction_", model,"_residuals_for_validation_", IDs[i],"_predicted_with_", optim, "_",maxit,"iterations_", speedfilter, "_filter.png"), res = 150, height = 20, width = 30, units = "cm")
-  
+
   #plot
-  print((plot(res.s, type = "ts") | plot(res.s, type = "qq")) / 
+  print((plot(res.s, type = "ts") | plot(res.s, type = "qq")) /
           (plot(res.s, type = "acf") | plot_spacer()))
-  
+
   # save it
   dev.off()
 }
@@ -799,7 +804,7 @@ ploc.proj <- grab(mod.crw_p, what = "predicted", as_sf = T)
 # ## predicted locations
 # ### non-projected form
 # ploc<- grab(mod.crw_pf, what = "predicted")
-# 
+#
 # ### projected form
 # ploc.proj <- grab(mod.crw_pf, what = "predicted", as_sf = T)
 
@@ -821,9 +826,9 @@ saveRDS(ploc, paste0(saveloc,"Data_aniMotum_CTCRW_output_predicted_non-projected
 saveRDS(ploc.proj, paste0(saveloc,"Data_aniMotum_CTCRW_output_predicted_projected_",spp.f,"_with_",speedfilter, "_data.rds"))
 
 ## oredicted re-routed
-write.table(ploc_r, paste0(saveloc, "Data_aniMotum_CTCRW_output_fitted_rerouted_non-projected_", spp.f,"_with_",speedfilter, "_data.csv"),row.names=F,sep=",",dec=".")
-saveRDS(ploc_r, paste0(saveloc,"Data_aniMotum_CTCRW_output_fitted_rerouted_non-projected_", spp.f,"_with_",speedfilter, "_data.rds"))
-saveRDS(ploc_r.proj, paste0(saveloc,"Data_aniMotum_CTCRW_output_fitted_rerouted_projected_",spp.f,"_with_",speedfilter, "_data.rds"))
+write.table(ploc_r, paste0(saveloc, "Data_aniMotum_CTCRW_output_predicted_rerouted_non-projected_", spp.f,"_with_",speedfilter, "_data.csv"),row.names=F,sep=",",dec=".")
+saveRDS(ploc_r, paste0(saveloc,"Data_aniMotum_CTCRW_output_predicted_rerouted_non-projected_", spp.f,"_with_",speedfilter, "_data.rds"))
+saveRDS(ploc_r.proj, paste0(saveloc,"Data_aniMotum_CTCRW_output_predicted_rerouted_projected_",spp.f,"_with_",speedfilter, "_data.rds"))
 
 ### ....................................................................................................
 ### [D] Calculate CI for location estimates and convert to lat/lon ----
@@ -833,14 +838,14 @@ saveRDS(ploc_r.proj, paste0(saveloc,"Data_aniMotum_CTCRW_output_fitted_rerouted_
 # locations (in merc projection also). In case we want to calculate UDs or similar down the line,
 # we need a CI for each loaction estimate that then can be used as a estimate for the location error.
 
-# includes individual id, date, longitude, latitude, x and y (typically from the default Mercator 
-# projection) and their standard errors (`x.se`, `y.se` in km), `u`, `v` (and their standard errors, 
-# `u.se`, `v.se` in km/h) are estimates of signed velocity in the x and y directions. The `u`, `v` 
+# includes individual id, date, longitude, latitude, x and y (typically from the default Mercator
+# projection) and their standard errors (`x.se`, `y.se` in km), `u`, `v` (and their standard errors,
+# `u.se`, `v.se` in km/h) are estimates of signed velocity in the x and y directions. The `u`, `v`
 # velocities should generally be ignored as their estimation uses time intervals between consecutive
-# locations, whether they are observation times or prediction times. The columns `s` and `s.se` 
-# provide a more reliable 2-D velocity estimate, although standard error estimation is turned off 
-# by default as this generally increases computation time for the `crw` SSM. Standard error 
-# estimation for `s` can be turned on via the `control` argument to `fit_ssm` 
+# locations, whether they are observation times or prediction times. The columns `s` and `s.se`
+# provide a more reliable 2-D velocity estimate, although standard error estimation is turned off
+# by default as this generally increases computation time for the `crw` SSM. Standard error
+# estimation for `s` can be turned on via the `control` argument to `fit_ssm`
 # (i.e. `control = ssm_control(se = TRUE)`, see `?ssm_control` for futher details).
 
 
