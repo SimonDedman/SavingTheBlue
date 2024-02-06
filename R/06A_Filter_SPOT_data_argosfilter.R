@@ -10,7 +10,7 @@
 ### Content: this R script contains the code to filter, clean and process raw data collected by fin-
 ###          mounted Smart Position and Temperature (SPOT) transmitters. We use the argosfilter package
 ###          by Freitas et al. 2008.
-###          Here processed data can then be used in further scripts and steps to model and analyze 
+###          Here processed data can then be used in further scripts and steps to model and analyze
 ###          SPOT tag data.
 ###          The filtering steps is parallelized allowing to filter multiple IDs at once.
 ###          This script is specific for the project looking at residency, habitat use and trophic
@@ -24,7 +24,7 @@
 #!!!!!! IMPRTOANT THAT YOU CHECK FOR Z LOCATIONS BEING ACTUALLY REMOVED!!!!! ADD LINE OF CODE
 # SIMILAR TO CODE FROM CFAL SCRIPT FOR BRENDAN
 
-#### PROBABLY CHANGE SCRIPT TO ADD SMAJ,SMINEOR DATA HERE ALREADY BEFORE FILTER#  
+#### PROBABLY CHANGE SCRIPT TO ADD SMAJ,SMINEOR DATA HERE ALREADY BEFORE FILTER#
 
 
 # A1: clear memory ----
@@ -116,7 +116,7 @@ pprm <- tags_all[which(tags_all$status == "pprm"), 1]
 # B2: Basic housekeeping ----
 
 ddet <-mydets %>%
-  dplyr::select( # select relevant columns, here: id, date, location class (lc), lon, lat, 
+  dplyr::select( # select relevant columns, here: id, date, location class (lc), lon, lat,
     Ptt,
     Date,
     Type,
@@ -148,7 +148,7 @@ ddet <-mydets %>%
   ) %>%
   dplyr::select( # remove Type column as it is not needed later
     -Type
-  ) 
+  )
 
 ## add tagging date for subsequent filtering
 ddet$tagging.date <- NA
@@ -191,20 +191,20 @@ if (filter_needed == "yes"){ # do NOT change this
 
 # B3: Deal with near duplicate observations ----
 
-# Argos data often contain near duplicate records. These are identified by location estimates 
-# with the same date-time but differing coordinate or error values. In theory, crawl::crwMLE() 
-# can handle these situations, but we have found it is more reliable to fix these records. 
-# The first option for fixing the records would be to eliminate one of the duplicate records. 
-# However, it is often not possible to reliably identify which record is more appropriate to 
-# discard. For this reason, we advocate adjusting the date-time value for one of the records 
-# and increasing the value by 10 second. To facilitate this, we will rely on the 
+# Argos data often contain near duplicate records. These are identified by location estimates
+# with the same date-time but differing coordinate or error values. In theory, crawl::crwMLE()
+# can handle these situations, but we have found it is more reliable to fix these records.
+# The first option for fixing the records would be to eliminate one of the duplicate records.
+# However, it is often not possible to reliably identify which record is more appropriate to
+# discard. For this reason, we advocate adjusting the date-time value for one of the records
+# and increasing the value by 10 second. To facilitate this, we will rely on the
 # xts::make.time.unique() function.
 
 ddet_tc <- ddet %>% # create time corrected df
-  dplyr::arrange(id,date) %>% 
-  dplyr::group_by(id) %>% tidyr::nest() %>% 
-  dplyr::mutate(unique_time = purrr::map(data, make_unique)) %>% 
-  tidyr::unnest(cols = c(data, unique_time)) %>% 
+  dplyr::arrange(id,date) %>%
+  dplyr::group_by(id) %>% tidyr::nest() %>%
+  dplyr::mutate(unique_time = purrr::map(data, make_unique)) %>%
+  tidyr::unnest(cols = c(data, unique_time)) %>%
   dplyr::select(-date) %>% rename(date = unique_time)
 
 dup_times <- ddet_tc %>% group_by(id) %>%
@@ -225,14 +225,14 @@ write.csv(ddet_tc %>% dplyr::group_by(id) %>%
 
 # B4: visualise raw data ----
 
-sf_ddet <- sf::st_as_sf(ddet_tc, coords = c("lon","lat")) %>% 
+sf_ddet <- sf::st_as_sf(ddet_tc, coords = c("lon","lat")) %>%
   sf::st_set_crs(4326)
 
-sf_lines <- sf_ddet %>% 
-  dplyr::arrange(id, date) %>% 
-  sf::st_geometry() %>% 
-  sf::st_cast("MULTIPOINT",ids = as.integer(as.factor(sf_ddet$id))) %>% 
-  sf::st_cast("MULTILINESTRING") %>% 
+sf_lines <- sf_ddet %>%
+  dplyr::arrange(id, date) %>%
+  sf::st_geometry() %>%
+  sf::st_cast("MULTIPOINT",ids = as.integer(as.factor(sf_ddet$id))) %>%
+  sf::st_cast("MULTILINESTRING") %>%
   sf::st_sf(deployid = as.factor(unique(sf_ddet$id)))
 
 esri_ocean <- paste0('https://services.arcgisonline.com/arcgis/rest/services/',
@@ -242,25 +242,25 @@ esri_ocean <- paste0('https://services.arcgisonline.com/arcgis/rest/services/',
 nb.cols <- length(unique(ddet$id))
 mycolors <- colorRampPalette(brewer.pal(nb.cols, "YlOrRd"))(nb.cols)
 
-ggplot() + 
+ggplot() +
   annotation_map_tile(type = esri_ocean,zoomin = 1,progress = "none") +
   layer_spatial(sf_ddet, size = 0.5) +
   layer_spatial(sf_lines, size = 0.75,aes(color = deployid)) +
   scale_x_continuous(expand = expansion(mult = c(.6, .6))) +
   scale_fill_manual(values = mycolors) +
   theme() +
-  ggtitle("Observed Argos Location Paths - Raw data", 
+  ggtitle("Observed Argos Location Paths - Raw data",
           subtitle = paste0("SPOT tagged S.mokarran from Andros (n = ", length(unique(ddet_tc$id)), ")"))
 
 ## save if needed
-ggsave(paste0(saveloc,"Raw_argos_detections_pre_sda_filter.tiff"), 
+ggsave(paste0(saveloc,"Raw_argos_detections_pre_sda_filter.tiff"),
        width = 21, height = 15, units = "cm", device ="tiff", dpi=300)
 
 ### ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ### [C] Filter data based on speed, distance and turning angles using argosfilter::sdafilter() ----
 ### ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-## To filter the track based on speed and turning angles, we use the package 
+## To filter the track based on speed and turning angles, we use the package
 ## "argosfilter" from Freitas et al. 2008
 
 ## To filter data based on turning angles, speed, distance etc. one can use the sdafilter()
@@ -291,10 +291,10 @@ ggsave(paste0(saveloc,"Raw_argos_detections_pre_sda_filter.tiff"),
 ## ang = anles of the spikes to be removed. Default is c(15,25), No spikes are removed if ang = -1.
 ## distlim = lengths of the above spikes, in meters. Default is c(2500,5000).
 
-# This analysis can be run in series, however, the process 
-# lends itself nicely to parallel processing. The parallel package (included with the distribution 
-# of R) would be one option for taking advantage of multiple processors. However, we want to 
-# maintain the purrr and nested column tibble data structure. The multidplyr package is in 
+# This analysis can be run in series, however, the process
+# lends itself nicely to parallel processing. The parallel package (included with the distribution
+# of R) would be one option for taking advantage of multiple processors. However, we want to
+# maintain the purrr and nested column tibble data structure. The multidplyr package is in
 # development and available for install via the devtools package and source code hosted on GitHub.
 
 # C1: apply filter ----
@@ -303,14 +303,14 @@ future::plan(multisession)
 
 prefilter_obs <- ddet_tc
 
-ddet_af <- ddet_tc %>% 
-  dplyr::arrange(id, date) %>% 
-  dplyr::group_by(id) %>% 
-  tidyr::nest() 
+ddet_af <- ddet_tc %>%
+  dplyr::arrange(id, date) %>%
+  dplyr::group_by(id) %>%
+  tidyr::nest()
 
 #tbl_locs %>% dplyr::summarise(n = n())
 
-ddet_af <- ddet_af %>% 
+ddet_af <- ddet_af %>%
   dplyr::mutate(filtered = furrr::future_map(data, ~ argosfilter::sdafilter(
     lat = .x$lat,
     lon = .x$lon,
@@ -319,10 +319,10 @@ ddet_af <- ddet_af %>%
     vmax = 2.1,
     ang = c(15,25),
     distlim = c(5000,8000)
-  ))) %>% 
-  tidyr::unnest(cols = c(data, filtered)) %>% 
-  dplyr::filter(filtered %in% c("not", "end_location")) %>% 
-  dplyr::select(-filtered) %>% 
+  ))) %>%
+  tidyr::unnest(cols = c(data, filtered)) %>%
+  dplyr::filter(filtered %in% c("not", "end_location")) %>%
+  dplyr::select(-filtered) %>%
   dplyr::arrange(id,date)
 
 cat("You removed ", nrow(prefilter_obs)-nrow(ddet_af)," locations.")
@@ -338,29 +338,29 @@ write.csv(ddet_af %>% dplyr::summarise(n = n()),
 esri_ocean <- paste0('https://services.arcgisonline.com/arcgis/rest/services/',
                      'Ocean/World_Ocean_Base/MapServer/tile/${z}/${y}/${x}.jpeg')
 
-af_sf <- sf::st_as_sf(ddet_af, coords = c("lon","lat")) %>% 
+af_sf <- sf::st_as_sf(ddet_af, coords = c("lon","lat")) %>%
   sf::st_set_crs(4326)
 
-af_lines <- af_sf %>% 
-  dplyr::arrange(id, date) %>% 
-  sf::st_geometry() %>% 
-  sf::st_cast("MULTIPOINT",ids = as.integer(as.factor(af_sf$id))) %>% 
-  sf::st_cast("MULTILINESTRING") %>% 
+af_lines <- af_sf %>%
+  dplyr::arrange(id, date) %>%
+  sf::st_geometry() %>%
+  sf::st_cast("MULTIPOINT",ids = as.integer(as.factor(af_sf$id))) %>%
+  sf::st_cast("MULTILINESTRING") %>%
   sf::st_sf(id = as.factor(unique(af_sf$id)))
 
-ggplot() + 
+ggplot() +
   annotation_map_tile(type = esri_ocean,zoomin = 1,progress = "none") +
   layer_spatial(sf_ddet, size = 0.5) +
   layer_spatial(af_lines, size = 0.75,aes(color = id)) +
   scale_x_continuous(expand = expansion(mult = c(.6, .6))) +
   #scale_fill_manual() +
   theme() +
-  ggtitle("Argos detections with argosfilter::sdafilter()", 
+  ggtitle("Argos detections with argosfilter::sdafilter()",
           subtitle = paste0("SPOT tagged S.mokarran from Andros (n = ", length(unique(ddet$id)), ");
 argsofilter::sdafilter() removes ", nrow(prefilter_obs)-nrow(ddet_af)," locations."))
 
 ## save if needed
-ggsave(paste0(saveloc,"Argos_detections_with_argosfilter_sdafilter.tiff"), 
+ggsave(paste0(saveloc,"Argos_detections_with_argosfilter_sdafilter.tiff"),
        width = 21, height = 15, units = "cm", device ="tiff", dpi=300)
 
 # C2: Save the data ----
@@ -379,44 +379,44 @@ saveRDS(ddet_af, paste0(saveloc, "Argosfilter_filtered_Sphyrna_SPOT_tracks_multi
 
 
 #### STOP HERE BASED ON M/M 2023-09-11
-
-
-### ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-### [E] Filter out first 24hrs of data to eliminate bias from tagging event ----
-### ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-### NEEDS UPDATE!
-
-# E1: import individual data file to acquire tagging date ----
-
-tagday <- det.i
-
-## Only keep first row as this should contain the tagging date
-tagday <- tagday[1,]
-
-## adjust class of loc.date column
-tagday$Loc..date <- as.POSIXct(tagday$Loc..date,format="%m/%d/%Y %H:%M:%S",tz="UTC")
-
-# E2: filter out 24 hrs of data post tagging to elimiante bias from tagging event ----
-
-tagday[,7]<-tagday[,7]+3600*24 # adjust
-str(tagday)
-
-a<-numeric()
-a<-which(cleaner$Loc..date<tagday$Loc..date)
-
-
-if (length(a)>0){
-  cleaner24<-cleaner[-a,]
-} else {
-    cleaner24 <- cleaner
-}
-
-View(cleaner24)
-
-# E3: save filtered data ----
-
-## csv
-write.table(cleaner24, file=paste(saveloc, animalid, "_filtered_SPOT_track_24hrs_filter",".csv",sep=""),row.names=F,sep=sep,dec=dec)
-## txt
-write.table(cleaner24, file=paste(saveloc, animalid, "_filtered_SPOT_track_24hrs_filter",start,"_",end,".txt",sep=""),row.names=F,sep=sep,dec=dec)
+#
+#
+# ### ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ### [E] Filter out first 24hrs of data to eliminate bias from tagging event ----
+# ### ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# ### NEEDS UPDATE!
+#
+# # E1: import individual data file to acquire tagging date ----
+#
+# tagday <- det.i
+#
+# ## Only keep first row as this should contain the tagging date
+# tagday <- tagday[1,]
+#
+# ## adjust class of loc.date column
+# tagday$Loc..date <- as.POSIXct(tagday$Loc..date,format="%m/%d/%Y %H:%M:%S",tz="UTC")
+#
+# # E2: filter out 24 hrs of data post tagging to elimiante bias from tagging event ----
+#
+# tagday[,7]<-tagday[,7]+3600*24 # adjust
+# str(tagday)
+#
+# a<-numeric()
+# a<-which(cleaner$Loc..date<tagday$Loc..date)
+#
+#
+# if (length(a)>0){
+#   cleaner24<-cleaner[-a,]
+# } else {
+#     cleaner24 <- cleaner
+# }
+#
+# View(cleaner24)
+#
+# # E3: save filtered data ----
+#
+# ## csv
+# write.table(cleaner24, file=paste(saveloc, animalid, "_filtered_SPOT_track_24hrs_filter",".csv",sep=""),row.names=F,sep=sep,dec=dec)
+# ## txt
+# write.table(cleaner24, file=paste(saveloc, animalid, "_filtered_SPOT_track_24hrs_filter",start,"_",end,".txt",sep=""),row.names=F,sep=sep,dec=dec)
