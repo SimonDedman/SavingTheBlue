@@ -1,31 +1,31 @@
 ### ====================================================================================================
 ### Project:    PhD - Satellite Telemetry
 ### Analysis:   Processing and cleaning satellite telemetry data of fin-mounted SPOT tags for further steps
-### Script:     Rscript_Filtering_SPOT_tag_data_using_sda_filters_multi_ID_(bahamas_hammerheads)
+### Script:     ~SavingTheBlue/R/06A_Filter_SPOT_data_argosfilter
 ### Author:     Vital Heim
 ### Version:    1.0
 ### ====================================================================================================
 
-### ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+### ....................................................................................................
 ### Content: this R script contains the code to filter, clean and process raw data collected by fin-
 ###          mounted Smart Position and Temperature (SPOT) transmitters. We use the argosfilter package
 ###          by Freitas et al. 2008.
+###
+###          Package information:
+###          Freitas C (2022). _argosfilter: Argos Locations
+###          Filter_. R package version 0.70,
+###          <https://CRAN.R-project.org/package=argosfilter>.
+###
 ###          Here processed data can then be used in further scripts and steps to model and analyze
 ###          SPOT tag data.
 ###          The filtering steps is parallelized allowing to filter multiple IDs at once.
-###          This script is specific for the project looking at residency, habitat use and trophic
-###          interactions of great hammerheads in Andros (submission goal: december 2023)
-### ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+###          This script is specifically tailored for the project looking at residency, habitat use and
+###          trophic interactions of great hammerheads in Andros, The Bahamas.
+### ....................................................................................................
 
 ### ....................................................................................................
 ### [A] Setwd, paths and parameters ----
 ### ....................................................................................................
-
-# !!!!!! IMPRTOANT THAT YOU CHECK FOR Z LOCATIONS BEING ACTUALLY REMOVED!!!!! ADD LINE OF CODE
-# SIMILAR TO CODE FROM CFAL SCRIPT FOR BRENDAN
-
-#### PROBABLY CHANGE SCRIPT TO ADD SMAJ,SMINEOR DATA HERE ALREADY BEFORE FILTER#
-
 
 # A1: clear memory ----
 
@@ -51,6 +51,7 @@ require("devtools")
 # install.packages("ggspatial")
 # install.packages("RColorBrewer")
 # install.packages("xts")
+# instal.packages("tidylog")
 
 ## load
 library(tidyverse)
@@ -65,15 +66,23 @@ library(ggplot2)
 library(ggspatial)
 library(RColorBrewer)
 library(xts)
+library(tidylog)
 library(argosfilter) # to filter raw Argos data, i.e. SPOT tag data
 # library(trip)
 
-# A3: Specify needed functions
+# A3: Specify needed functions and parameters
 
 ## Function to deal with near duplicate  Argos observations
 make_unique <- function(x) {
   xts::make.time.unique(x$date, eps = 10) # eps = number of seconds to make unique
 }
+
+## Specify if you want to have a cutoff date for your movement data. This may be the case
+## if you want to submit your manuscript, when there are still active tags in your data set.
+
+filter_needed <- "yes" # if you need ("yes") or do not ("no") need a cutoff data
+max_date <- as.POSIXct("2024-02-01 00:00:00", # change this if "yes" for filter_needed, put in your cutoff day and time
+                       format = "%Y-%m-%d %H:%M:%S", tz = "UTC", usetz = T)
 
 # A4: Specify data and saveloc ----
 saveloc <- "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Bahamas_Hammerheads_2022/OutputData/Initial_filter_data/" # Adjust this
@@ -101,16 +110,18 @@ colnames(tags) <- c("id", "species", "sex", "date", "lat", "lon", "pcl", "fl", "
 tags$lc <- "G" # we add a location class criteria for later joining with the movement data. we define the LC as "G" for gps, so that we do not need to worry about smaj,smin,eor
 tags$id <- as.character(tags$id)
 
-tagging_date <- tags[, c(1, 4)] # df for filtering of osbervations pre-deployment
+## Make a df with just the tagging date
+tagging_date <- tags[, c(1, 4)] # will be needed for filtering of observations pre-deployment
 
-tagging_location <- tags[, c(1, 4, 10, 6, 5)] # df to add tagging location as observation for ctcrw fitting
-tagging_location$smaj <- 50
-tagging_location$smin <- 50
-tagging_location$eor <- 0
+## Make a df with just the tagging locations
+tagging_location <- tags[, c(1, 4, 10, 6, 5)] # will be needed to add tagging location as observation for ctcrw fitting
+tagging_location$smaj <- 50 # those are the error ellipsis details, major axis
+tagging_location$smin <- 50 # minor axis
+tagging_location$eor <- 0 # ellipsis orientation
 colnames(tagging_location) <- c("id", "date", "lc", "lon", "lat", "smaj", "smin", "eor")
 # head(tagging_location)
 
-### make a df with all the potential post-release mortalities
+## make a df with all the potential post-release mortalities
 pprm <- tags_all[which(tags_all$status == "pprm"), 1]
 
 # B2: Basic housekeeping ----
@@ -127,9 +138,9 @@ ddet <- mydets %>%
     Error.Semi.minor.axis,
     Error.Ellipse.orientation
   ) %>%
-  filter( # locations that were user specified within the Wildlife Data Portal
-    !Type %in% c("User"),
-    !Quality %in% c("Z"),
+  filter(
+    !Type %in% c("User"), # locations that were user specified within the Wildlife Data Portal
+    !Quality %in% c("Z"), # invalid locations - should also be filtered by sdafilter()
     !Ptt %in% pprm
   ) %>%
   mutate( # define Date format
@@ -165,7 +176,7 @@ ddet %<>%
   dplyr::select( # get rid of unneeded columns
     -tagging.date
   ) %>%
-  bind_rows( # add tagging location as observation of class "gps"
+  bind_rows( # add tagging location as observation of class "gps", i.e "G"
     semi_join(tagging_location, ddet, by = "id")
   ) %>%
   arrange( # arrange by timestamp by individual so df can be used for fit_() functions
@@ -175,10 +186,6 @@ ddet %<>%
 
 ## if you need/want, remove detections after a certain date
 ## this is useful if you have active tags, but need to write a report or plan on submitting a manuscript soon
-
-filter_needed <- "yes" # change this
-max_date <- as.POSIXct("2024-02-01 00:00:00", format = "%Y-%m-%d %H:%M:%S", tz = "UTC", usetz = T) # change this
-
 if (filter_needed == "yes") { # do NOT change this
   ddet <- ddet %>%
     dplyr::filter(
@@ -213,7 +220,7 @@ ddet_tc <- ddet %>% # create time corrected df
 
 dup_times <- ddet_tc %>%
   group_by(id) %>%
-  filter(duplicated(date)) # should be 0 after correcting for near duplicates
+  filter(duplicated(date)) # should be 0 after correcting for near duplicates, check that this is true
 
 ## data summary
 ddet_tc %>%
@@ -222,9 +229,9 @@ ddet_tc %>%
     num_locs = n(),
     start_date = min(date),
     end_date = max(date)
-  ) ## We see that there are also datapoints in there from the tag initiation, we will deal with this later
+  );
 
-### write data summary to .csv
+## save the data summary
 write.csv(
   ddet_tc %>% dplyr::group_by(id) %>%
     dplyr::summarise(
@@ -235,7 +242,7 @@ write.csv(
   paste0(saveloc, "Data_Smok_Andros_SPOT_location_summary_first_to_last.csv")
 )
 
-# B4: visualise raw data ----
+# B4: visualise raw movement data ----
 
 sf_ddet <- sf::st_as_sf(ddet_tc, coords = c("lon", "lat")) %>%
   sf::st_set_crs(4326)
@@ -252,16 +259,12 @@ esri_ocean <- paste0(
   "Ocean/World_Ocean_Base/MapServer/tile/${z}/${y}/${x}.jpeg"
 )
 
-## Define the number of colors you want
-nb.cols <- length(unique(ddet$id))
-mycolors <- colorRampPalette(brewer.pal(nb.cols, "YlOrRd"))(nb.cols)
-
+## Plot it
 ggplot() +
   annotation_map_tile(type = esri_ocean, zoomin = 1, progress = "none", cachedir = saveloc) +
   layer_spatial(sf_ddet, size = 0.5) +
   layer_spatial(sf_lines, size = 0.75, aes(color = deployid)) +
   scale_x_continuous(expand = expansion(mult = c(.6, .6))) +
-  scale_fill_manual(values = mycolors) +
   theme() +
   ggtitle("Observed Argos Location Paths - Raw data",
     subtitle = paste0("SPOT tagged S.mokarran from Andros (n = ", length(unique(ddet_tc$id)), ")")
@@ -272,18 +275,18 @@ ggsave(paste0(saveloc, "Raw_argos_detections_pre_sda_filter.tiff"),
   width = 21, height = 15, units = "cm", device = "tiff", dpi = 300
 )
 
-### ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+### ...............................................................................................
 ### [C] Filter data based on speed, distance and turning angles using argosfilter::sdafilter() ----
-### ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+### ...............................................................................................
 
 ## To filter the track based on speed and turning angles, we use the package
 ## "argosfilter" from Freitas et al. 2008
 
 ## To filter data based on turning angles, speed, distance etc. one can use the sdafilter()
-## function. The locations are filtered using the Freitas et al. 2008 algorithm.
+## function.
 
 ## Locations are filtered using the algorithm described in Freitas et al. (2008). The algorithm first
-## removes all locations with location class Z (-9), which are the points for which the location process
+## removes all locations with location class Z, which are the points for which the location process
 ## failed. Then all locations requiring unrealistic swimming speeds are removed, using the MacConnell et al. (1992) algorithm, unless the point is located at less than 5 km from the previous
 ## location. This procedure enables retaining good quality locations for which high swimming speeds
 ## result from location being taken very close to each other in time. The default maximum speed
@@ -296,7 +299,7 @@ ggsave(paste0(saveloc, "Raw_argos_detections_pre_sda_filter.tiff"),
 ## The output will be a vector with the following elements:
 ## "removed" = location removed by filter
 ## "not" = location not removed
-## "end_location" = location a tht end of the track where the algorithm could not be applied
+## "end_location" = location a the start/end of the track where the algorithm could not be applied
 
 ## The function needs the following arguments
 ## lat = numeric vector of latitudes in decimal degrees
@@ -309,9 +312,8 @@ ggsave(paste0(saveloc, "Raw_argos_detections_pre_sda_filter.tiff"),
 
 # This analysis can be run in series, however, the process
 # lends itself nicely to parallel processing. The parallel package (included with the distribution
-# of R) would be one option for taking advantage of multiple processors. However, we want to
-# maintain the purrr and nested column tibble data structure. The multidplyr package is in
-# development and available for install via the devtools package and source code hosted on GitHub.
+# of R) would be one option for taking advantage of multiple processors. However, we use
+# the purrr and nested column tibble data structure.
 
 # C1: apply filter ----
 
@@ -342,10 +344,32 @@ ddet_af <- ddet_af %>%
   dplyr::arrange(id, date)
 
 cat("You removed ", nrow(prefilter_obs) - nrow(ddet_af), " locations.")
+# You removed  402  locations.
+
 prefilter_obs %>%
   group_by(id) %>%
   dplyr::summarise(n = n())
+# A tibble: 7 × 2
+# id         n
+# <chr>  <int>
+# 1 183623   942
+# 2 200368   698
+# 3 200369   199
+# 4 209020   153
+# 5 222133   650
+# 6 235283    29
+# 7 244608   484
 ddet_af %>% dplyr::summarise(n = n())
+# A tibble: 7 × 2
+# id         n
+# <chr>  <int>
+# 1 183623   799
+# 2 200368   618
+# 3 200369   166
+# 4 209020   132
+# 5 222133   577
+# 6 235283    22
+# 7 244608   439
 
 ## write csv to show new data structte
 write.csv(
@@ -355,10 +379,10 @@ write.csv(
 
 ## Visualise the filtered tracks
 
-esri_ocean <- paste0(
-  "https://services.arcgisonline.com/arcgis/rest/services/",
-  "Ocean/World_Ocean_Base/MapServer/tile/${z}/${y}/${x}.jpeg"
-)
+# esri_ocean <- paste0(
+#   "https://services.arcgisonline.com/arcgis/rest/services/",
+#   "Ocean/World_Ocean_Base/MapServer/tile/${z}/${y}/${x}.jpeg"
+# )
 
 af_sf <- sf::st_as_sf(ddet_af, coords = c("lon", "lat")) %>%
   sf::st_set_crs(4326)
@@ -379,8 +403,7 @@ ggplot() +
   theme() +
   ggtitle("Argos detections with argosfilter::sdafilter()",
     subtitle = paste0("SPOT tagged S.mokarran from Andros (n = ", length(unique(ddet$id)), ");
-argsofilter::sdafilter() removes ", nrow(prefilter_obs) - nrow(ddet_af), " locations.")
-  )
+argsofilter::sdafilter() removes ", nrow(prefilter_obs) - nrow(ddet_af), " locations."))
 
 ## save if needed
 ggsave(paste0(saveloc, "Argos_detections_with_argosfilter_sdafilter.tiff"),
@@ -403,6 +426,7 @@ saveRDS(ddet_af, paste0(saveloc, "Argosfilter_filtered_Sphyrna_SPOT_tracks_multi
 
 
 #### STOP HERE BASED ON M/M 2023-09-11
+
 #
 #
 # ### ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
