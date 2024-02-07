@@ -25,7 +25,7 @@ source('/home/simon/Dropbox/Blocklab Monterey/Blocklab/vanMoorter.etal.2010/p7_g
 library(sf)
 # remotes::install_github("SimonDedman/movegroup")
 library(movegroup)
-saveloc <- "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/"
+saveloc <- "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement"
 
 
 
@@ -70,7 +70,7 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
   df_nona <- df_nona[!is.na(df_nona$lon),] # omit rows with NA values for lon, downsample to days only
   fishlist <- unique(df_nona$id)
 
-  # loop id, calc li5day, make track####
+  ##### loop id, calc li5day, make track####
   for (i in fishlist) { # i <- fishlist[1]
     df_nonai <- df_nona[which(df_nona$id == i),] #subset to each fish
     print(paste0(which(fishlist == i), " of ", length(fishlist), "; adding transit dive data to ", i))
@@ -192,7 +192,7 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
 hammers$kmeans2cluster <- as.character(rep(NA, nrow(hammers)))
 hammers$kmeansBinary <- as.integer(rep(NA, nrow(hammers)))
 
-# Prepare steplength & TA data ####
+##### Prepare steplength & TA data ####
 # /500 issue; auto scale 500 scalar based on input data L201; use KM not BL?; SL values shouldn't influence cluster results??
 # VanM paper: We log-transformed both activity measures and steplength to reduce positive skew. Furthermore, we standardized all variable values on their range (Steinley 2006a).
 # Because we found no outliers (no data seemed outlying by visual inspection of the distribution, nor were any observations >3.3 SDs from the mean, which corresponds to a density of 0.001 in a normal distribution), we did not remove any data before data standardization.
@@ -308,10 +308,10 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
     # 1: KMeansAppend(loadlistcompare = F, machine = machine)
 
 
-    # plot GAP stat per clusters+SE####
+    ##### plot GAP stat per clusters+SE####
     par(mfrow = c(1,1))
     k <- seq(1:length(res$GAP))
-    png(filename = paste0(saveloc, "KmeansClusters_", i, ".png"), width = 4*480, height = 4*480, units = "px", pointsize = 4*12, bg = "white", res = NA, family = "", type = "cairo-png")
+    png(filename = paste0(saveloc, "/KmeansClusters_", i, ".png"), width = 4*480, height = 4*480, units = "px", pointsize = 4*12, bg = "white", res = NA, family = "", type = "cairo-png")
     plot(k, res$GAP, xlab = "number of clusters k", ylab = "GAP", main = "GAP statistic", type = "b")
     segments(k, c(res$GAP - res$s), k, c(res$GAP + res$s))
     kstar <- min(which(res$GAP[-length(res$GAP)] >= c(res$GAP - res$s)[-1])) # if none of the first set of values are individually smaller than their paired counterparts in the second set of values then which() produces all FALSEs and min() fails.
@@ -321,18 +321,18 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
     dev.off()
 
     # var1 vs var2 clustering scatterplots
-    png(filename = paste0(saveloc, "Kmeans-StepLength-TurnAngle-Scatter_", i, ".png"), width = 4*480, height = 4*480, units = "px", pointsize = 4*12, bg = "white", res = NA, family = "", type = "cairo-png")
+    png(filename = paste0(saveloc, "/Kmeans-StepLength-TurnAngle-Scatter_", i, ".png"), width = 4*480, height = 4*480, units = "px", pointsize = 4*12, bg = "white", res = NA, family = "", type = "cairo-png")
     plot(x$StepLengthBLlog1p, x$TurnAngleRelDeg, xlab = "Step Length (Body Lengths)", ylab = "Turn Angle Degrees")
     dev.off()
 
     # then redo kmeans with selected number of clusters (kmeans output cl1 gets overwritten per i)
-    # TODO make centers dynamic ####
+    ##### TODO make centers dynamic ####
     # See L413 "Show how many clusters were chosen most commonly"
     # kstar & kstar2, might be different.
     kmeans2 <- kmeans(x, centers = 2, iter.max = 100) #run kmeans
     df_i[as.integer(names(kmeans2$cluster)), "kmeans2cluster"] <- kmeans2$cluster
 
-    # label transit/resident clusters algorithmically####
+    ##### label transit/resident clusters algorithmically####
     # kmeans2$centers
     # # StepLengthBLlog1p TurnAngleRelDeg
     # # 1    0.5816330       0.3355378
@@ -380,10 +380,10 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
     # kmeans2$size
     # # 20920 18726
 
-    # reverse transform ####
+    ##### reverse transform ####
     df_i$StepLengthBLlog1p <-  expm1(df_i$StepLengthBLlog1p + logmean)
 
-    #save metadata clusterinfo.csv####
+    #####save metadata clusterinfo.csv####
     clusterinfoadd <- data.frame(nClustersTolerance1 = kstar,
                                  nClustersTolerance2 = kstar2,
                                  TransitClusterStepLengthBLlog1pMean = mean(df_i[which(df_i$kmeans2cluster == "transit"), "StepLengthBLlog1p"], na.rm = T),
@@ -409,7 +409,7 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
   clusterinfo <- round(clusterinfo, 1)
   clusterinfo <- bind_cols(id = fishlist, clusterinfo)
 
-  write.csv(x = clusterinfo, file = paste0(saveloc, today(), "_KmeansClusterinfo.csv"), row.names = FALSE)
+  write.csv(x = clusterinfo, file = paste0(saveloc, "/", today(), "_KmeansClusterinfo.csv"), row.names = FALSE)
 } else {# close if (!all(is.na(alldaily$lat)))
   print("all new days missing latitude data, can't get external data, nothing to do")
 }
@@ -434,7 +434,7 @@ clustersvec %>%
 #     3     6   #more k=3 than k=2
 #     2     4
 
-# wrap up####
+##### wrap up####
 setDF(hammers)
 hammers$StepLengthBLlog1p <-  expm1(hammers$StepLengthBLlog1p + logmean)
 saveRDS(object = hammers, file = paste0(saveloc, "/kmeans/Hammers_KMeans.Rds"))
@@ -447,10 +447,42 @@ invisible(lapply(paste0('package:', names(sessionInfo()$otherPkgs)), detach, cha
 
 
 
-# 3. movegroup dBBMMs ####
+
+
+# 3. 2D Barplot maps KMeans ####
+library(mapplots)
+# remotes::install_github("SimonDedman/gbm.auto")
+library(gbm.auto)
+saveloc <- "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/kmeans"
+hammers <- readRDS(file = paste0(saveloc, "/Hammers_KMeans.Rds"))
+cropmap <- gbm.auto::gbm.basemap(grids = hammers,
+                      gridslat = 6,
+                      gridslon = 3,
+                      savedir = saveloc)
+bathysavepath <- paste0(saveloc, "/getNOAAbathy/")
+map2dbpSaveloc <- paste0(saveloc, "/2DbarplotMap/")
+
+source("~/Dropbox/Galway/Analysis/R/My Misc Scripts/barplot2dMap.R")
+
+for (i in c(0.25, 0.5, 1)) {
+  barplot2dMap(x = hammers |> tidyr::drop_na(kmeans2cluster),
+               baseplot = cropmap,
+               bathysavepath = bathysavepath,
+               cellsize = c(i, i),
+               legendloc = "topright",
+               saveloc = map2dbpSaveloc,
+               plotname = paste0(lubridate::today(), "_2DBarplot_Count_", i, "deg"))
+}
+
+
+
+
+
+
+# 4. movegroup dBBMMs ####
 hammers <- readRDS(paste0(saveloc, "/kmeans/Hammers_KMeans.Rds"))
 
-# moveLocError ####
+##### moveLocError ####
 # calcs from /home/simon/Dropbox/Blocklab Monterey/Blocklab/ConfidenceIntervalPointsToPoly.R
 reproject <- function(x, coorda, coordb, latloncrs, projectedcrs) {
   x <- sf::st_as_sf(x, coords = c(coorda, coordb)) |>
@@ -503,7 +535,7 @@ meanMoveLocDist <- list(
 hammers$meanMoveLocDist <- meanMoveLocDist
 
 
-# timeDiffLong ####
+##### timeDiffLong ####
 hammers$diffmins <- c(as.numeric(NA), as.numeric(hammers$date[2:length(hammers$date)] - hammers$date[1:length(hammers$date) - 1]))
 # gives error but still works
 # get index of first row per id
@@ -569,7 +601,7 @@ hammers |>
             sd3 = sd(diffmins, na.rm = TRUE) * 3)
 # Following discussion, trying 24 hours, doing in mins since they're already in mins
 
-# rasterResolution ####
+##### rasterResolution ####
 # With default = 6: Error: cannot allocate vector of size 2286.7 Gb
 2 * mean(meanMoveLocDist) # 8265.945
 hist(meanMoveLocDist) # very left skewed
@@ -608,7 +640,7 @@ for (thissubset in mysubsets) { # all worked, had to make edits to hammersubset$
       projectedCRS = "+init=epsg:32617", # https://epsg.io/32617 Bimini, Florida
       # sensor = "VR2W",
       moveLocError = hammersubset$meanMoveLocDist,
-      # timeDiffLong 18 24 36 trials####
+      ##### timeDiffLong 18 24 36 trials####
       timeDiffLong = (TDL * 60),
       # Single numeric value. Threshold value in timeDiffUnits designating the length of long breaks in re-locations. Used for bursting a movement track into segments, thereby removing long breaks from the movement track. See ?move::bursted for details.
       timeDiffUnits = "mins",
@@ -622,7 +654,7 @@ for (thissubset in mysubsets) { # all worked, had to make edits to hammersubset$
       # Should be a function of the spatial resolution of your receivers or positioning tags.
       # Higher resolution will lead to more precision in the volume areas calculations.
       # Try using 2*dbblocationerror.
-      # Why did we choose 1000m?####
+      ##### Why did we choose 1000m?####
       dbbext = 0.3, # Ext param in the 'brownian.bridge.dyn' function in the 'move' package. Extends bounding box around track. Numeric single (all edges), double (x & y), or 4 (xmin xmax ymin ymax). Default 0.3.
       # dbbwindowsize = 23,
       # writeRasterFormat = "ascii",
@@ -724,7 +756,7 @@ for (thissubset in mysubsets) { # all worked, had to make edits to hammersubset$
 
     # per shark, unscaled:
     for (thisshark in make.names(unique(hammersubset$shark))) {
-      # ISSUE####
+      ##### ISSUE####
       # Summer subset, ID = "X177942", not created by movegroup, thus can't be found to be plotted
       # movegroup said: "processing 7 of 7" i.e. not 8 of 8
       plotraster(
@@ -742,7 +774,7 @@ for (thissubset in mysubsets) { # all worked, had to make edits to hammersubset$
   } # close for loop 18 24 36 1000 1200h
 } # close for (thissubset in mysubsets)
 
-# compare movegroup volumeareas####
+##### compare movegroup volumeareas####
 compare <- read_csv(paste0(saveloc, "movegroup dBBMMs/timeDiffLong_comparison.csv"))
 compare |>
   filter(str_sub(string = ID, start = 1, end = 1) == "X") |>  # filter out scaled summaries, remain only sharks
@@ -763,7 +795,7 @@ ggsave(filename = paste0(saveloc, "movegroup dBBMMs/", lubridate::today(), "_tim
 
 
 
-# 4. %Days in Bahamas EEZ####
+# 5. %Days in Bahamas EEZ####
 # ▪ Simple %. Spatial overlap R code, easy.
 # ▪ Do we have EEZ shapefile? TG www.marineregions.org
 # see /home/simon/Documents/Si Work/PostDoc Work/movegroup help/Liberty Boyd/Points in UD contours/PointsInWhichUDcontour.R
@@ -850,7 +882,7 @@ print(paste0("Percent of days in Bahamas EEZ, Bimini-tagged, Winter: ", round(le
 
 
 
-# TODOLIST####
+##### TODOLIST####
 # transit shorter steplengthBL than resident. But transit angles all (bar1) smaller.
 
 # if kstar1 & 2 both = 2, great. But what if they both = 3? Or are different? Or are Inf?
