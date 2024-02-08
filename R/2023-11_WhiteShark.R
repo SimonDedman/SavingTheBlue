@@ -508,9 +508,13 @@ ggplot(data = allshark |>
   scale_shape_manual(values = c(21:24)) + # have to be the shapes which have fill and colour
   # Override legend default colour of all black by changing shape to one with border thus allows fill
   # can manually set each item's shape
-  guides(fill = guide_legend(override.aes = list(shape = c(22,22,21,23,21,22,22,22))),
-         # ditto colour, makes it an outline
-         colour = guide_legend(override.aes = list(shape = 23))) + # https://stackoverflow.com/questions/77883100/ggplot-buggy-fill-and-colour-legends-for-shapes-pch-2125
+  guides(
+    fill = guide_legend(override.aes = list(
+      shape = c(22,22,21,23,21,22,22,22),
+      colour = c("red","blue","blue","black","blue","red","blue","blue")
+      )),
+    # ditto colour, makes it an outline
+    colour = guide_legend(override.aes = list(shape = 23))) + # https://stackoverflow.com/questions/77883100/ggplot-buggy-fill-and-colour-legends-for-shapes-pch-2125
   scale_x_date(date_labels = "%b %y",
                date_breaks = "3 months",
                date_minor_breaks = "1 month") +
