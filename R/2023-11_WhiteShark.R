@@ -411,16 +411,13 @@ shark |>
 # A69-9001-3077      2
 
 
-# Abacus plot ####
+# Abacus plot Andros only ####
 ggplot(data = shark |>
          mutate(Date = as.Date(datecollected),
                 Shark = factor(fieldnumber, levels = metadata |> # colour-ordered by shark size (default is shark ID ("fieldnumber")): Shark factor order by size
                                  arrange(SizeM) |>
                                  pull(fieldnumber)),
                 Station = factor(station, levels = c("BWCDROP", "CCDROP", "DROP1", "DROP2", "DROP3", "DROP4", "DROP5"))) |> # ,Shark = factor(fieldnumber)
-         group_by(Shark) |>
-         filter(n() > 1) |> # remove 4975 only 1 hit
-         ungroup() |>
          droplevels() |> # drop unused factor levels but the NA is because 4976 is missing from metadata
          left_join(metadata |> select(fieldnumber, SEX, locationTagged)) # icon shape could relate to sex
 ) +
@@ -465,6 +462,77 @@ ggsave(paste0(today(), "_GWS-Abacus.png"),
        height = 2.8, #NA default; Then ggsave with defaults, changes from 7x7" to e.g.
        units = "in", dpi = 600, limitsize = TRUE)
 
+
+
+# Abacus plot pre-Andros-post ####
+allshark <- openxlsx::read.xlsx(xlsxFile = file.path(loadloc, "ExtraTracks", "White Sharks_Pre and post Andros.xlsx")) |>
+  # datelastmodified dd/mm/yyyy
+  # datecollected dd/mm/yyyy hh:mm
+  mutate(
+    Date = as.Date(datetime, origin = "1899-12-30"),
+    Date.Tagged = as.Date(Date.Tagged, origin = "1899-12-30"),
+    Station = factor(station_name, levels = c("SEAL ISLAND01", "SEAL ISLAND05", "Peaked Hill 4", "Peaked Hill 2",
+                                              "North Shark Cove", "South Shark Cove", "NEFSC_VA_202206_CB02", "AR-250",
+                                              "AEOLUS AR-305", "CORMPOB27", "NCFPT", "PRS 2PR", "UF02", "mini wall", "V2LGMX-WRbibb",
+                                              "DROP5", "DROP4", "DROP3", "DROP2", "DROP1", "CCDROP", "BWCDROP", "FKABTT6")),
+    fieldnumber = case_match(transmitter,
+                             "A69-9002-4976" ~ "A69-9002-4975",
+                             .default = transmitter)
+  )
+
+
+ggplot(data = allshark |>
+         mutate(Shark = factor(fieldnumber, levels = metadata |> # colour-ordered by shark size (default is shark ID ("fieldnumber")): Shark factor order by size
+                                 arrange(SizeM) |>
+                                 pull(fieldnumber))) |> # ,Shark = factor(fieldnumber)
+         left_join(metadata |> select(fieldnumber, SEX, locationTagged)) # icon shape could relate to sex
+) +
+  # border & shape
+  geom_point(mapping = aes(x = Date,
+                           y = Station,
+                           fill = Shark, # definitely edits fill but all legend items are black (pch 21:24)
+                           colour = factor(locationTagged, levels = c("New Brunswick, Canada", # definitely edits border colour but legend icons are filled  (pch 21:24)
+                                                                      "Cape Cod, USA",
+                                                                      "South Carolina, USA")),
+                           shape = SEX),
+             size = 6,
+             stroke = 0.7, # point border width
+  ) +
+  # colours for deploy location as shape borders
+  scale_colour_manual(values = c("black", "blue", "red")) +
+  # small x's for receiver deploy dates
+  geom_point(data = receivers,
+             mapping = aes(x = as.Date(deploydate),
+                           y = station),
+             shape = 4) +
+  scale_shape_manual(values = c(21:24)) + # have to be the shapes which have fill and colour
+  # Override legend default colour of all black by changing shape to one with border thus allows fill
+  # can manually set each item's shape
+  guides(fill = guide_legend(override.aes = list(shape = c(22,22,21,23,21,22,22,22))),
+         # ditto colour, makes it an outline
+         colour = guide_legend(override.aes = list(shape = 23))) + # https://stackoverflow.com/questions/77883100/ggplot-buggy-fill-and-colour-legends-for-shapes-pch-2125
+  scale_x_date(date_labels = "%b %y",
+               date_breaks = "3 months",
+               date_minor_breaks = "1 month") +
+  theme_classic() %+replace% theme(
+    axis.text = element_text(size = rel(1.3)),
+    axis.title = element_text(size = rel(2)),
+    legend.text = element_text(size = rel(1.5)),
+    plot.background = element_rect(fill = "white", colour = "grey50"), # white background
+    strip.text.x = element_text(size = rel(2)),
+    panel.border = element_rect(colour = "black", fill = NA, linewidth = 1),
+    legend.title = element_blank(),
+    legend.spacing.x = unit(0, "cm"), # compress spacing between legend items, this is min
+    legend.background = element_blank(),
+    panel.background = element_rect(fill = "white", colour = "grey50"),
+    panel.grid = element_line(colour = "grey90"),
+    legend.key = element_blank()) # removed whitespace buffer around legend boxes which is nice
+
+ggsave(paste0(today(), "_GWS-Abacus-AllReceivers.png"),
+       plot = last_plot(), device = "png", path = loadloc, scale = 1.75, #changes how big lines & legend items & axes & titles are relative to basemap. Smaller number = bigger items
+       width = 9.5, # 8 for Med # 7 normal # 3.8 miwingWhotspot, 7 wholearea 6 gsl 5 gom 5.5 centralAtl
+       height = 3.8, #NA default; Then ggsave with defaults, changes from 7x7" to e.g.
+       units = "in", dpi = 600, limitsize = TRUE)
 
 
 # raise issue as bug for ggplot ####
