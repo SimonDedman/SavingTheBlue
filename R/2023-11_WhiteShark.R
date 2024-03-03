@@ -208,7 +208,7 @@ receivers <- shark |>
             sensorname = first(sensorname),
             the_geom = first(the_geom))
 
-allreceivers <- openxlsx::read.xlsx(xlsxFile = file.path("/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Data/Acoustic/", "otn-instrument-deployment-short-form_GUTTRIDGE_2023_August.xlsx"),
+allreceivers <- openxlsx::read.xlsx(xlsxFile = file.path(machine, "simon/Documents/Si Work/PostDoc Work/Saving The Blue/Data/Acoustic", "otn-instrument-deployment-short-form_GUTTRIDGE_2023_August.xlsx"),
                                     sheet = 2) |>
   group_by(STATION_NO) |>
   summarise(deploydate = min(`DEPLOY_DATE_TIME.(yyyy-mm-ddThh:mm:ss)`),
@@ -471,15 +471,52 @@ allshark <- openxlsx::read.xlsx(xlsxFile = file.path(loadloc, "ExtraTracks", "Wh
   mutate(
     Date = as.Date(datetime, origin = "1899-12-30"),
     Date.Tagged = as.Date(Date.Tagged, origin = "1899-12-30"),
-    Station = factor(station_name, levels = c("SEAL ISLAND01", "SEAL ISLAND05", "Peaked Hill 4", "Peaked Hill 2",
-                                              "North Shark Cove", "South Shark Cove", "NEFSC_VA_202206_CB02", "AR-250",
-                                              "AEOLUS AR-305", "CORMPOB27", "NCFPT", "PRS 2PR", "UF02", "mini wall", "V2LGMX-WRbibb",
-                                              "DROP5", "DROP4", "DROP3", "DROP2", "DROP1", "CCDROP", "BWCDROP", "FKABTT6")),
+    Station = factor(manuscriptName, levels = rev(c(
+      # "SEAL ISLAND01", "SEAL ISLAND05", "Peaked Hill 4", "Peaked Hill 2",
+      # "North Shark Cove", "South Shark Cove", "NEFSC_VA_202206_CB02", "AR-250",
+      # "AEOLUS AR-305", "CORMPOB27", "NCFPT", "PRS 2PR", "UF02", "mini wall", "V2LGMX-WRbibb",
+      # "DROP5", "DROP4", "DROP3", "DROP2", "DROP1", "CCDROP", "BWCDROP", "FKABTT6"
+      "Nova Scotia: Seal Island: North",
+      "Nova Scotia: Seal Island: South",
+      "North Cape Cod: Offshore",
+      "North Cape Cod: Inshore",
+      "South Cape Cod: North",
+      "South Cape Cod: South",
+      "Virginia: Offshore",
+      "North Carolina: Ocracoke",
+      "North Carolina: Cape Lookout",
+      "North Carolina: Wilmington",
+      "North Carolina: Frying Pan Shoals",
+      "South Carolina: Hilton Head",
+      "Florida: Cape Canaveral",
+      "Bimini: North",
+      "Florida: Key Largo",
+      "Andros: Central 1",
+      "Andros: Central 2",
+      "Andros: Central 3",
+      "Andros: Central 4",
+      "Andros: Central 5",
+      "Andros: Central 6",
+      "Andros: Central 7",
+      "Florida: Key West"
+    ))),
     fieldnumber = case_match(transmitter,
                              "A69-9002-4976" ~ "A69-9002-4975",
                              .default = transmitter)
   )
 
+# rename receivers
+receivers <- receivers |>
+  mutate(station = dplyr::case_match(
+    station,
+    "DROP5" ~ "Andros: Central 1",
+    "DROP4" ~ "Andros: Central 2",
+    "DROP3" ~ "Andros: Central 3",
+    "DROP2" ~ "Andros: Central 4",
+    "DROP1" ~ "Andros: Central 5",
+    "CCDROP" ~ "Andros: Central 6",
+    "BWCDROP" ~ "Andros: Central 7")
+  )
 
 ggplot(data = allshark |>
          mutate(Shark = factor(fieldnumber, levels = metadata |> # colour-ordered by shark size (default is shark ID ("fieldnumber")): Shark factor order by size
@@ -512,7 +549,7 @@ ggplot(data = allshark |>
     fill = guide_legend(override.aes = list(
       shape = c(22,22,21,23,21,22,22,22),
       colour = c("red","blue","blue","black","blue","red","blue","blue")
-      )),
+    )),
     # ditto colour, makes it an outline
     colour = guide_legend(override.aes = list(shape = 23))) + # https://stackoverflow.com/questions/77883100/ggplot-buggy-fill-and-colour-legends-for-shapes-pch-2125
   scale_x_date(date_labels = "%b %y",
