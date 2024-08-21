@@ -1,7 +1,7 @@
 ### ====================================================================================================
 ### Project:    Andros hammerheads - space use and trophic ecology
 ### Analysis:   Processing and cleaning satellite telemetry data of fin-mounted SPOT tags for further steps
-### Script:     06A_Filter_SPOT_data_argosfilter
+### Script:     ~SavingTheBlue/R/06A_Filter_SPOT_data_argosfilter.R
 ### Author:     Vital Heim
 ### Version:    1.0
 ### ====================================================================================================
