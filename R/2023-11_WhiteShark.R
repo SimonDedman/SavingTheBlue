@@ -23,7 +23,7 @@ machine <- "C:/Users" # windows laptop
 # see /home/simon/Documents/Si Work/PostDoc Work/movegroup help/Liberty Boyd/Points in UD contours/PointsInWhichUDcontour.R
 
 maploc = paste0(machine, "/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Maps & Surveys/Bahamas EEZ Shapefile/")
-EEZ <- sf::st_read(paste0(maploc,"eez.shp")) # polygon
+EEZ <- sf::st_read(paste0(maploc, "eez.shp")) # polygon
 
 loadloc = paste0(machine, "/simon/Documents/Si Work/Blocklab/abft_diving/All_Daily") #per saveloc in MolaFoldersExtractLoop.R
 # AllDailies <- readRDS(paste0(loadloc, "AllDailies_HIFSDA_Stocknames.Rds"))
@@ -182,7 +182,7 @@ for (i in tunalist) {
 
 # 2024-01-04 acoustic map ####
 loadloc <- paste0(machine, "/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2023-11_White_Sharks") #per saveloc in MolaFoldersExtractLoop.R
-shark <- openxlsx::read.xlsx(xlsxFile = file.path(loadloc, "Skomal_White shark_Detections_ALL_Andros.xlsx")) |>
+shark <- openxlsx::read.xlsx(xlsxFile = file.path(loadloc, "Skomal_White_shark_Detections_ALL_Andros_JUNE2024.xlsx")) |>
   # datelastmodified dd/mm/yyyy
   # datecollected dd/mm/yyyy hh:mm
   mutate(
@@ -192,12 +192,12 @@ shark <- openxlsx::read.xlsx(xlsxFile = file.path(loadloc, "Skomal_White shark_D
     datecollected = as.POSIXct(datecollected * 3600 * 24,
                                origin = "1899-12-30",
                                tz = "UTC"),
-    station = factor(station, levels = c("DROP5", "DROP4", "DROP3", "DROP2", "DROP1", "CCDROP", "BWCDROP")),
+    station = factor(station, levels = c("DROP5", "DROP4", "DROP3", "DROP2", "DROP1", "CCDROP", "BWCDROP", "UMBRELLA", "GIBSONDROP")),
     fieldnumber = case_match(fieldnumber,
                              "A69-9002-4976" ~ "A69-9002-4975",
                              .default = fieldnumber)
   )
-metadata <- openxlsx::read.xlsx(xlsxFile = file.path(loadloc, "Skomal_White shark_Detections_ALL_Andros.xlsx"),
+metadata <- openxlsx::read.xlsx(xlsxFile = file.path(loadloc, "Skomal_White_shark_Detections_ALL_Andros_JUNE2024.xlsx"),
                                 sheet = 2)
 
 receivers <- shark |>
@@ -208,10 +208,10 @@ receivers <- shark |>
             sensorname = first(sensorname),
             the_geom = first(the_geom))
 
-allreceivers <- openxlsx::read.xlsx(xlsxFile = file.path("/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Data/Acoustic/", "otn-instrument-deployment-short-form_GUTTRIDGE_2023_August.xlsx"),
+allreceivers <- openxlsx::read.xlsx(xlsxFile = file.path(machine, "simon/Documents/Si Work/PostDoc Work/Saving The Blue/Data/Acoustic", "otn-instrument-deployment-short-form_GUTTRIDGE_2024_JUNE.xlsx"),
                                     sheet = 2) |>
   group_by(STATION_NO) |>
-  summarise(deploydate = min(`DEPLOY_DATE_TIME.(yyyy-mm-ddThh:mm:ss)`),
+  summarise(deploydate = min(`DEPLOY_DATE_TIME.(yyyy-mm-ddThh:mm:ss)`, na.rm = TRUE),
             bottomdepth = mean(BOTTOM_DEPTH, na.rm = TRUE)) |>
   rename(station = STATION_NO)
 
@@ -411,16 +411,13 @@ shark |>
 # A69-9001-3077      2
 
 
-# Abacus plot ####
+# Abacus plot Andros only ####
 ggplot(data = shark |>
          mutate(Date = as.Date(datecollected),
                 Shark = factor(fieldnumber, levels = metadata |> # colour-ordered by shark size (default is shark ID ("fieldnumber")): Shark factor order by size
                                  arrange(SizeM) |>
                                  pull(fieldnumber)),
-                Station = factor(station, levels = c("BWCDROP", "CCDROP", "DROP1", "DROP2", "DROP3", "DROP4", "DROP5"))) |> # ,Shark = factor(fieldnumber)
-         group_by(Shark) |>
-         filter(n() > 1) |> # remove 4975 only 1 hit
-         ungroup() |>
+                Station = factor(station, levels = c("GIBSONDROP", "UMBRELLA", "BWCDROP", "CCDROP", "DROP1", "DROP2", "DROP3", "DROP4", "DROP5"))) |> # ,Shark = factor(fieldnumber)
          droplevels() |> # drop unused factor levels but the NA is because 4976 is missing from metadata
          left_join(metadata |> select(fieldnumber, SEX, locationTagged)) # icon shape could relate to sex
 ) +
@@ -435,7 +432,8 @@ ggplot(data = shark |>
              size = 6,
              stroke = 0.7, # point border width
   ) +
-  scale_colour_manual(values = c("black", "blue", "red")) +
+  # 2024-06-06 skomal xlsx sheet2 needs data for 62516 ####
+scale_colour_manual(values = c("black", "blue", "red")) +
   geom_point(data = receivers,
              mapping = aes(x = as.Date(deploydate),
                            y = station),
@@ -447,6 +445,7 @@ ggplot(data = shark |>
                date_minor_breaks = "1 month") +
   theme_classic() %+replace% theme(
     axis.text = element_text(size = rel(1.3)),
+    axis.text.x = element_text(angle = 90), # , vjust = 1, hjust = 1
     axis.title = element_text(size = rel(2)),
     legend.text = element_text(size = rel(1.5)),
     plot.background = element_rect(fill = "white", colour = "grey50"), # white background
@@ -462,8 +461,184 @@ ggplot(data = shark |>
 ggsave(paste0(today(), "_GWS-Abacus.png"),
        plot = last_plot(), device = "png", path = loadloc, scale = 1.75, #changes how big lines & legend items & axes & titles are relative to basemap. Smaller number = bigger items
        width = 8.5, # 8 for Med # 7 normal # 3.8 miwingWhotspot, 7 wholearea 6 gsl 5 gom 5.5 centralAtl
-       height = 2.8, #NA default; Then ggsave with defaults, changes from 7x7" to e.g.
+       height = 3.2, #NA default; Then ggsave with defaults, changes from 7x7" to e.g.
        units = "in", dpi = 600, limitsize = TRUE)
+
+
+
+# Abacus plot pre-Andros-post ####
+allshark <- openxlsx::read.xlsx(xlsxFile = file.path(loadloc, "ExtraTracks", "White Sharks_Pre and post Andros.xlsx")) |>
+  # datelastmodified dd/mm/yyyy
+  # datecollected dd/mm/yyyy hh:mm
+  mutate(
+    Date = as.Date(datetime, origin = "1899-12-30"),
+    Date.Tagged = as.Date(Date.Tagged, origin = "1899-12-30"),
+    Station = factor(manuscriptName, levels = rev(c(
+      # "SEAL ISLAND01", "SEAL ISLAND05", "Peaked Hill 4", "Peaked Hill 2",
+      # "North Shark Cove", "South Shark Cove", "NEFSC_VA_202206_CB02", "AR-250",
+      # "AEOLUS AR-305", "CORMPOB27", "NCFPT", "PRS 2PR", "UF02", "mini wall", "V2LGMX-WRbibb",
+      # "DROP5", "DROP4", "DROP3", "DROP2", "DROP1", "CCDROP", "BWCDROP", "FKABTT6"
+      "Nova Scotia: Seal Island: North",
+      "Nova Scotia: Seal Island: South",
+      "North Cape Cod: Offshore",
+      "North Cape Cod: Inshore",
+      "South Cape Cod: North",
+      "South Cape Cod: South",
+      "Virginia: Offshore",
+      "North Carolina: Ocracoke",
+      "North Carolina: Cape Lookout",
+      "North Carolina: Wilmington",
+      "North Carolina: Frying Pan Shoals",
+      "South Carolina: Hilton Head",
+      "Florida: Cape Canaveral",
+      "Bimini: North",
+      "Florida: Key Largo",
+      "Andros: Central 1",
+      "Andros: Central 2",
+      "Andros: Central 3",
+      "Andros: Central 4",
+      "Andros: Central 5",
+      "Andros: Central 6",
+      "Andros: Central 7",
+      "Andros: Central 8",
+      "Andros: Central 9",
+      "Florida: Key West"
+    ))),
+    fieldnumber = case_match(transmitter,
+                             "A69-9002-4976" ~ "A69-9002-4975",
+                             .default = transmitter)
+  )
+
+
+# rename receivers
+receivers <- receivers |>
+  mutate(station = dplyr::case_match(
+    station,
+    "DROP5" ~ "Andros: Central 1", # before ~ after
+    "DROP4" ~ "Andros: Central 2", # name_from ~ name_to
+    "DROP3" ~ "Andros: Central 3",
+    "DROP2" ~ "Andros: Central 4",
+    "DROP1" ~ "Andros: Central 5",
+    "CCDROP" ~ "Andros: Central 6",
+    "BWCDROP" ~ "Andros: Central 7",
+    "UMBRELLA" ~ "Andros: Central 8",
+    "GIBSONDROP" ~ "Andros: Central 9")
+  )
+
+
+ggplot(data = allshark |>
+         mutate(Shark = factor(fieldnumber, levels = metadata |> # colour-ordered by shark size (default is shark ID ("fieldnumber")): Shark factor order by size
+                                 arrange(SizeM) |>
+                                 pull(fieldnumber))) |> # ,Shark = factor(fieldnumber)
+         # Pool receivers todo 2024-06-11 ####
+       # Seal Island/NS, Cape Cod, VA, NC, Canaveral, Bimini, Key Largo, and Andros
+         left_join(metadata |> select(fieldnumber, SEX, locationTagged)) |> # icon shape could relate to sex
+         mutate(station = as.character(Station),
+                Station = dplyr::case_match(
+           Station,
+           "Nova Scotia: Seal Island: North" ~ "Nova Scotia: Seal Island",
+           "Nova Scotia: Seal Island: South" ~ "Nova Scotia: Seal Island",
+           "North Cape Cod: Offshore" ~ "Cape Cod",
+           "North Cape Cod: Inshore" ~ "Cape Cod",
+           "South Cape Cod: North" ~ "Cape Cod",
+           "South Cape Cod: South" ~ "Cape Cod",
+           "Virginia: Offshore" ~ "Virginia",
+           "North Carolina: Ocracoke" ~ "North Carolina",
+           "North Carolina: Cape Lookout" ~ "North Carolina",
+           "North Carolina: Wilmington" ~ "North Carolina",
+           "North Carolina: Frying Pan Shoals" ~ "North Carolina",
+           "South Carolina: Hilton Head" ~ "South Carolina: Hilton Head",
+           "Florida: Cape Canaveral" ~ "Florida: Cape Canaveral",
+           "Bimini: North" ~ "Bimini",
+           "Florida: Key Largo" ~ "Florida: Key Largo",
+           "Andros: Central 1" ~ "Andros",
+           "Andros: Central 2" ~ "Andros",
+           "Andros: Central 3" ~ "Andros",
+           "Andros: Central 4" ~ "Andros",
+           "Andros: Central 5" ~ "Andros",
+           "Andros: Central 6" ~ "Andros",
+           "Andros: Central 7" ~ "Andros",
+           "Andros: Central 8" ~ "Andros",
+           "Andros: Central 9" ~ "Andros",
+           "Florida: Key West" ~ "Florida: Key West"),
+           Station = factor(Station, levels = rev(c(
+             "Nova Scotia: Seal Island",
+             "Cape Cod",
+             "Virginia",
+             "North Carolina",
+             "South Carolina: Hilton Head",
+             "Florida: Cape Canaveral",
+             "Bimini",
+             "Florida: Key Largo",
+             "Andros",
+             "Florida: Key West"))))
+) +
+  # border & shape
+  geom_point(mapping = aes(x = Date,
+                           y = Station,
+                           fill = Shark, # definitely edits fill but all legend items are black (pch 21:24)
+                           # fill palette is not liked by reviewer2
+                           # colour = factor(locationTagged, levels = c("New Brunswick, Canada", # definitely edits border colour but legend icons are filled  (pch 21:24)
+                           #                                            "Cape Cod, USA",
+                           #                                            "South Carolina, USA")),
+                           shape = SEX),
+             # colour = "white",
+             size = 6,
+             stroke = 0.7, # point border width
+  ) +
+  # Shark fill palette
+  scale_fill_brewer(palette = "Spectral") +
+  # colours for deploy location as shape borders
+  # scale_colour_manual(values = c("white", "white", "white")) + # c("black", "blue", "red")
+  # small x's for receiver deploy dates
+  # geom_point(data = receivers,
+  #            mapping = aes(x = as.Date(deploydate),
+  #                          y = station),
+  #            shape = 4) +
+# need to change recievers to only plot Andros point, or no x's at all?
+  scale_shape_manual(values = c(21:24)) + # have to be the shapes which have fill and colour
+  # Override legend default colour of all black by changing shape to one with border thus allows fill
+  # can manually set each item's shape
+  guides(
+    fill = guide_legend(override.aes = list(
+      shape = c(22,22,21,23,21,22,22,22,22,22)
+      # , # sharks' sexes 21 22 23, presumably circle triangle square, female male unknown
+      # colour = c("red","blue","blue","black","blue","blue","blue","red","blue","blue") # in order of SizeM, 10 sharks, border colour = tagging location, black=NB blue=CC red=SC
+    )),
+    # ditto colour, makes it an outline
+    colour = guide_legend(override.aes = list(shape = 23))) + # https://stackoverflow.com/questions/77883100/ggplot-buggy-fill-and-colour-legends-for-shapes-pch-2125
+  scale_x_date(date_labels = "%b %y",
+               date_breaks = "3 months",
+               date_minor_breaks = "1 month") +
+  ylab("Receiver Array") +
+  theme_classic() %+replace% theme(
+    axis.text = element_text(size = rel(1.3)),
+    axis.text.x = element_text(angle = 90), # , vjust = 1, hjust = 1
+    axis.title = element_text(size = rel(2)),
+    legend.text = element_text(size = rel(1.5)),
+    plot.background = element_rect(fill = "white", colour = "grey50"), # white background
+    strip.text.x = element_text(size = rel(2)),
+    panel.border = element_rect(colour = "black", fill = NA, linewidth = 1),
+    legend.title = element_blank(),
+    legend.spacing.x = unit(0, "cm"), # compress spacing between legend items, this is min
+    legend.background = element_blank(),
+    panel.background = element_rect(fill = "white", colour = "grey50"),
+    panel.grid = element_line(colour = "grey90"),
+    legend.key = element_blank()) # removed whitespace buffer around legend boxes which is nice
+
+ggsave(paste0(today(), "_GWS-Abacus-AllReceivers.png"),
+       plot = last_plot(), device = "png", path = loadloc, scale = 1.75, #changes how big lines & legend items & axes & titles are relative to basemap. Smaller number = bigger items
+       width = 9.5, # 8 for Med # 7 normal # 3.8 miwingWhotspot, 7 wholearea 6 gsl 5 gom 5.5 centralAtl
+       height = 3.8, #NA default; Then ggsave with defaults, changes from 7x7" to e.g.
+       units = "in", dpi = 600, limitsize = TRUE)
+
+
+
+
+
+
+
+
 
 
 
