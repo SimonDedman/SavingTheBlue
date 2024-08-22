@@ -317,7 +317,7 @@ print(tracklengths, n = 100)
 #View(tracklengths)
 
 ### Filter out short track segments
-del_obs <- dplyr::filter(tracklengths, num_locs < 6 | tracklength_in_days < 12) # find suitable parameters
+del_obs <- dplyr::filter(tracklengths, num_locs < 12 | tracklength_in_days < 12) # find suitable parameters
 print(n = 100, del_obs); nrow(del_obs); sum(del_obs$num_locs)
 # [1] 30 - lose 30 segments
 # [1] 91 - lose 91 detections
@@ -390,9 +390,9 @@ ggplot(data = world) +
 ## "smaj", "smin", "eor" that contain Argos error ellipse variables (in m for "smaj", "smin" and deg for "eor").
 
 ## Do you want to calculate fitted observations across entire track?
-entire_track <- "No" # change between "Yes" and "No", "No" means you are predicting observations at a given time interval using the segmented tracks
+entire_track <- "Yes" # change between "Yes" and "No", "No" means you are predicting observations at a given time interval using the segmented tracks
 
-if (entire_track == "Yes"){
+if (entire_track == "Yes"){ ## DO NOT change this
   dpf <- det_f
 } else (dpf <- det_seg_tl)
 
@@ -427,7 +427,7 @@ pf = F
 ## Model
 model = "crw" # choose between rw, crw, mp. mpm and jpmp available in fit_mpm
 
-## Fitted vs. predicted
+## Fitted vs. predicted, i.e. choice of normalisation time-step
 if(entire_track == "Yes"){
   time.step = NA # NA turns the time step off and estimates locations at observation times only
 } else (time.step = 12)
@@ -445,7 +445,7 @@ mod.crw_pf <- fit_ssm(
   #ang = ang,
   #distlim = distlim,
   spdf = spdf,
-  min.dt = 10,
+  min.dt = 0, # we have taken care of this during sda filtering steps
   pf = pf,
   model = model,
   time.step = time.step,
@@ -454,13 +454,14 @@ mod.crw_pf <- fit_ssm(
     optim = optim,
     maxit = maxit,
     verbose = verbose), # shows parameter trace, 0: silent, 1: optimizer trace, 2: parametre trace (default)
-  map = list(psi = factor(NA))
+  #map = list(psi = factor(NA))
 )
+# saveRDS(mod.crw_pf, paste0(saveloc, "SSM_fitted.R"))
 
 ##Plot the mp model with normalised values
 #tiff(paste0(saveloc, "SSM_MPM_output/SPOT_tracks_",spp.f,"_", model,"_",optim,"_",maxit, "iterations_fitted_with_argosfilter_output.tiff"),
 #height = 30, width = 20, units = "cm", res = 150)
-map(mod.crw_pf, what = "p", normalise = TRUE, silent = TRUE)
+map(mod.crw_pf, what = if(entire_track == "Yes"){"f"} else ("p"), normalise = TRUE, silent = TRUE)
 #dev.off()
 
 # The `normalise` argument rescales the estimates to span the interval 0,1.
@@ -472,15 +473,22 @@ map(mod.crw_pf, what = "p", normalise = TRUE, silent = TRUE)
 # `normalise = TRUE, group = TRUE`. In the latter case, the relative magnitudes of move persistence
 # are preserved across individuals.
 
-# B8: re-route path to account for land lcoations
+# B8: re-route path to account for land locations
 
 ## Some locations may still on land. Reroute them using route_path()
 
 mod.crw_pf_rr <- route_path(mod.crw_pf,
                             what = if(entire_track == "Yes"){"fitted"} else ("predicted"),
                             map_scale = 10, # scale of rnaturalearth map to use for land mass - if you want 10, you need the package "rnaturalearthhires"
-                            buffer = 1000 # buffer distance (m) to add around track locations. The convex hull of these buffered locations defines the size of land polygon used to aid re-routing of points on land.
-)
+                            dist = 10000, # buffer distance (m) to add around track locations. The convex hull of these buffered locations defines the size of land polygon used to aid re-routing of points on land.
+                            append = T
+                            )
+## check if re-routing track changes nr. observations
+# check_1 <- grab(mod.crw_pf, what = if(entire_track == "Yes"){"fitted"} else ("predicted"))
+# check_1 <- check_1[,c(1:2)]
+# check_rr <- grab(mod.crw_pf_rr, what = "rerouted")
+# check_rr <- check_rr[,c(1:2)]
+# comparison <- anti_join(check_1, check_rr) # shows rows that are not present in check_rr
 
 ## map the locations to check if it improved
 my.aes <- aes_lst(line = T,
@@ -500,8 +508,8 @@ m2 <- map(mod.crw_pf_rr,
           silent = TRUE)
 
 ### Comparison of locations between fitted vs. fitted & re-routed
-(m1 + labs(title = "SSM locations") | m2 + labs(title = "SSM re-routed locations")) &
-  theme(panel.grid = element_line(size=0.1, colour="grey60"))
+# (m1 + labs(title = "SSM locations") | m2 + labs(title = "SSM re-routed locations")) &
+#   theme(panel.grid = element_line(size=0.1, colour="grey60"))
 
 ### Detailview fitted & re-routed locations
 m2 + labs(title = "Re-routed locations") &
@@ -596,9 +604,9 @@ saveRDS(loc, paste0(saveloc, m_type, "/Data_aniMotum_CTCRW_output_",m_type,"_non
 saveRDS(loc.proj, paste0(saveloc, m_type, "/Data_aniMotum_CTCRW_output_",m_type,"_projected_with_",speedfilter, "_data.rds"))
 
 # rerouted
-write.table(locRR, paste0(saveloc, "rerouted", "/Data_aniMotum_CTCRW_output_","rerouted","_non-projected_with_",speedfilter, "_data.csv"),row.names=F,sep=",",dec=".")
-saveRDS(locRR, paste0(saveloc, "rerouted", "/Data_aniMotum_CTCRW_output_","rerouted","_non-projected_with_",speedfilter, "_data.rds"))
-saveRDS(locRR.proj, paste0(saveloc, "rerouted", "/Data_aniMotum_CTCRW_output_","rerouted","_projected_with_",speedfilter, "_data.rds"))
+write.table(locRR, paste0(saveloc, "rerouted", "/Data_aniMotum_CTCRW_output_",m_type, "_rerouted","_non-projected_with_",speedfilter, "_data.csv"),row.names=F,sep=",",dec=".")
+saveRDS(locRR, paste0(saveloc, "rerouted", "/Data_aniMotum_CTCRW_output_",m_type,"_rerouted","_non-projected_with_",speedfilter, "_data.rds"))
+saveRDS(locRR.proj, paste0(saveloc, "rerouted", "/Data_aniMotum_CTCRW_output_",m_type,"_rerouted","_projected_with_",speedfilter, "_data.rds"))
 
 ### ....................................................................................................
 ### [C] Calculate CI for location estimates and convert to lat/lon ----
