@@ -185,7 +185,7 @@ ddet %<>%
 ## this is useful if you have active tags, but need to write a report or plan on submitting a manuscript soon
 
 filter_needed <- "yes" # change this
-max_date <- as.POSIXct("2024-02-01 00:00:00",format="%Y-%m-%d %H:%M:%S", tz="UTC", usetz = T) # change this
+max_date <- as.POSIXct("2024-09-01 00:00:00",format="%Y-%m-%d %H:%M:%S", tz="UTC", usetz = T) # change this
 
 if (filter_needed == "yes"){ # do NOT change this
   ddet <- ddet %>%
@@ -366,12 +366,12 @@ ddet_af %>% dplyr::summarise(n = n())
 
 ## write csv to show new data structure
 write.csv(ddet_af %>% dplyr::summarise(n = n()),
-          paste0(saveloc, "Data_Smok_Andros_SPOT_nr_locataions_post_sda_filter.csv"))
+          paste0(saveloc, "Data_Smok_Andros_SPOT_nr_locations_post_sda_filter.csv"))
 
 ## Visualise the filtered tracks
 
-esri_ocean <- paste0('https://services.arcgisonline.com/arcgis/rest/services/',
-                     'Ocean/World_Ocean_Base/MapServer/tile/${z}/${y}/${x}.jpeg')
+# esri_ocean <- paste0('https://services.arcgisonline.com/arcgis/rest/services/',
+#                      'Ocean/World_Ocean_Base/MapServer/tile/${z}/${y}/${x}.jpeg')
 
 af_sf <- sf::st_as_sf(ddet_af, coords = c("lon","lat")) %>%
   sf::st_set_crs(4326)
