@@ -1,5 +1,5 @@
 ### ====================================================================================================
-### Project:    General
+### Project:    Misc.
 ### Analysis:   Quick summary statistics for movement data (e.g. days at liberty, etc.)
 ### Script:     ~/SavingTheBlue/R/09_Movement_data_summaries.R
 ### Author:     Vital Heim
@@ -7,8 +7,8 @@
 ### ====================================================================================================
 
 ### ....................................................................................................
-### Content: this code allows to compare core and general space use areas of regional movements
-### of great and scalloped hammerheads statistically using GLMMs in a bayesian framework
+### Content: script is meant as a collection of code snippets to quickly summarise movement data
+###          from different sources to explore simple metrics such as days at liberty, tracklengths, etc.
 ### ....................................................................................................
 
 ### ....................................................................................................
@@ -43,7 +43,7 @@ library(amt)
 
 # A3: specify saveloc
 
-saveloc <- "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Bahamas_Hammerheads_2022/OutputData/Summaries/"
+saveloc <- "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/OutputData/Summaries/"
 
 ### ...................................................................................................
 ### [B] Data preparation ----
@@ -51,27 +51,18 @@ saveloc <- "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Bah
 
 # B1 step: import data ----
 
-## Tagging
-TAG <- read.csv("C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Bahamas_Hammerheads_2022/InputData/Datasheet_Andros_Smok_Tagging_Metadata.csv", header = T, sep =",", na.strings = c("n.a.",""," ", "#WERT!", "#DIV/0!", "n.a", "na"))
+## Tagging metadata
+TAG <- read.csv("C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/InputData/Datasheet_Andros_Smok_Tagging_Metadata.csv", header = T, sep =",", na.strings = c("n.a.",""," ", "#WERT!", "#DIV/0!", "n.a", "na"))
 
-## Detections
-### Species 1 - if multiple
-DET_1 <- readRDS(file = "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Bahamas_Hammerheads_2022/OutputData/CTCRW/Data_aniMotum_CTCRW_output_fitted_non-projected_with_Argosfilter_data.rds")
-DET_1$date <- as.POSIXct(DET_1$date,format="%Y-%m-%d %H:%M:%S",tz="UTC") ## very odd, need to define a
-DET_1$species <- "S.mokarran"
-head(DET_1)
-### Species 2 - if multiple
-# DET_2 <- readRDS(file = "C:/Users/Vital Heim/switchdrive/Science/Data/PhD_Chapter3_Input_files/Summaries/Data_aniMotum_CRW_output_fitted_proj_WGS84_converted_with_coord_CIs_S.mokarran_with_Argosfilter_data.rds")
-# DET_2$date <- as.POSIXct(DET_2$date,format="%Y-%m-%d %H:%M:%S",tz="UTC") ## very odd, need to define a
-# DET_2$species <- "S.mokarran"
-# head(DET_2)
-### Combine
-DET <- DET_1
-# DET <- rbind(DET_1, DET_2)
+## Spatail data (here Argos derived movement data)
+DET <- readRDS(file = "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/OutputData/CTCRW/fitted/Data_aniMotum_CTCRW_output_fitted_non-projected_with_Argosfilter_data.rds")
+DET$date <- as.POSIXct(DET$date,format="%Y-%m-%d %H:%M:%S",tz="UTC")
+DET$species <- "S.mokarran"
+head(DET)
 
-# B2: basic housekeeping
+# B2: basic housekeeping ----
 
-## Tagging
+## Tagging metadata
 TAG_f <- TAG
 TAG_f$deployment_lat <- round(as.numeric(TAG$deployment_lat),3)
 TAG_f$deployment_lon <- round(as.numeric(TAG$deployment_lon),3)
@@ -114,9 +105,8 @@ DET %<>%
     species
   )
 
-
 ### ...................................................................................................
-### [C] Calculate track duration, i.e. days at liberty ----
+### [C] Summary: track duration, i.e. days at liberty ----
 ### ...................................................................................................
 
 # C1: trackduration tidyverse approach ----
@@ -135,7 +125,7 @@ firstlast <- DET %>%
   dplyr::mutate(
     liberty_days = as.numeric(last_date - first_date) + 1) # +1 so that last day is also included in calculation
 
-# C1: calculate number days between tagging and last loc using metadataa ----
+# C1: calculate number days between tagging and last loc using metadata ----
 
 ## ATTETNION: make sure that the newest metadata with newest last_loc info is used
 ## If necessary update using my.wildlifecomputers.org
@@ -148,7 +138,7 @@ TAG_f$end <- as.Date(TAG_f$last_loc, format = "%Y-%m-%d")
 TAG_f$trackduration <- as.numeric(difftime(TAG_f$end,TAG_f$start, units = c("days"))) + 1 # add 1 to include last location day too
 
 ### ...................................................................................................
-### [D] Calculate track lengths ----
+### [D] Summary: track lengths ----
 ### ...................................................................................................
 
 # D1: using the geosphere package ----
@@ -169,10 +159,10 @@ DET <- DET %>%
   )
 
 ### ...................................................................................................
-### [D] Combine dataframes and summarise ----
+### [E] Combine dataframes and summarise ----
 ### ...................................................................................................
 
-# D1: make final df ----
+# E1: make final df ----
 
 final_all <- TAG_f %>%
   left_join(DET, by = "ptt_id")
@@ -184,7 +174,7 @@ final_active <- TAG_f %>%
 
 write.csv(final_active, paste0(saveloc, "Data_summaries_duration_and_tracklengths_active_only.csv"), row.names = F)
 
-# D2: make summaries
+# E2: Summarise misc. metrics ----
 
 ## tracklengths
 avg_TL <- final_active %>%
