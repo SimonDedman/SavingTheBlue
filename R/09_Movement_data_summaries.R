@@ -207,7 +207,7 @@ avg_TDur <- final_active %>%
 
 write.csv(avg_TDur, paste0(saveloc, "Data_summaries_mean_trackdruations_by_species.csv"), row.names = F)
 
-## sizes - take 1
+## sizes - take 1 (by species and sex)
 avg_size <- final_all %>%
   group_by(
     species,
@@ -223,7 +223,7 @@ avg_size <- final_all %>%
 
 write.csv(avg_size, paste0(saveloc, "Data_summaries_mean_STLs_by_species_sex.csv"), row.names = F)
 
-## sizes - take 2
+## sizes - take 2 (by species only)
 avg_size_spp <- final_all %>%
   group_by(
     species
@@ -238,7 +238,7 @@ avg_size_spp <- final_all %>%
 
 write.csv(avg_size_spp, paste0(saveloc, "Data_summaries_mean_STLs_by_species.csv"), row.names = F)
 
-## numbers
+## number tags deployed
 tag_nrs <- final_all %>%
   group_by(
     species,
