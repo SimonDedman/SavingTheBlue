@@ -12,7 +12,10 @@ library(TropFishR) #VBGF
 library(data.table)
 library(lubridate)
 library(beepr)
+## if run by SD
 source('~/Dropbox/Blocklab Monterey/Blocklab/liRolling.R') #my own function for rolling Linearity Index values
+## if run by VH
+source("C:/Users/Vital Heim/switchdrive/Science/Rscripts/vanMoorter-et-al_2010/liRolling.R") # Simon's function for rolling Linearity Index values
 options(error = function() beep(9))  # give warning noise if it fails
 # for data cleaning
 library(moments)
@@ -20,29 +23,77 @@ library(moments)
 library(beepr)
 library(rgl) # # sudo apt install libglu1-mesa-dev
 library(clusterSim)
+## if run by SD
 source('/home/simon/Dropbox/Blocklab Monterey/Blocklab/vanMoorter.etal.2010/p7_gap.statistic.r')
+## if run by VH
+source("C:/Users/Vital Heim/switchdrive/Science/Rscripts/vanMoorter-et-al_2010/p7_gap.statistic.r")
 # for movegroup
 library(sf)
 # remotes::install_github("SimonDedman/movegroup")
 library(movegroup)
+## if run by SD
 saveloc <- "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement"
+## if run by VH
+saveloc <- "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/OutputData/"
 
+options(warn=1) #set this to two if you have warnings that need to be addressed as errors via traceback()
 
+## Function for range standardization
+STrange <- function(x) {
+  (x - min(x, na.rm = TRUE)) / (max(x, na.rm = TRUE) - min(x, na.rm = TRUE))
+}
 
-# 1. Step Length & Turn Angles####
+## Function to reverse-transform range standardization
+rt_STrange <- function(x,y) {
+  y*(max(x, na.rm = TRUE)-min(x, na.rm = TRUE)) + min(x, na.rm = TRUE)
+}
+
+# 1. Data import ----
 
 # hammers <- readRDS("/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Data/Hammerhead SPOT tags/Output_data_for_kMeans_and_dBBMM/Data_aniMotum_CRW_output_fitted_proj_WGS84_converted_with_coord_CIs_S.mokarran.rds") |> # pre 2023-07-07
 # create col from id, removing . & all after. Use for left_join
 # mutate(shark = as.numeric(str_sub(id, start = 1, end = str_locate(id, "\\.")[,1] - 1)))
+
+### START: if run by SD ###
+#  movement data
+#  use the regularised movement data output from the 12h CTCRW
 hammers <- readRDS("/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/CTCRW/Data_aniMotum_CRW_output_fitted_proj_WGS84_converted_with_coord_CIs_S.mokarran_with_Argosfilter_data.rds") |> # 2023-07-07 & post
   mutate(shark = as.numeric(str_sub(id, start = 1, end = str_locate(id, "\\_")[,1] - 1)))
 
-
+# metadata for length measurements
 meta <- read_csv("../../Data/Hammerhead SPOT tags/Datasheet_Bahamas_Smok_Tagging_Metadata_NEW.csv") |>
   rename(shark = ptt_id,
          FishLengthCm = stl)
 hammers %<>% left_join(meta)  # , by = join_by(shark == id) # doesn't work naming columns, has gotten worse.
 hammers %<>% filter(group != "Bimini") # 2023-08-08 remove Bimini sharks
+### END: if run by SD ###
+
+### START: if run by VH ###
+# movement data
+# use the regularised movement data output from the 12h CTCRW
+hammers <- readRDS(file = paste0("C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/InputData/kmeans/Data_aniMotum_CRW_output_rerouted_proj_WGS84_converted_with_coord_CIs_with_Argosfilter_data.rds"))|>
+  mutate(shark = as.numeric(str_sub(id, start = 1, end = str_locate(id, "\\_")[,1] - 1)))
+
+# metadata for length measurements
+meta <- read_csv("C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/InputData/Datasheet_Andros_Smok_Tagging_Metadata.csv")|>
+  dplyr::select( # keep needed columns only
+    ptt_id,
+    datetime_deployment,
+    stl,
+    sex,
+    species
+  ) |>
+  dplyr::rename(
+    shark = ptt_id,
+    FishLengthCm = stl)
+
+# combine movement data with metadata
+hammers %<>% left_join(meta)  # , by = join_by(shark == id) # doesn't work naming columns, has gotten worse.
+### END: if run by VH ###
+
+# 2. Step Length & Turn Angles ----
+
+# Step lengths will be calculated in km and relative to body length of correspondin sharks
 
 # blocklab, diveclassify1transit
 # > li5day {5 day linearity index. 1: linear paths, 0: tortuous paths}
@@ -66,6 +117,8 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
   df_nona <- hammers
   df_nona[which(df_nona$lat > 90), "lat"] <- NA # lat over 90 breaks, impossible value, will fix upstream
   df_nona[which(df_nona$lat < -90), "lat"] <- NA # ditto
+  df_nona[which(df_nona$lon > 180), "lon"] <- NA # lon over 180 breaks, impossible value, will fix upstream
+  df_nona[which(df_nona$lon < -180), "lon"] <- NA # ditto
   df_nona <- df_nona[!is.na(df_nona$lat),] # omit rows with NA values for lat, downsample to days only
   df_nona <- df_nona[!is.na(df_nona$lon),] # omit rows with NA values for lon, downsample to days only
   fishlist <- unique(df_nona$id)
@@ -76,7 +129,7 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
     print(paste0(which(fishlist == i), " of ", length(fishlist), "; adding transit dive data to ", i))
     setDF(df_nonai) # else liRolling breaks
     if (nrow(df_nonai) > 5) df_nonai$li5day <- liRolling(x = df_nonai,
-                                                         coords = c("lat", "lon"),
+                                                         coords = c("lon", "lat"), # original, "lat", "lon"
                                                          roll = 5)
     # 1: linear paths, 0: tortuous paths
     if (!nrow(df_nonai) > 1) next # track etc breaks with < 2 points
@@ -145,7 +198,7 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
       as_degree
     TurnAngleAzimDeg <- TurnAngleAzimDeg[1:length(TurnAngleAzimDeg) - 1] #remove NA from back
     df_nonai$TurnAngleAzimDeg <- c(NA, TurnAngleAzimDeg) # add NA to front
-    df_nonai %<>% dplyr::select(c(date, li5day, StepLengthKm, StepLengthBL, TurnAngleRelDeg, TurnAngleAzimDeg, FishLengthCm, id))
+    df_nonai %<>% dplyr::select(c(date, li5day, StepLengthKm, StepLengthBL, TurnAngleRelDeg, TurnAngleAzimDeg, FishLengthCm, shark)) # 20240826 replace "id" with "shark"
 
     # save data to df####
     setDT(hammers) # convert to data.table without copy
@@ -154,12 +207,12 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
     # https://stackoverflow.com/questions/44930149/replace-a-subset-of-a-data-frame-with-dplyr-join-operations
     # If you want to return only df_nonai that have a matching hammers (i.e. rows where the key is in both tables), set the nomatch argument of data.table to 0.
     # nomatch isn't relevant together with :=, ignoring nomatch
-    hammers[df_nonai, on = c("date", "id"), li5day := i.li5day]
-    hammers[df_nonai, on = c("date", "id"), StepLengthKm := i.StepLengthKm]
-    hammers[df_nonai, on = c("date", "id"), StepLengthBL := i.StepLengthBL]
-    hammers[df_nonai, on = c("date", "id"), TurnAngleRelDeg := i.TurnAngleRelDeg]
-    hammers[df_nonai, on = c("date", "id"), TurnAngleAzimDeg := i.TurnAngleAzimDeg]
-    hammers[df_nonai, on = c("date", "id"), FishLengthCm := i.FishLengthCm]
+    hammers[df_nonai, on = c("date", "shark"), li5day := i.li5day]
+    hammers[df_nonai, on = c("date", "shark"), StepLengthKm := i.StepLengthKm]
+    hammers[df_nonai, on = c("date", "shark"), StepLengthBL := i.StepLengthBL]
+    hammers[df_nonai, on = c("date", "shark"), TurnAngleRelDeg := i.TurnAngleRelDeg]
+    hammers[df_nonai, on = c("date", "shark"), TurnAngleAzimDeg := i.TurnAngleAzimDeg]
+    hammers[df_nonai, on = c("date", "shark"), FishLengthCm := i.FishLengthCm]
 
     # kinda flat, low depth range. See weekly pdfs.
     # dives per Y hours < Z  (depends on definition of ‘dive’) = 0
@@ -183,7 +236,7 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
 
 
 
-# 2. Kmeans VanMoorter/SD####
+# 3. Kmeans VanMoorter/SD ----
 # p7_analysis_suppl_BL.R
 # > kmeans2cluster {resident/transient	movement cluster based on body lengths}
 # > kmeansBinary {0/1	movement cluster based on body lengths}
@@ -205,12 +258,12 @@ hammers$kmeansBinary <- as.integer(rep(NA, nrow(hammers)))
 
 # test positive skew, log transform
 hist(hammers$StepLengthBL)
-moments::skewness(hammers$StepLengthBL, na.rm = TRUE) # positive/negative skew, 0 = symmetrical. # 5.8
-moments::kurtosis(hammers$StepLengthBL, na.rm = TRUE) # long tailed? Normal distribution = 3. # 53.9
+moments::skewness(hammers$StepLengthBL, na.rm = TRUE) # positive/negative skew, 0 = symmetrical. # 2.53768
+moments::kurtosis(hammers$StepLengthBL, na.rm = TRUE) # long tailed? Normal distribution = 3. # 11.77872
 hammers$StepLengthBLlog1p <- log1p(hammers$StepLengthBL) # log transform
 hist(hammers$StepLengthBLlog1p)
-moments::skewness(hammers$StepLengthBLlog1p, na.rm = TRUE) # -0.22 = fine
-moments::kurtosis(hammers$StepLengthBLlog1p, na.rm = TRUE) # 2.93 = fine
+moments::skewness(hammers$StepLengthBLlog1p, na.rm = TRUE) # -0.179 = fine
+moments::kurtosis(hammers$StepLengthBLlog1p, na.rm = TRUE) # 2.729 = fine
 
 
 # test outliers, remove >3.3 SDs from the mean
@@ -220,18 +273,30 @@ moments::kurtosis(hammers$StepLengthBLlog1p, na.rm = TRUE) # 2.93 = fine
 # hammers$StepLengthBLlog1p[762] # 1.256006
 # Only 1 outlier, slightly outside the line, I left it in.
 
+#OLD#
 # standardise all variables on their range (AKA centre?)
 # subtract the mean. Divide by SD after = z-score, not recommended by Steinley.
-logmean <- mean(hammers$StepLengthBLlog1p, na.rm = TRUE)
-hammers$StepLengthBLlog1p <- hammers$StepLengthBLlog1p - logmean
+# logmean <- mean(hammers$StepLengthBLlog1p, na.rm = TRUE)
+# hammers$StepLengthBLlog1p <- hammers$StepLengthBLlog1p - logmean
 # hist(hammers$StepLengthBLlog1p)
+
+## ADD 20240826 ##
+# standardise all variables on their range
+# subtract the mean. Divide by SD after = z-score, not recommended by Steinley.
+# Steinley 2004 and 2006 recommends range standardization (or substracting the maximum).
+# We go with the range standardization, i.e. zi = (xi - min(x))/(max(x)-min(x))
+
+# hammers$StepLengthBLlog1p <- STrange(hammers$StepLengthBLlog1p) # original script, but we need original values later for reverse transform, so you line below that creates new column
+hammers$StepLengthBLlog1pST <- STrange(hammers$StepLengthBLlog1p)
+
+# 3.1.: calculate k-means ----
 
 setDT(hammers) # convert to data.table without copy
 
 if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something to be done
-  fishlist <- unique(hammers$id) # already exists, is same
+  fishlist <- unique(hammers$shark) # already exists, is same
   for (i in fishlist) { # i <- fishlist[3]
-    df_i <- hammers[which(hammers$id == i),] #subset to each fish
+    df_i <- hammers[which(hammers$shark == i),] #subset to each fish
     print(paste0(which(fishlist == i), " of ", length(fishlist), "; calculating KMeans clustering for ", i))
     if (nrow(df_i) < 5) next # skip else kmeans will break. fish 51 (3) & 82 (7)
     setDF(df_i) # else things break
@@ -241,7 +306,7 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
 
     # x <- data[,c("ACT1", "ACT2", "SL_METERS", "TURN_DEGRE")]
     # downsample df_i to days
-    x <- df_i[!is.na(df_i$StepLengthBLlog1p),] # omit NA rows
+    x <- df_i[!is.na(df_i$StepLengthBLlog1pST),] # omit NA rows
     x <- x[!is.na(x$TurnAngleRelDeg),] # ditto
     if (nrow(x) < 5) next # skip else kmeans will break. fish 28
     x <- x[,c("StepLengthBLlog1p", "TurnAngleRelDeg")] # , "Date", "Index"
@@ -286,7 +351,7 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
 
     setDF(x) # else things break
     res <- data.frame(GAP = NA, s = NA, Wo = NA, We = NA) # what are s (SD?) Wo & We?
-    for (j in 1:4 ) { ##determine the GAP-statistic for 1 to 4 clusters. Changed from 10 to reduce compute time and we don't anticipate >4 XY XYT movement clusters
+    for (j in 1:5) { ##determine the GAP-statistic for 1 to 4 clusters. Changed from 10 to reduce compute time and we don't anticipate >4 XY XYT movement clusters
       if (j == 1) {  ##clall is the vector (in matrix format) of integers indicating the group to which each datum is assigned
         ones <- rep(1, nrow(x))
         clall <- matrix(ones)}
@@ -311,7 +376,8 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
     ##### plot GAP stat per clusters+SE####
     par(mfrow = c(1,1))
     k <- seq(1:length(res$GAP))
-    png(filename = paste0(saveloc, "/KmeansClusters_", i, ".png"), width = 4*480, height = 4*480, units = "px", pointsize = 4*12, bg = "white", res = NA, family = "", type = "cairo-png")
+    # png(filename = paste0(saveloc, "/KmeansClusters_", i, ".png"), width = 4*480, height = 4*480, units = "px", pointsize = 4*12, bg = "white", res = NA, family = "", type = "cairo-png")
+    png(filename = paste0(saveloc, "kmeans/KmeansClusters_", i, ".png"), width = 4*480, height = 4*480, units = "px", pointsize = 4*12, bg = "white", res = NA, family = "", type = "cairo-png")
     plot(k, res$GAP, xlab = "number of clusters k", ylab = "GAP", main = "GAP statistic", type = "b")
     segments(k, c(res$GAP - res$s), k, c(res$GAP + res$s))
     kstar <- min(which(res$GAP[-length(res$GAP)] >= c(res$GAP - res$s)[-1])) # if none of the first set of values are individually smaller than their paired counterparts in the second set of values then which() produces all FALSEs and min() fails.
@@ -321,8 +387,9 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
     dev.off()
 
     # var1 vs var2 clustering scatterplots
-    png(filename = paste0(saveloc, "/Kmeans-StepLength-TurnAngle-Scatter_", i, ".png"), width = 4*480, height = 4*480, units = "px", pointsize = 4*12, bg = "white", res = NA, family = "", type = "cairo-png")
-    plot(x$StepLengthBLlog1p, x$TurnAngleRelDeg, xlab = "Step Length (Body Lengths)", ylab = "Turn Angle Degrees")
+    # png(filename = paste0(saveloc, "/Kmeans-StepLength-TurnAngle-Scatter_", i, ".png"), width = 4*480, height = 4*480, units = "px", pointsize = 4*12, bg = "white", res = NA, family = "", type = "cairo-png")
+    png(filename = paste0(saveloc, "kmeans/Kmeans-StepLength-TurnAngle-Scatter_", i, ".png"), width = 4*480, height = 4*480, units = "px", pointsize = 4*12, bg = "white", res = NA, family = "", type = "cairo-png")
+        plot(x$StepLengthBLlog1p, x$TurnAngleRelDeg, xlab = "Step Length (Body Lengths)", ylab = "Turn Angle Degrees")
     dev.off()
 
     # then redo kmeans with selected number of clusters (kmeans output cl1 gets overwritten per i)
@@ -347,33 +414,34 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
     # tuna: Group 2: 39km step, 74deg angle, short and turny, resident/forage/spawn
 
     df_i$kmeansBinary <- rep(NA, nrow(df_i))
+    df_i$kmeansCharacter <- rep(NA, nrow(df_i))
 
     if (all(cl1sl > cl2sl, cl1ta < cl2ta, na.rm = TRUE)) { # cl1 longer & straighter
-      df_i[which(df_i$kmeans2cluster == 1), "kmeans2cluster"] <- "transit" #replace 1&2 with named groups
-      df_i[which(df_i$kmeans2cluster == 2), "kmeans2cluster"] <- "resident"
+      df_i[which(df_i$kmeans2cluster == 1), "kmeansCharacter"] <- "transit" #replace 1&2 with named groups
+      df_i[which(df_i$kmeans2cluster == 2), "kmeansCharacter"] <- "resident"
     } else if (all(cl1sl < cl2sl, cl1ta > cl2ta, na.rm = TRUE)) { #cl2 longer & straighter
-      df_i[which(df_i$kmeans2cluster == 1), "kmeans2cluster"] <- "resident"
-      df_i[which(df_i$kmeans2cluster == 2), "kmeans2cluster"] <- "transit"
+      df_i[which(df_i$kmeans2cluster == 1), "kmeansCharacter"] <- "resident"
+      df_i[which(df_i$kmeans2cluster == 2), "kmeansCharacter"] <- "transit"
     } else if (cl1sl > cl2sl) { # cl1 longer but also twistier
       if ((cl1sl / cl2sl) - (cl1ta / cl2ta) > 0) { #ratio of straightness > ratio of twistyness
-        df_i[which(df_i$kmeans2cluster == 1), "kmeans2cluster"] <- "transit"
-        df_i[which(df_i$kmeans2cluster == 2), "kmeans2cluster"] <- "resident"
+        df_i[which(df_i$kmeans2cluster == 1), "kmeansCharacter"] <- "transit"
+        df_i[which(df_i$kmeans2cluster == 2), "kmeansCharacter"] <- "resident"
       } else { #ratio of straightness < ratio of twistyness
-        df_i[which(df_i$kmeans2cluster == 1), "kmeans2cluster"] <- "resident"
-        df_i[which(df_i$kmeans2cluster == 2), "kmeans2cluster"] <- "transit"
+        df_i[which(df_i$kmeans2cluster == 1), "kmeansCharacter"] <- "resident"
+        df_i[which(df_i$kmeans2cluster == 2), "kmeansCharacter"] <- "transit"
       }
     } else if (cl1sl < cl2sl) { # cl1 shorter but also straighter
       if ((cl2sl / cl1sl) - (cl2ta / cl1ta) > 0) { #ratio of straightness > ratio of twistyness
-        df_i[which(df_i$kmeans2cluster == 1), "kmeans2cluster"] <- "resident"
-        df_i[which(df_i$kmeans2cluster == 2), "kmeans2cluster"] <- "transit"
+        df_i[which(df_i$kmeans2cluster == 1), "kmeansCharacter"] <- "resident"
+        df_i[which(df_i$kmeans2cluster == 2), "kmeansCharacter"] <- "transit"
       } else { #ratio of straightness < ratio of twistyness
-        df_i[which(df_i$kmeans2cluster == 1), "kmeans2cluster"] <- "transit"
-        df_i[which(df_i$kmeans2cluster == 2), "kmeans2cluster"] <- "resident"
+        df_i[which(df_i$kmeans2cluster == 1), "kmeansCharacter"] <- "transit"
+        df_i[which(df_i$kmeans2cluster == 2), "kmeansCharacter"] <- "resident"
       }
     } # close if elses block
     # see Blocklab/abft_diving/X_PlotsMisc/KMeans/clusterinfo.ods for worksheet looking at these.
-    df_i[which(df_i$kmeans2cluster == "resident"), "kmeansBinary"] <- 0
-    df_i[which(df_i$kmeans2cluster == "transit"), "kmeansBinary"] <- 1
+    df_i[which(df_i$kmeansCharacter == "resident"), "kmeansBinary"] <- 0
+    df_i[which(df_i$kmeansCharacter == "transit"), "kmeansBinary"] <- 1
 
     # kmeans2$withinss
     # # 874.1479 751.0032
@@ -381,15 +449,16 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
     # # 20920 18726
 
     ##### reverse transform ####
-    df_i$StepLengthBLlog1p <-  expm1(df_i$StepLengthBLlog1p + logmean)
+    #df_i$StepLengthBLlog1p <-  expm1(df_i$StepLengthBLlog1p + logmean) # old, original script
+    df_i$StepLengthBLlog1p <-  expm1(rt_STrange(hammers$StepLengthBLlog1p, df_i$StepLengthBLlog1pST))
 
     #####save metadata clusterinfo.csv####
     clusterinfoadd <- data.frame(nClustersTolerance1 = kstar,
                                  nClustersTolerance2 = kstar2,
-                                 TransitClusterStepLengthBLlog1pMean = mean(df_i[which(df_i$kmeans2cluster == "transit"), "StepLengthBLlog1p"], na.rm = T),
-                                 TransitClusterTurnAngleRelDegAbsMean = mean(abs(df_i[which(df_i$kmeans2cluster == "transit"), "TurnAngleRelDeg"]), na.rm = T),
-                                 ResidentClusterStepLengthBLlog1pMean = mean(df_i[which(df_i$kmeans2cluster == "resident"), "StepLengthBLlog1p"], na.rm = T),
-                                 ResidentClusterTurnAngleRelDegAbsMean = mean(abs(df_i[which(df_i$kmeans2cluster == "resident"), "TurnAngleRelDeg"]), na.rm = T),
+                                 TransitClusterStepLengthBLlog1pMean = mean(df_i[which(df_i$kmeansCharacter == "transit"), "StepLengthBLlog1p"], na.rm = T),
+                                 TransitClusterTurnAngleRelDegAbsMean = mean(abs(df_i[which(df_i$kmeansCharacter == "transit"), "TurnAngleRelDeg"]), na.rm = T),
+                                 ResidentClusterStepLengthBLlog1pMean = mean(df_i[which(df_i$kmeansCharacter == "resident"), "StepLengthBLlog1p"], na.rm = T),
+                                 ResidentClusterTurnAngleRelDegAbsMean = mean(abs(df_i[which(df_i$kmeansCharacter == "resident"), "TurnAngleRelDeg"]), na.rm = T),
                                  stringsAsFactors = FALSE)
     if (!exists("clusterinfo")) { #if this is the first i, create sensordates object
       clusterinfo <- clusterinfoadd
@@ -402,14 +471,16 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
     setDT(df_i) # convert to data.table without copy
     # join and update "df_i" by reference, i.e. without copy
     # https://stackoverflow.com/questions/44930149/replace-a-subset-of-a-data-frame-with-dplyr-join-operations
-    hammers[df_i, on = c("date", "id"), kmeans2cluster := i.kmeans2cluster]
-    hammers[df_i, on = c("date", "id"), kmeansBinary := i.kmeansBinary]
+    hammers[df_i, on = c("date", "shark"), kmeans2cluster := i.kmeans2cluster]
+    hammers[df_i, on = c("date", "shark"), kmeansCharacter := i.kmeansCharacter]
+    hammers[df_i, on = c("date", "shark"), kmeansBinary := i.kmeansBinary]
   } #close i
 
   clusterinfo <- round(clusterinfo, 1)
   clusterinfo <- bind_cols(id = fishlist, clusterinfo)
 
-  write.csv(x = clusterinfo, file = paste0(saveloc, "/", today(), "_KmeansClusterinfo.csv"), row.names = FALSE)
+  # write.csv(x = clusterinfo, file = paste0(saveloc, "/", today(), "_KmeansClusterinfo.csv"), row.names = FALSE) #SD
+  write.csv(x = clusterinfo, file = paste0(saveloc, "kmeans/", today(), "_KmeansClusterinfo.csv"), row.names = FALSE) #VH
 } else {# close if (!all(is.na(alldaily$lat)))
   print("all new days missing latitude data, can't get external data, nothing to do")
 }
@@ -434,10 +505,48 @@ clustersvec %>%
 #     3     6   #more k=3 than k=2
 #     2     4
 
-##### wrap up####
+# 3.2. Conclude k-means calculations ----
+
 setDF(hammers)
-hammers$StepLengthBLlog1p <-  expm1(hammers$StepLengthBLlog1p + logmean)
-saveRDS(object = hammers, file = paste0(saveloc, "/kmeans/Hammers_KMeans.Rds"))
+# hammers$StepLengthBLlog1p <-  expm1(hammers$StepLengthBLlog1p + logmean) # has been taken care of upstream
+# saveRDS(object = hammers, file = paste0(saveloc, "/Hammers_KMeans.Rds")) #SD
+saveRDS(object = hammers, file = paste0(saveloc, "kmeans/Hammers_KMeans.Rds")) #VH
+
+
+## summarise steplength and TAs by cluster
+mean_SlTa_trares <- hammers %>%
+  dplyr::group_by(
+    kmeansCharacter
+  ) %>%
+  dplyr::summarise(
+    meanSL_STrange = mean(StepLengthBLlog1pST),
+    meanSL_BL = mean(StepLengthBL),
+    meanSL_KM = mean(StepLengthKm),
+    meanTA = mean(abs(TurnAngleRelDeg))
+  );mean_SlTa_trares
+
+# write.csv(mean_SlTa_trares, paste0(saveloc, "Data_kmeans_cluster_summary.csv"), row.names = F) #SD
+write.csv(mean_SlTa_trares, paste0(saveloc, "kmeans/Data_kmeans_cluster_summary.csv"), row.names = F) #VH
+
+# clusters_info <- read.csv(paste0(saveloc, today(), "_KmeansClusterinfo.csv")) #SD
+clusters_info <- read.csv(paste0(saveloc, "kmeans/", today(), "_KmeansClusterinfo.csv")) #VH
+## summarise
+clusters_info %>% dplyr::summarise(
+  meanSL_resident = mean(ResidentClusterStepLengthBLlog1pMean),
+  sdSL_resident = sd(ResidentClusterStepLengthBLlog1pMean),
+  meanTA_resident = mean(ResidentClusterTurnAngleRelDegAbsMean),
+  sdTA_resident = sd(ResidentClusterTurnAngleRelDegAbsMean),
+  meanSL_transit = mean(TransitClusterStepLengthBLlog1pMean),
+  sdSL_transit = sd(TransitClusterStepLengthBLlog1pMean),
+  meanTA_transit = mean(TransitClusterTurnAngleRelDegAbsMean),
+  sdTA_transit = sd(TransitClusterTurnAngleRelDegAbsMean)
+)
+# meanSL_resident sdSL_resident meanTA_resident sdTA_resident meanSL_transit sdSL_transit
+#       5336.738      2883.732        124.1423      18.33783        5347.05     2136.681
+# meanTA_transit sdTA_transit
+#       8.74231     6.743125
+
+
 rm(list = ls()) #remove all objects
 beep(8) #notify completion
 lapply(names(sessionInfo()$loadedOnly), require, character.only = TRUE)
@@ -449,20 +558,30 @@ invisible(lapply(paste0('package:', names(sessionInfo()$otherPkgs)), detach, cha
 
 
 
-# 3. 2D Barplot maps KMeans ####
+# 4. 2D Barplot maps KMeans ----
 library(mapplots)
 # remotes::install_github("SimonDedman/gbm.auto")
 library(gbm.auto)
-saveloc <- "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/kmeans"
-hammers <- readRDS(file = paste0(saveloc, "/Hammers_KMeans.Rds"))
+## if run by SD
+# saveloc <- "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/kmeans"
+## if run by VH
+# saveloc <- "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/OutputData/"
+# hammers <- readRDS(file = paste0(saveloc, "/Hammers_KMeans.Rds")) #SD
+hammers <- readRDS(file = paste0(saveloc, "kmeans/Hammers_KMeans.Rds"))#VH
+
+
 cropmap <- gbm.auto::gbm.basemap(grids = hammers,
                       gridslat = 6,
                       gridslon = 3,
                       savedir = saveloc)
 bathysavepath <- paste0(saveloc, "/getNOAAbathy/")
-map2dbpSaveloc <- paste0(saveloc, "/2DbarplotMap/")
+# map2dbpSaveloc <- paste0(saveloc, "/2DbarplotMap/") #SD
+map2dbpSaveloc <- paste0(saveloc, "kmeans/2DbarplotMap/")
 
-source("~/Dropbox/Galway/Analysis/R/My Misc Scripts/barplot2dMap.R")
+## if run by SD
+# source("~/Dropbox/Galway/Analysis/R/My Misc Scripts/barplot2dMap.R")
+## if run by VH
+source("C:/Users/Vital Heim/switchdrive/Science/Rscripts/Barplot2dMap/Barplot2dMap.R")
 
 for (i in c(0.25, 0.5, 1)) {
   barplot2dMap(x = hammers |> tidyr::drop_na(kmeans2cluster),
@@ -479,8 +598,10 @@ for (i in c(0.25, 0.5, 1)) {
 
 
 
-# 4. movegroup dBBMMs ####
-hammers <- readRDS(paste0(saveloc, "/kmeans/Hammers_KMeans.Rds"))
+# 5. movegroup dBBMMs ----
+
+# hammers <- readRDS(paste0(saveloc, "/Hammers_KMeans.Rds")) #SD
+hammers <- readRDS(paste0(saveloc, "kmeans/Hammers_KMeans.Rds")) #VH
 
 ##### moveLocError ####
 # calcs from /home/simon/Dropbox/Blocklab Monterey/Blocklab/ConfidenceIntervalPointsToPoly.R
@@ -594,7 +715,9 @@ hammers |>
   group_by(id) |>
   group_walk(~ {
     p <- ggplot(.x) + geom_histogram(aes(x = diffmins))
-    ggsave(plot = p, filename = paste0(saveloc, "movegroup dBBMMs/timeDiffLong histograms/", lubridate::today(), "_diffMinsHistGG_", .y$id, ".png"))
+    # ggsave(plot = p, filename = paste0(saveloc, "movegroup dBBMMs/timeDiffLong histograms/", lubridate::today(), "_diffMinsHistGG_", .y$id, ".png")) #SD
+    ggsave(plot = p, filename = paste0(saveloc, "dBBMMs/timeDiffLong histograms/", lubridate::today(), "_diffMinsHistGG_", .y$id, ".png"))
+
     .x
   }) |>
   summarise(meandiffmins = mean(diffmins, na.rm = TRUE),
@@ -610,7 +733,7 @@ summary(meanMoveLocDist) # median 1927.83
 
 length(unique(hammers$shark))
 # 9
-saveRDS(hammers,file = paste0(saveloc, "/EEZoverlap/Hammers.Rds"))
+saveRDS(hammers,file = paste0(saveloc, "EEZoverlap/Hammers.Rds"))
 
 # mysubsets <- c("All", "Andros", "Bimini", "Summer", "Winter")
 mysubsets <- c("All", "Summer", "Winter") # 2023-08-08 remove Bimini sharks, and thus Andros also since ANdros = All
@@ -620,14 +743,17 @@ for (thissubset in mysubsets) { # all worked, had to make edits to hammersubset$
   # subset of interest. case_match returns a vector not a df/anything else
   if (thissubset == "All") hammersubset <- hammers
   if (thissubset == "Andros") hammersubset <- hammers |> filter(group == "Andros")
-  if (thissubset == "Bimini") hammersubset <- hammers |> filter(group == "Bimini")
+  # if (thissubset == "Bimini") hammersubset <- hammers |> filter(group == "Bimini")
   if (thissubset == "Summer") hammersubset <- hammers |> filter(month(date) %in% c(5:10))
   if (thissubset == "Winter") hammersubset <- hammers |> filter(month(date) %in% c(11:12, 1:4))
 
-  dir.create(paste0(saveloc, "movegroup dBBMMs/", thissubset, "/"))
+  # dir.create(paste0(saveloc, "movegroup dBBMMs/", thissubset, "/")) #SD
+  dir.create(paste0(saveloc, "dBBMM/", thissubset, "/")) #VH
+
 
   for (TDL in 1200) { # c(18, 24, 36, 1000)
-    dir.create(paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/"))
+    # dir.create(paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/")) #SD
+    dir.create(paste0(saveloc, "dBBMM/", thissubset, "/", TDL, "h/")) #VH
     movegroup::movegroup(
       data = hammersubset,
       ID = "shark",
@@ -641,7 +767,7 @@ for (thissubset in mysubsets) { # all worked, had to make edits to hammersubset$
       # sensor = "VR2W",
       moveLocError = hammersubset$meanMoveLocDist,
       ##### timeDiffLong 18 24 36 trials####
-      timeDiffLong = (TDL * 60),
+      timeDiffLong = (TDL * 60), #adjust
       # Single numeric value. Threshold value in timeDiffUnits designating the length of long breaks in re-locations. Used for bursting a movement track into segments, thereby removing long breaks from the movement track. See ?move::bursted for details.
       timeDiffUnits = "mins",
       # center = TRUE,
@@ -661,13 +787,16 @@ for (thissubset in mysubsets) { # all worked, had to make edits to hammersubset$
       # writeRasterExtension = ".asc",
       # writeRasterDatatype = "FLT4S",
       # absVolumeAreaSaveName = "VolumeArea_AbsoluteScale.csv",
-      savedir = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/"),
+      # savedir = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/"), #SD
+      savedir = paste0(saveloc, "dBBMM/", thissubset, "/", TDL, "h/"), #VH
       alerts = TRUE
     )
 
     scaleraster(
-      path = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/"),
-      pathsubsets = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/"), # will be able to leave NULL following change I just made
+      # path = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/"), #SD
+      path = paste0(saveloc, "dBBMM/", thissubset, "/", TDL, "h/"), #VH
+      # pathsubsets = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/"), # SD, will be able to leave NULL following change I just made
+      pathsubsets = paste0(saveloc, "dBBMM/", thissubset, "/", TDL, "h/"), # VH, will be able to leave NULL following change I just made
       # pattern = ".asc",
       # weighting = 1,
       # format = "ascii",
@@ -677,16 +806,21 @@ for (thissubset in mysubsets) { # all worked, had to make edits to hammersubset$
       # scalefolder = "Scaled",
       # weightedsummedname = "All_Rasters_Weighted_Summed",
       # scaledweightedname = "All_Rasters_Scaled_Weighted",
-      crsloc = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/") # will be able to leave NULL following change I just made
+      # crsloc = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/") # SD, will be able to leave NULL following change I just made
+      crsloc = paste0(saveloc, "dBBMM/", thissubset, "/", TDL, "h/") # VH, will be able to leave NULL following change I just made
+
       # , returnObj = FALSE
     )
 
-    dir.create(paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/Scaled/Plot"))
+    # dir.create(paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/Scaled/Plot")) #SD
+    dir.create(paste0(saveloc, "dBBMM/", thissubset, "/", TDL, "h/Scaled/Plot")) #VH
 
     # ggmap::register_google()
     plotraster(
-      x = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/Scaled/All_Rasters_Scaled_Weighted_UDScaled.asc"),
-      crsloc = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/"),
+      # x = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/Scaled/All_Rasters_Scaled_Weighted_UDScaled.asc"), #SD
+      # crsloc = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/"), #SD
+      x = paste0(saveloc, "dBBMM/", thissubset, "/", TDL, "h/Scaled/All_Rasters_Scaled_Weighted_UDScaled.asc"), #VH
+      crsloc = paste0(saveloc, "dBBMM/", thissubset, "/", TDL, "h/"), #VH
       # trim = TRUE,
       # myLocation = NULL,
       googlemap = TRUE,
@@ -707,7 +841,8 @@ for (thissubset in mysubsets) { # all worked, had to make edits to hammersubset$
       # fontsize = 12,
       # fontfamily = "Times New Roman",
       # filesavename = paste0(lubridate::today(), "_dBBMM-contours.png"),
-      savedir = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/Scaled/Plot"),
+      # savedir = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/Scaled/Plot"), #SD
+      savedir = paste0(saveloc, "dBBMM/", thissubset, "/", TDL, "h/Scaled/Plot"), #VH
       # receiverlats = NULL,
       # receiverlons = NULL,
       # receivernames = NULL,
@@ -757,25 +892,29 @@ for (thissubset in mysubsets) { # all worked, had to make edits to hammersubset$
     # per shark, unscaled:
     for (thisshark in make.names(unique(hammersubset$shark))) {
       ##### ISSUE####
-      # Summer subset, ID = "X177942", not created by movegroup, thus can't be found to be plotted
       # movegroup said: "processing 7 of 7" i.e. not 8 of 8
       plotraster(
-        x = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/", thisshark, ".asc"),
-        crsloc = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/"),
+        # x = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/", thisshark, ".asc"), #SD
+        # crsloc = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/"), #SD
+        x = paste0(saveloc, "dBBMM/", thissubset, "/", TDL, "h/", thisshark, ".asc"), #VH
+        crsloc = paste0(saveloc, "dBBMM/", thissubset, "/", TDL, "h/"), #VH
         googlemap = TRUE,
         expandfactor = 1,
         mapzoom = 7,
         plotsubtitle = "Scaled contours. n = 10",
         legendposition = c(0.9, 0.89),
         filesavename = paste0(lubridate::today(), "_", thisshark, "_dBBMM-contours.png"),
-        savedir = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/Scaled/Plot"))}
+        # savedir = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/Scaled/Plot"))} #SD
+        savedir = paste0(saveloc, "dBBMM/", thissubset, "/", TDL, "h/Scaled/Plot"))} #VH
 
 
   } # close for loop 18 24 36 1000 1200h
 } # close for (thissubset in mysubsets)
 
 ##### compare movegroup volumeareas####
-compare <- read_csv(paste0(saveloc, "movegroup dBBMMs/timeDiffLong_comparison.csv"))
+# compare <- read_csv(paste0(saveloc, "movegroup dBBMMs/timeDiffLong_comparison.csv")) #SD
+compare <- read_csv(paste0(saveloc, "dBBMM/timeDiffLong_comparison.csv"))
+
 compare |>
   filter(str_sub(string = ID, start = 1, end = 1) == "X") |>  # filter out scaled summaries, remain only sharks
   # `absolute-scaled` == "scaled") |> # scaled only
@@ -786,7 +925,9 @@ compare |>
   geom_point(mapping = aes(x = hours, y = core.use, colour = as.factor(hours), shape = `absolute-scaled`)) +
   theme_minimal() %+replace% theme(plot.background = element_rect(fill = "white"),
                                    panel.background = element_rect(fill = "white"))
-ggsave(filename = paste0(saveloc, "movegroup dBBMMs/", lubridate::today(), "_timeDiffLong_comparison.png"))
+# ggsave(filename = paste0(saveloc, "movegroup dBBMMs/", lubridate::today(), "_timeDiffLong_comparison.png")) #SD
+ggsave(filename = paste0(saveloc, "dBBMM/", lubridate::today(), "_timeDiffLong_comparison.png"))
+
 
 
 
@@ -799,31 +940,34 @@ ggsave(filename = paste0(saveloc, "movegroup dBBMMs/", lubridate::today(), "_tim
 # ▪ Simple %. Spatial overlap R code, easy.
 # ▪ Do we have EEZ shapefile? TG www.marineregions.org
 # see /home/simon/Documents/Si Work/PostDoc Work/movegroup help/Liberty Boyd/Points in UD contours/PointsInWhichUDcontour.R
-hammerssf <- readRDS(file = paste0(saveloc, "/EEZoverlap/Hammers.Rds")) |>
+# hammerssf <- readRDS(file = paste0(saveloc, "/EEZoverlap/Hammers.Rds")) |> #SD
+hammerssf <- readRDS(file = paste0(saveloc, "EEZoverlap/Hammers.Rds")) |> #VH
   sf::st_as_sf(coords = c("lon","lat")) |> sf::st_set_crs(4326) |> # Convert points to sf
   mutate(Index = row_number()) # for indexing later
-maploc = "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Maps & Surveys/Bahamas EEZ Shapefile/"
-EEZ <- sf::st_read(paste0(maploc,"eez.shp")) # polygon
+# maploc = "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Maps & Surveys/Bahamas EEZ Shapefile/" #SD
+# EEZ <- sf::st_read(paste0(maploc,"eez.shp")) # SD, polygon
+maploc = "C:/Users/Vital Heim/switchdrive/Science/Data/Shapefiles/Bahamas/" #VH
+EEZ <- sf::st_read(paste0(maploc,"Bahamas_EEZ.shp")) # VH, polygon
 
 # pointsinpolysubset <- points[polygon,] #sf objects subset points occurring in poly
 hammerssfinEEZ <- hammerssf[EEZ,]
 hammerssfinAndros <- hammerssf |> filter(group == "Andros")
-hammerssfinBimini <- hammerssf |> filter(group == "Bimini")
+# hammerssfinBimini <- hammerssf |> filter(group == "Bimini")
 hammerssfinSummer <- hammerssf |> filter(month(date) %in% c(5:10))
 hammerssfinWinter <- hammerssf |> filter(month(date) %in% c(11:12, 1:4))
 hammerssfinAndrosSummer <- hammerssf |> filter(group == "Andros", month(date) %in% c(5:10))
 hammerssfinAndrosWinter <- hammerssf |> filter(group == "Andros", month(date) %in% c(11:12, 1:4))
-hammerssfinBiminiSummer <- hammerssf |> filter(group == "Bimini", month(date) %in% c(5:10))
-hammerssfinBiminiWinter <- hammerssf |> filter(group == "Bimini", month(date) %in% c(11:12, 1:4))
+# hammerssfinBiminiSummer <- hammerssf |> filter(group == "Bimini", month(date) %in% c(5:10))
+# hammerssfinBiminiWinter <- hammerssf |> filter(group == "Bimini", month(date) %in% c(11:12, 1:4))
 
 hammerssfinEEZAndros <- hammerssfinAndros[EEZ,]
-hammerssfinEEZBimini <- hammerssfinBimini[EEZ,]
+# hammerssfinEEZBimini <- hammerssfinBimini[EEZ,]
 hammerssfinEEZSummer <- hammerssfinSummer[EEZ,]
 hammerssfinEEZWinter <- hammerssfinWinter[EEZ,]
 hammerssfinEEZAndrosSummer <- hammerssfinAndrosSummer[EEZ,]
 hammerssfinEEZAndrosWinter <- hammerssfinAndrosWinter[EEZ,]
-hammerssfinEEZBiminiSummer <- hammerssfinBiminiSummer[EEZ,]
-hammerssfinEEZBiminiWinter <- hammerssfinBiminiWinter[EEZ,]
+# hammerssfinEEZBiminiSummer <- hammerssfinBiminiSummer[EEZ,]
+# hammerssfinEEZBiminiWinter <- hammerssfinBiminiWinter[EEZ,]
 
 hammerssf$EEZ <- as.logical(FALSE)
 hammerssf[hammerssf$Index %in% hammerssfinEEZ$Index, "EEZ"] <- as.logical(TRUE)
@@ -832,9 +976,9 @@ hammerssfinAndros$EEZAndros <- as.logical(FALSE)
 hammerssfinAndros[hammerssfinAndros$Index %in% hammerssfinEEZAndros$Index, "EEZAndros"] <- as.logical(TRUE)
 hammerssf[hammerssf$Index %in% hammerssfinAndros$Index, "EEZAndros"] <- hammerssfinAndros$EEZAndros
 
-hammerssfinBimini$EEZBimini <- as.logical(FALSE)
-hammerssfinBimini[hammerssfinBimini$Index %in% hammerssfinEEZBimini$Index, "EEZBimini"] <- as.logical(TRUE)
-hammerssf[hammerssf$Index %in% hammerssfinBimini$Index, "EEZBimini"] <- hammerssfinBimini$EEZBimini
+# hammerssfinBimini$EEZBimini <- as.logical(FALSE)
+# hammerssfinBimini[hammerssfinBimini$Index %in% hammerssfinEEZBimini$Index, "EEZBimini"] <- as.logical(TRUE)
+# hammerssf[hammerssf$Index %in% hammerssfinBimini$Index, "EEZBimini"] <- hammerssfinBimini$EEZBimini
 
 hammerssfinSummer$EEZSummer <- as.logical(FALSE)
 hammerssfinSummer[hammerssfinSummer$Index %in% hammerssfinEEZSummer$Index, "EEZSummer"] <- as.logical(TRUE)
@@ -852,19 +996,19 @@ hammerssfinAndrosWinter$EEZAndrosWinter <- as.logical(FALSE)
 hammerssfinAndrosWinter[hammerssfinAndrosWinter$Index %in% hammerssfinEEZAndrosWinter$Index, "EEZAndrosWinter"] <- as.logical(TRUE)
 hammerssf[hammerssf$Index %in% hammerssfinAndrosWinter$Index, "EEZAndrosWinter"] <- hammerssfinAndrosWinter$EEZAndrosWinter
 
-hammerssfinBiminiSummer$EEZBiminiSummer <- as.logical(FALSE)
-hammerssfinBiminiSummer[hammerssfinBiminiSummer$Index %in% hammerssfinEEZBiminiSummer$Index, "EEZBiminiSummer"] <- as.logical(TRUE)
-hammerssf[hammerssf$Index %in% hammerssfinBiminiSummer$Index, "EEZBiminiSummer"] <- hammerssfinBiminiSummer$EEZBiminiSummer
-
-hammerssfinBiminiWinter$EEZBiminiWinter <- as.logical(FALSE)
-hammerssfinBiminiWinter[hammerssfinBiminiWinter$Index %in% hammerssfinEEZBiminiWinter$Index, "EEZBiminiWinter"] <- as.logical(TRUE)
-hammerssf[hammerssf$Index %in% hammerssfinBiminiWinter$Index, "EEZBiminiWinter"] <- hammerssfinBiminiWinter$EEZBiminiWinter
+# hammerssfinBiminiSummer$EEZBiminiSummer <- as.logical(FALSE)
+# hammerssfinBiminiSummer[hammerssfinBiminiSummer$Index %in% hammerssfinEEZBiminiSummer$Index, "EEZBiminiSummer"] <- as.logical(TRUE)
+# hammerssf[hammerssf$Index %in% hammerssfinBiminiSummer$Index, "EEZBiminiSummer"] <- hammerssfinBiminiSummer$EEZBiminiSummer
+#
+# hammerssfinBiminiWinter$EEZBiminiWinter <- as.logical(FALSE)
+# hammerssfinBiminiWinter[hammerssfinBiminiWinter$Index %in% hammerssfinEEZBiminiWinter$Index, "EEZBiminiWinter"] <- as.logical(TRUE)
+# hammerssf[hammerssf$Index %in% hammerssfinBiminiWinter$Index, "EEZBiminiWinter"] <- hammerssfinBiminiWinter$EEZBiminiWinter
 
 print(paste0("Percent of days in Bahamas EEZ, all data: ", round(length(which(hammerssf$EEZ)) / length(hammerssf$EEZ) * 100, 1), "%; ", length(hammerssf$EEZ), " days"))
 # Percent of days in Bahamas EEZ, all data: 65.6%; 3733 days
 print(paste0("Percent of days in Bahamas EEZ, Andros-tagged: ", round(length(which(hammerssfinAndros$EEZAndros)) / length(hammerssfinAndros$EEZAndros) * 100, 1), "%; ", length(hammerssfinAndros$EEZAndros), " days"))
 # Percent of days in Bahamas EEZ, Andros-tagged: 68%; 2211 days
-print(paste0("Percent of days in Bahamas EEZ, Bimini-tagged: ", round(length(which(hammerssfinBimini$EEZBimini)) / length(hammerssfinBimini$EEZBimini) * 100, 1), "%; ", length(hammerssfinBimini$EEZBimini), " days"))
+# print(paste0("Percent of days in Bahamas EEZ, Bimini-tagged: ", round(length(which(hammerssfinBimini$EEZBimini)) / length(hammerssfinBimini$EEZBimini) * 100, 1), "%; ", length(hammerssfinBimini$EEZBimini), " days"))
 # Percent of days in Bahamas EEZ, Bimini-tagged: 62%; 1522 days
 print(paste0("Percent of days in Bahamas EEZ, Summer: ", round(length(which(hammerssfinSummer$EEZSummer)) / length(hammerssfinSummer$EEZSummer) * 100, 1), "%; ", length(hammerssfinSummer$EEZSummer), " days"))
 # Percent of days in Bahamas EEZ, Summer: 59.1%; 1659 days
@@ -874,9 +1018,9 @@ print(paste0("Percent of days in Bahamas EEZ, Andros-tagged, Summer: ", round(le
 # Percent of days in Bahamas EEZ, Andros-tagged, Summer: 61.3%; 1013 days
 print(paste0("Percent of days in Bahamas EEZ, Andros-tagged, Winter: ", round(length(which(hammerssfinAndrosWinter$EEZAndrosWinter)) / length(hammerssfinAndrosWinter$EEZAndrosWinter) * 100, 1), "%; ", length(hammerssfinAndrosWinter$EEZAndrosWinter), " days"))
 # Percent of days in Bahamas EEZ, Andros-tagged, Winter: 73.6%; 1198 days
-print(paste0("Percent of days in Bahamas EEZ, Bimini-tagged, Summer: ", round(length(which(hammerssfinBiminiSummer$EEZBiminiSummer)) / length(hammerssfinBiminiSummer$EEZBiminiSummer) * 100, 1), "%; ", length(hammerssfinBiminiSummer$EEZBiminiSummer), " days"))
+# print(paste0("Percent of days in Bahamas EEZ, Bimini-tagged, Summer: ", round(length(which(hammerssfinBiminiSummer$EEZBiminiSummer)) / length(hammerssfinBiminiSummer$EEZBiminiSummer) * 100, 1), "%; ", length(hammerssfinBiminiSummer$EEZBiminiSummer), " days"))
 # Percent of days in Bahamas EEZ, Bimini-tagged, Summer: 55.6%; 646 days
-print(paste0("Percent of days in Bahamas EEZ, Bimini-tagged, Winter: ", round(length(which(hammerssfinBiminiWinter$EEZBiminiWinter)) / length(hammerssfinBiminiWinter$EEZBiminiWinter) * 100, 1), "%; ", length(hammerssfinBiminiWinter$EEZBiminiWinter), " days"))
+# print(paste0("Percent of days in Bahamas EEZ, Bimini-tagged, Winter: ", round(length(which(hammerssfinBiminiWinter$EEZBiminiWinter)) / length(hammerssfinBiminiWinter$EEZBiminiWinter) * 100, 1), "%; ", length(hammerssfinBiminiWinter$EEZBiminiWinter), " days"))
 # Percent of days in Bahamas EEZ, Bimini-tagged, Winter: 66.8%; 876 days
 
 
