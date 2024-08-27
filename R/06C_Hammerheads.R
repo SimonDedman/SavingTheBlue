@@ -941,7 +941,7 @@ ggsave(filename = paste0(saveloc, "dBBMM/", lubridate::today(), "_timeDiffLong_c
 # ▪ Do we have EEZ shapefile? TG www.marineregions.org
 # see /home/simon/Documents/Si Work/PostDoc Work/movegroup help/Liberty Boyd/Points in UD contours/PointsInWhichUDcontour.R
 # hammerssf <- readRDS(file = paste0(saveloc, "/EEZoverlap/Hammers.Rds")) |> #SD
-hammerssf <- readRDS(file = paste0(saveloc, "EEZoverlap/Hammers.Rds")) |> #VH
+hammerssf <- readRDS(file = file = "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/InputData/EEZoverlap/Hammers.Rds") |> #VH
   sf::st_as_sf(coords = c("lon","lat")) |> sf::st_set_crs(4326) |> # Convert points to sf
   mutate(Index = row_number()) # for indexing later
 # maploc = "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Maps & Surveys/Bahamas EEZ Shapefile/" #SD
