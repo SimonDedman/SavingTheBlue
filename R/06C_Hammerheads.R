@@ -551,7 +551,7 @@ saveloc <- "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/And
 # hammers <- readRDS(file = paste0(saveloc, "/Hammers_KMeans.Rds")) #SD
 hammers <- readRDS(file = paste0(saveloc, "kmeans/Hammers_KMeans.Rds"))#VH
 
-
+options(timeout = 3000) # increase timeout to 3000 seconds
 cropmap <- gbm.auto::gbm.basemap(grids = hammers,
                       gridslat = 6,
                       gridslon = 3,
@@ -1019,8 +1019,9 @@ print(paste0("Percent of days in Bahamas EEZ, Winter: ", round(length(which(hamm
 #                                         downloaded length 7094272 != reported length 149157845
 #                                       Warning in download.file(url = paste0("https://www.ngdc.noaa.gov/mgg/shorelines/data/gshhg/latest/gshhg-shp-",  :
 #                                                                               URL 'https://www.ngdc.noaa.gov/mgg/shorelines/data/gshhg/latest/gshhg-shp-2.3.7.zip': Timeout of 60 seconds was reached
-#                                                                             Error in download.file(url = paste0("https://www.ngdc.noaa.gov/mgg/shorelines/data/gshhg/latest/gshhg-shp-",  :
-#                                                                                                                   download from 'https://www.ngdc.noaa.gov/mgg/shorelines/data/gshhg/latest/gshhg-shp-2.3.7.zip' failed
+#                                                                             Error in download.file(url = paste0("https://www.ngdc.noaa.gov/mgg/shorelines/data/gshhg/latest/gshhg-shp-",  :# download from 'https://www.ngdc.noaa.gov/mgg/shorelines/data/gshhg/latest/gshhg-shp-2.3.7.zip' failed
+# SOLVED (stupid): simple timeout issue... add options(timeout = 3000) # increase timeout to 3000 seconds
+# prior to gbm.auto::basemap() so manually increase time out limits -done.
 
 # Error 1 with movegroup::movegroup()
 # Error in movegroup::movegroup(data = hammersubset, ID = "shark", Datetime = "date",  :
