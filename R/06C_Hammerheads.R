@@ -226,16 +226,6 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
   print("all new days missing latitude data, can't get external data, nothing to do")
 }
 
-
-
-
-
-
-
-
-
-
-
 # 3. Kmeans VanMoorter/SD ----
 # p7_analysis_suppl_BL.R
 # > kmeans2cluster {resident/transient	movement cluster based on body lengths}
@@ -494,16 +484,11 @@ clustersvec %>%
   summarise(n = n()) %>%
   arrange(desc(n))
 # value     n
-#     2     8
-#     3     7
-#     1     2
+#     2     10
+#     3     5
+#     1     3
 # could do this more systematically. Could also weight the Tolerance1/2 differently? Leave it for now, perfect enemy of good.
 # See L325 TOT make centres dynamic
-
-# 2023-08-08 remove Bimini sharks
-# value     n
-#     3     6   #more k=3 than k=2
-#     2     4
 
 # 3.2. Conclude k-means calculations ----
 
@@ -511,6 +496,8 @@ setDF(hammers)
 # hammers$StepLengthBLlog1p <-  expm1(hammers$StepLengthBLlog1p + logmean) # has been taken care of upstream
 # saveRDS(object = hammers, file = paste0(saveloc, "/Hammers_KMeans.Rds")) #SD
 saveRDS(object = hammers, file = paste0(saveloc, "kmeans/Hammers_KMeans.Rds")) #VH
+saveRDS(object = hammers, file = paste0("C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/InputData/dBBMM/Hammers_KMeans.Rds")) #VH
+saveRDS(object = hammers, file = paste0("C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/InputData/EEZoverlap/Hammers_KMeans.Rds")) #VH
 
 
 ## summarise steplength and TAs by cluster
@@ -541,31 +528,26 @@ clusters_info %>% dplyr::summarise(
   meanTA_transit = mean(TransitClusterTurnAngleRelDegAbsMean),
   sdTA_transit = sd(TransitClusterTurnAngleRelDegAbsMean)
 )
-# meanSL_resident sdSL_resident meanTA_resident sdTA_resident meanSL_transit sdSL_transit
-#       5336.738      2883.732        124.1423      18.33783        5347.05     2136.681
-# meanTA_transit sdTA_transit
-#       8.74231     6.743125
+# meanSL_resident sdSL_resident meanTA_resident sdTA_resident
+#        2033.478      1346.395        122.5889      15.76146
+# meanSL_transit sdSL_transit meanTA_transit sdTA_transit
+#       2605.722       1527.9           18.4     7.464583
 
 
-rm(list = ls()) #remove all objects
-beep(8) #notify completion
-lapply(names(sessionInfo()$loadedOnly), require, character.only = TRUE)
-invisible(lapply(paste0('package:', names(sessionInfo()$otherPkgs)), detach, character.only = TRUE, unload = TRUE, force = TRUE))
-
-
-
-
-
-
+# rm(list = ls()) #remove all objects
+# beep(8) #notify completion
+# lapply(names(sessionInfo()$loadedOnly), require, character.only = TRUE)
+# invisible(lapply(paste0('package:', names(sessionInfo()$otherPkgs)), detach, character.only = TRUE, unload = TRUE, force = TRUE))
 
 # 4. 2D Barplot maps KMeans ----
 library(mapplots)
 # remotes::install_github("SimonDedman/gbm.auto")
 library(gbm.auto)
+# library(marmap)
 ## if run by SD
 # saveloc <- "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/kmeans"
 ## if run by VH
-# saveloc <- "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/OutputData/"
+saveloc <- "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/OutputData/"
 # hammers <- readRDS(file = paste0(saveloc, "/Hammers_KMeans.Rds")) #SD
 hammers <- readRDS(file = paste0(saveloc, "kmeans/Hammers_KMeans.Rds"))#VH
 
@@ -582,6 +564,7 @@ map2dbpSaveloc <- paste0(saveloc, "kmeans/2DbarplotMap/")
 # source("~/Dropbox/Galway/Analysis/R/My Misc Scripts/barplot2dMap.R")
 ## if run by VH
 source("C:/Users/Vital Heim/switchdrive/Science/Rscripts/Barplot2dMap/Barplot2dMap.R")
+source("C:/Users/Vital Heim/switchdrive/Science/Rscripts/Mapplot/makeXYZ_HGerritsen.R")
 
 for (i in c(0.25, 0.5, 1)) {
   barplot2dMap(x = hammers |> tidyr::drop_na(kmeans2cluster),
@@ -592,11 +575,6 @@ for (i in c(0.25, 0.5, 1)) {
                saveloc = map2dbpSaveloc,
                plotname = paste0(lubridate::today(), "_2DBarplot_Count_", i, "deg"))
 }
-
-
-
-
-
 
 # 5. movegroup dBBMMs ----
 
@@ -669,24 +647,14 @@ hammers[firstrows$firstrowid, "diffmins"] <- NA
 
 
 # hammers |>
-#   group_by(id) %T>%
+#   group_by(shark) %T>%
 #   # {hist(.$diffmins)} |>
 #   ggplot(aes(x = diffmins)) +
 #   geom_histogram() |>
 #   dplyr::summarise(meandiffmins = mean(diffmins, na.rm = TRUE),
 #                    sd3 = sd(diffmins, na.rm = TRUE) * 3) |>
 #   ungroup()
-# id       meandiffmins    sd3
-# 177940.1         448    4212
-# 177941.1         643    4509
-# 177942.1         452    2934
-# 183623.1         443    2590
-# 200368.1         453    2994
-# 200369.1        2910   16222
-# 200369.2        1274    8642
-# 209020.1        2725   13285
-# 222133.1         662    3321
-#  23596.1         581    2580
+## 20240827 - becomes redundant if you use normalised tracks
 
 # can plot within pipe using %T>% but doesn't respect group_by
 # see https://stackoverflow.com/questions/76443954/how-to-use-magrittr-tee-pipe-t-to-create-multiple-ggplots-for-grouped-data-in
@@ -712,11 +680,11 @@ hammers[firstrows$firstrowid, "diffmins"] <- NA
 #   )
 # # Works, doesn't need tee pipe. Uses braces to evaluate that bit immediately
 hammers |>
-  group_by(id) |>
+  group_by(shark) |>
   group_walk(~ {
     p <- ggplot(.x) + geom_histogram(aes(x = diffmins))
     # ggsave(plot = p, filename = paste0(saveloc, "movegroup dBBMMs/timeDiffLong histograms/", lubridate::today(), "_diffMinsHistGG_", .y$id, ".png")) #SD
-    ggsave(plot = p, filename = paste0(saveloc, "dBBMMs/timeDiffLong histograms/", lubridate::today(), "_diffMinsHistGG_", .y$id, ".png"))
+    ggsave(plot = p, filename = paste0(saveloc, "dBBMM/timeDiffLong histograms/", lubridate::today(), "_diffMinsHistGG_", .y$id, ".png"))
 
     .x
   }) |>
@@ -726,10 +694,10 @@ hammers |>
 
 ##### rasterResolution ####
 # With default = 6: Error: cannot allocate vector of size 2286.7 Gb
-2 * mean(meanMoveLocDist) # 8265.945
+2 * mean(meanMoveLocDist) # 46407.42
 hist(meanMoveLocDist) # very left skewed
-summary(meanMoveLocDist) # median 1927.83
-# choose 1000
+summary(meanMoveLocDist) # median 10371
+# choose 1000 - upüdate 20240827: 10000
 
 length(unique(hammers$shark))
 # 9
@@ -763,25 +731,25 @@ for (thissubset in mysubsets) { # all worked, had to make edits to hammersubset$
       # Group = NULL,
       # dat.TZ = "US/Eastern",
       # proj = sp::CRS("+proj=longlat +datum=WGS84"),
-      projectedCRS = "+init=epsg:32617", # https://epsg.io/32617 Bimini, Florida
+      # projectedCRS = "+init=epsg:32617", # https://epsg.io/32617 Bimini, Florida, ERROR "unused argument" commented out 20240827
       # sensor = "VR2W",
       moveLocError = hammersubset$meanMoveLocDist,
       ##### timeDiffLong 18 24 36 trials####
-      timeDiffLong = (TDL * 60), #adjust
+      timeDiffLong = 13, #original (TDL * 60), #adjust
       # Single numeric value. Threshold value in timeDiffUnits designating the length of long breaks in re-locations. Used for bursting a movement track into segments, thereby removing long breaks from the movement track. See ?move::bursted for details.
-      timeDiffUnits = "mins",
+      timeDiffUnits = "hours",# original: "mins",
       # center = TRUE,
-      buffpct = 0.6, # Buffer extent for raster creation, proportion of 1.
+      buffpct = 1, #0.6, # Buffer extent for raster creation, proportion of 1.
       # rasterExtent = NULL,
-      # rasterCRS = sp::CRS("+proj=utm +zone=17 +datum=WGS84"),
-      rasterResolution = 1000,
+      rasterCRS = sp::CRS("+proj=utm +zone=17 +datum=WGS84"),
+      rasterResolution = 10000, # changed from 1000 to 10000 on 20240827
       # Single numeric value to set raster resolution - cell size in metres? 111000: 1 degree lat = 111km.
       # Tradeoff between small res = big file & processing time.
       # Should be a function of the spatial resolution of your receivers or positioning tags.
       # Higher resolution will lead to more precision in the volume areas calculations.
       # Try using 2*dbblocationerror.
       ##### Why did we choose 1000m?####
-      dbbext = 0.3, # Ext param in the 'brownian.bridge.dyn' function in the 'move' package. Extends bounding box around track. Numeric single (all edges), double (x & y), or 4 (xmin xmax ymin ymax). Default 0.3.
+      dbbext = 10, # Ext param in the 'brownian.bridge.dyn' function in the 'move' package. Extends bounding box around track. Numeric single (all edges), double (x & y), or 4 (xmin xmax ymin ymax). Default 0.3. - changed to 3 20240827
       # dbbwindowsize = 23,
       # writeRasterFormat = "ascii",
       # writeRasterExtension = ".asc",
@@ -941,7 +909,7 @@ ggsave(filename = paste0(saveloc, "dBBMM/", lubridate::today(), "_timeDiffLong_c
 # ▪ Do we have EEZ shapefile? TG www.marineregions.org
 # see /home/simon/Documents/Si Work/PostDoc Work/movegroup help/Liberty Boyd/Points in UD contours/PointsInWhichUDcontour.R
 # hammerssf <- readRDS(file = paste0(saveloc, "/EEZoverlap/Hammers.Rds")) |> #SD
-hammerssf <- readRDS(file = file = "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/InputData/EEZoverlap/Hammers.Rds") |> #VH
+hammerssf <- readRDS(file = "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/InputData/EEZoverlap/Hammers_KMeans.Rds") |> #VH
   sf::st_as_sf(coords = c("lon","lat")) |> sf::st_set_crs(4326) |> # Convert points to sf
   mutate(Index = row_number()) # for indexing later
 # maploc = "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Maps & Surveys/Bahamas EEZ Shapefile/" #SD
@@ -951,30 +919,30 @@ EEZ <- sf::st_read(paste0(maploc,"Bahamas_EEZ.shp")) # VH, polygon
 
 # pointsinpolysubset <- points[polygon,] #sf objects subset points occurring in poly
 hammerssfinEEZ <- hammerssf[EEZ,]
-hammerssfinAndros <- hammerssf |> filter(group == "Andros")
+# hammerssfinAndros <- hammerssf |> filter(group == "Andros")
 # hammerssfinBimini <- hammerssf |> filter(group == "Bimini")
 hammerssfinSummer <- hammerssf |> filter(month(date) %in% c(5:10))
 hammerssfinWinter <- hammerssf |> filter(month(date) %in% c(11:12, 1:4))
-hammerssfinAndrosSummer <- hammerssf |> filter(group == "Andros", month(date) %in% c(5:10))
-hammerssfinAndrosWinter <- hammerssf |> filter(group == "Andros", month(date) %in% c(11:12, 1:4))
+# hammerssfinAndrosSummer <- hammerssf |> filter(group == "Andros", month(date) %in% c(5:10))
+# hammerssfinAndrosWinter <- hammerssf |> filter(group == "Andros", month(date) %in% c(11:12, 1:4))
 # hammerssfinBiminiSummer <- hammerssf |> filter(group == "Bimini", month(date) %in% c(5:10))
 # hammerssfinBiminiWinter <- hammerssf |> filter(group == "Bimini", month(date) %in% c(11:12, 1:4))
 
-hammerssfinEEZAndros <- hammerssfinAndros[EEZ,]
+# hammerssfinEEZAndros <- hammerssfinAndros[EEZ,]
 # hammerssfinEEZBimini <- hammerssfinBimini[EEZ,]
 hammerssfinEEZSummer <- hammerssfinSummer[EEZ,]
 hammerssfinEEZWinter <- hammerssfinWinter[EEZ,]
-hammerssfinEEZAndrosSummer <- hammerssfinAndrosSummer[EEZ,]
-hammerssfinEEZAndrosWinter <- hammerssfinAndrosWinter[EEZ,]
+# hammerssfinEEZAndrosSummer <- hammerssfinAndrosSummer[EEZ,]
+# hammerssfinEEZAndrosWinter <- hammerssfinAndrosWinter[EEZ,]
 # hammerssfinEEZBiminiSummer <- hammerssfinBiminiSummer[EEZ,]
 # hammerssfinEEZBiminiWinter <- hammerssfinBiminiWinter[EEZ,]
 
 hammerssf$EEZ <- as.logical(FALSE)
 hammerssf[hammerssf$Index %in% hammerssfinEEZ$Index, "EEZ"] <- as.logical(TRUE)
 
-hammerssfinAndros$EEZAndros <- as.logical(FALSE)
-hammerssfinAndros[hammerssfinAndros$Index %in% hammerssfinEEZAndros$Index, "EEZAndros"] <- as.logical(TRUE)
-hammerssf[hammerssf$Index %in% hammerssfinAndros$Index, "EEZAndros"] <- hammerssfinAndros$EEZAndros
+# hammerssfinAndros$EEZAndros <- as.logical(FALSE)
+# hammerssfinAndros[hammerssfinAndros$Index %in% hammerssfinEEZAndros$Index, "EEZAndros"] <- as.logical(TRUE)
+# hammerssf[hammerssf$Index %in% hammerssfinAndros$Index, "EEZAndros"] <- hammerssfinAndros$EEZAndros
 
 # hammerssfinBimini$EEZBimini <- as.logical(FALSE)
 # hammerssfinBimini[hammerssfinBimini$Index %in% hammerssfinEEZBimini$Index, "EEZBimini"] <- as.logical(TRUE)
@@ -988,13 +956,13 @@ hammerssfinWinter$EEZWinter <- as.logical(FALSE)
 hammerssfinWinter[hammerssfinWinter$Index %in% hammerssfinEEZWinter$Index, "EEZWinter"] <- as.logical(TRUE)
 hammerssf[hammerssf$Index %in% hammerssfinWinter$Index, "EEZWinter"] <- hammerssfinWinter$EEZWinter
 
-hammerssfinAndrosSummer$EEZAndrosSummer <- as.logical(FALSE)
-hammerssfinAndrosSummer[hammerssfinAndrosSummer$Index %in% hammerssfinEEZAndrosSummer$Index, "EEZAndrosSummer"] <- as.logical(TRUE)
-hammerssf[hammerssf$Index %in% hammerssfinAndrosSummer$Index, "EEZAndrosSummer"] <- hammerssfinAndrosSummer$EEZAndrosSummer
+# hammerssfinAndrosSummer$EEZAndrosSummer <- as.logical(FALSE)
+# hammerssfinAndrosSummer[hammerssfinAndrosSummer$Index %in% hammerssfinEEZAndrosSummer$Index, "EEZAndrosSummer"] <- as.logical(TRUE)
+# hammerssf[hammerssf$Index %in% hammerssfinAndrosSummer$Index, "EEZAndrosSummer"] <- hammerssfinAndrosSummer$EEZAndrosSummer
 
-hammerssfinAndrosWinter$EEZAndrosWinter <- as.logical(FALSE)
-hammerssfinAndrosWinter[hammerssfinAndrosWinter$Index %in% hammerssfinEEZAndrosWinter$Index, "EEZAndrosWinter"] <- as.logical(TRUE)
-hammerssf[hammerssf$Index %in% hammerssfinAndrosWinter$Index, "EEZAndrosWinter"] <- hammerssfinAndrosWinter$EEZAndrosWinter
+# hammerssfinAndrosWinter$EEZAndrosWinter <- as.logical(FALSE)
+# hammerssfinAndrosWinter[hammerssfinAndrosWinter$Index %in% hammerssfinEEZAndrosWinter$Index, "EEZAndrosWinter"] <- as.logical(TRUE)
+# hammerssf[hammerssf$Index %in% hammerssfinAndrosWinter$Index, "EEZAndrosWinter"] <- hammerssfinAndrosWinter$EEZAndrosWinter
 
 # hammerssfinBiminiSummer$EEZBiminiSummer <- as.logical(FALSE)
 # hammerssfinBiminiSummer[hammerssfinBiminiSummer$Index %in% hammerssfinEEZBiminiSummer$Index, "EEZBiminiSummer"] <- as.logical(TRUE)
@@ -1006,7 +974,7 @@ hammerssf[hammerssf$Index %in% hammerssfinAndrosWinter$Index, "EEZAndrosWinter"]
 
 print(paste0("Percent of days in Bahamas EEZ, all data: ", round(length(which(hammerssf$EEZ)) / length(hammerssf$EEZ) * 100, 1), "%; ", length(hammerssf$EEZ), " days"))
 # Percent of days in Bahamas EEZ, all data: 65.6%; 3733 days
-print(paste0("Percent of days in Bahamas EEZ, Andros-tagged: ", round(length(which(hammerssfinAndros$EEZAndros)) / length(hammerssfinAndros$EEZAndros) * 100, 1), "%; ", length(hammerssfinAndros$EEZAndros), " days"))
+# print(paste0("Percent of days in Bahamas EEZ, Andros-tagged: ", round(length(which(hammerssfinAndros$EEZAndros)) / length(hammerssfinAndros$EEZAndros) * 100, 1), "%; ", length(hammerssfinAndros$EEZAndros), " days"))
 # Percent of days in Bahamas EEZ, Andros-tagged: 68%; 2211 days
 # print(paste0("Percent of days in Bahamas EEZ, Bimini-tagged: ", round(length(which(hammerssfinBimini$EEZBimini)) / length(hammerssfinBimini$EEZBimini) * 100, 1), "%; ", length(hammerssfinBimini$EEZBimini), " days"))
 # Percent of days in Bahamas EEZ, Bimini-tagged: 62%; 1522 days
@@ -1014,9 +982,9 @@ print(paste0("Percent of days in Bahamas EEZ, Summer: ", round(length(which(hamm
 # Percent of days in Bahamas EEZ, Summer: 59.1%; 1659 days
 print(paste0("Percent of days in Bahamas EEZ, Winter: ", round(length(which(hammerssfinWinter$EEZWinter)) / length(hammerssfinWinter$EEZWinter) * 100, 1), "%; ", length(hammerssfinWinter$EEZWinter), " days"))
 # Percent of days in Bahamas EEZ, Winter: 70.7%; 2074 days
-print(paste0("Percent of days in Bahamas EEZ, Andros-tagged, Summer: ", round(length(which(hammerssfinAndrosSummer$EEZAndrosSummer)) / length(hammerssfinAndrosSummer$EEZAndrosSummer) * 100, 1), "%; ", length(hammerssfinAndrosSummer$EEZAndrosSummer), " days"))
+# print(paste0("Percent of days in Bahamas EEZ, Andros-tagged, Summer: ", round(length(which(hammerssfinAndrosSummer$EEZAndrosSummer)) / length(hammerssfinAndrosSummer$EEZAndrosSummer) * 100, 1), "%; ", length(hammerssfinAndrosSummer$EEZAndrosSummer), " days"))
 # Percent of days in Bahamas EEZ, Andros-tagged, Summer: 61.3%; 1013 days
-print(paste0("Percent of days in Bahamas EEZ, Andros-tagged, Winter: ", round(length(which(hammerssfinAndrosWinter$EEZAndrosWinter)) / length(hammerssfinAndrosWinter$EEZAndrosWinter) * 100, 1), "%; ", length(hammerssfinAndrosWinter$EEZAndrosWinter), " days"))
+# print(paste0("Percent of days in Bahamas EEZ, Andros-tagged, Winter: ", round(length(which(hammerssfinAndrosWinter$EEZAndrosWinter)) / length(hammerssfinAndrosWinter$EEZAndrosWinter) * 100, 1), "%; ", length(hammerssfinAndrosWinter$EEZAndrosWinter), " days"))
 # Percent of days in Bahamas EEZ, Andros-tagged, Winter: 73.6%; 1198 days
 # print(paste0("Percent of days in Bahamas EEZ, Bimini-tagged, Summer: ", round(length(which(hammerssfinBiminiSummer$EEZBiminiSummer)) / length(hammerssfinBiminiSummer$EEZBiminiSummer) * 100, 1), "%; ", length(hammerssfinBiminiSummer$EEZBiminiSummer), " days"))
 # Percent of days in Bahamas EEZ, Bimini-tagged, Summer: 55.6%; 646 days
@@ -1038,3 +1006,28 @@ print(paste0("Percent of days in Bahamas EEZ, Andros-tagged, Winter: ", round(le
 # Tolerance T is analogous to setting the alpha level in the standard hypothesis testing framework, where increased tolerance is similar to selecting a smaller alpha rejection region. Tibshirani et al. (2001) used a tolerance of 1, but larger values of tolerance increase the strength of evidence
 # required to include additional clusters (see Tibshirani et al. 2001 for full details and formulations). Tibshirani et al. (2001) demonstrated that the gap statistic performed well in detecting number of clusters when clusters are well separated; however, it was sensitive to the amount of overlap
 # between clusters. Fortunately, the bias in sensitivity is such that it is likely to identify fewer clusters than there are in truth (Tibshirani, R., G. Walther, and T. Hastie. 2001. Estimating the number of clusters in a dataset via the gap statistic. Journal of the Royal Statistical Society B 63:411–423)
+
+
+## ERRORS RUN 2024-08-27:
+
+# Error with gbm.auto::basemap():
+# trying URL 'https://www.ngdc.noaa.gov/mgg/shorelines/data/gshhg/latest/gshhg-shp-2.3.7.zip'
+# Content type 'application/zip' length 149157845 bytes (142.2 MB)
+# downloaded 6.8 MB
+#
+# Warning in download.file(url = paste0("https://www.ngdc.noaa.gov/mgg/shorelines/data/gshhg/latest/gshhg-shp-",  :
+#                                         downloaded length 7094272 != reported length 149157845
+#                                       Warning in download.file(url = paste0("https://www.ngdc.noaa.gov/mgg/shorelines/data/gshhg/latest/gshhg-shp-",  :
+#                                                                               URL 'https://www.ngdc.noaa.gov/mgg/shorelines/data/gshhg/latest/gshhg-shp-2.3.7.zip': Timeout of 60 seconds was reached
+#                                                                             Error in download.file(url = paste0("https://www.ngdc.noaa.gov/mgg/shorelines/data/gshhg/latest/gshhg-shp-",  :
+#                                                                                                                   download from 'https://www.ngdc.noaa.gov/mgg/shorelines/data/gshhg/latest/gshhg-shp-2.3.7.zip' failed
+
+# Error 1 with movegroup::movegroup()
+# Error in movegroup::movegroup(data = hammersubset, ID = "shark", Datetime = "date",  :
+#                                 unused argument (projectedCRS = "+init=epsg:32617")
+#  SOLVED (20240827) by commenting out argument and executing "rastersCRS =" argument with UTM17 string
+
+# Error 2 with movegroup::movegroup()
+# Error in .local(object, raster, location.error = location.error, ext = ext,  :
+#                   Higher x grid not large enough, consider extending the raster in that direction or enlarging the ext argument
+# Adjusted extent drastically, still same error
