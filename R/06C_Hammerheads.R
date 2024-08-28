@@ -17,6 +17,7 @@ source('~/Dropbox/Blocklab Monterey/Blocklab/liRolling.R') #my own function for 
 ## if run by VH
 source("C:/Users/Vital Heim/switchdrive/Science/Rscripts/vanMoorter-et-al_2010/liRolling.R") # Simon's function for rolling Linearity Index values
 options(error = function() beep(9))  # give warning noise if it fails
+options(timeout = 3000) # manually increase time out threshold (needed when downloading basemap)
 # for data cleaning
 library(moments)
 # for vanmoorter
@@ -91,6 +92,18 @@ meta <- read_csv("C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscrip
 hammers %<>% left_join(meta)  # , by = join_by(shark == id) # doesn't work naming columns, has gotten worse.
 ### END: if run by VH ###
 
+## VERY IMPORTANT: The movement data needs to have time stamps in ascending order,
+## double check that this is true by ordering the dataframe
+
+hammers %<>%
+  dplyr::arrange(
+    shark,
+    date
+    ) %>%
+  dplyr::select( # and sine we are at it, the old id column can be removed
+    -id
+  )
+
 # 2. Step Length & Turn Angles ----
 
 # Step lengths will be calculated in km and relative to body length of correspondin sharks
@@ -121,11 +134,11 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
   df_nona[which(df_nona$lon < -180), "lon"] <- NA # ditto
   df_nona <- df_nona[!is.na(df_nona$lat),] # omit rows with NA values for lat, downsample to days only
   df_nona <- df_nona[!is.na(df_nona$lon),] # omit rows with NA values for lon, downsample to days only
-  fishlist <- unique(df_nona$id)
+  fishlist <- unique(df_nona$shark)
 
   ##### loop id, calc li5day, make track####
   for (i in fishlist) { # i <- fishlist[1]
-    df_nonai <- df_nona[which(df_nona$id == i),] #subset to each fish
+    df_nonai <- df_nona[which(df_nona$shark == i),] #subset to each fish
     print(paste0(which(fishlist == i), " of ", length(fishlist), "; adding transit dive data to ", i))
     setDF(df_nonai) # else liRolling breaks
     if (nrow(df_nonai) > 5) df_nonai$li5day <- liRolling(x = df_nonai,
@@ -248,12 +261,12 @@ hammers$kmeansBinary <- as.integer(rep(NA, nrow(hammers)))
 
 # test positive skew, log transform
 hist(hammers$StepLengthBL)
-moments::skewness(hammers$StepLengthBL, na.rm = TRUE) # positive/negative skew, 0 = symmetrical. # 2.53768
-moments::kurtosis(hammers$StepLengthBL, na.rm = TRUE) # long tailed? Normal distribution = 3. # 11.77872
+moments::skewness(hammers$StepLengthBL, na.rm = TRUE) # positive/negative skew, 0 = symmetrical. # 3.96940
+moments::kurtosis(hammers$StepLengthBL, na.rm = TRUE) # long tailed? Normal distribution = 3. # 35.93752
 hammers$StepLengthBLlog1p <- log1p(hammers$StepLengthBL) # log transform
 hist(hammers$StepLengthBLlog1p)
-moments::skewness(hammers$StepLengthBLlog1p, na.rm = TRUE) # -0.179 = fine
-moments::kurtosis(hammers$StepLengthBLlog1p, na.rm = TRUE) # 2.729 = fine
+moments::skewness(hammers$StepLengthBLlog1p, na.rm = TRUE) # -0.1676967 = fine
+moments::kurtosis(hammers$StepLengthBLlog1p, na.rm = TRUE) # 2.75 = fine
 
 
 # test outliers, remove >3.3 SDs from the mean
@@ -475,6 +488,11 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
   print("all new days missing latitude data, can't get external data, nothing to do")
 }
 
+## WARNING: 20240828
+# [1] "7 of 9; calculating KMeans clustering for 244607"
+# Warning in min(which(res$GAP[-length(res$GAP)] >= c(res$GAP - res$s)[-1])) :
+#   no non-missing arguments to min; returning Inf
+
 # Show how many clusters were chosen most commonly
 clustersvec <- c(clusterinfo$nClustersTolerance1, clusterinfo$nClustersTolerance2)
 clustersvec <- clustersvec[!is.infinite(clustersvec)]
@@ -484,9 +502,9 @@ clustersvec %>%
   summarise(n = n()) %>%
   arrange(desc(n))
 # value     n
-#     2     10
-#     3     5
-#     1     3
+#     2     12
+#     3     3
+#     1     2
 # could do this more systematically. Could also weight the Tolerance1/2 differently? Leave it for now, perfect enemy of good.
 # See L325 TOT make centres dynamic
 
@@ -511,6 +529,11 @@ mean_SlTa_trares <- hammers %>%
     meanSL_KM = mean(StepLengthKm),
     meanTA = mean(abs(TurnAngleRelDeg))
   );mean_SlTa_trares
+# A tibble: 3 × 5
+# kmeansCharacter meanSL_STrange meanSL_BL meanSL_KM meanTA
+# <chr>                    <dbl>     <dbl>     <dbl>  <dbl>
+# resident                 0.570     2857.      8.52  125.
+# transit                  0.563     2877.      8.51   20.7
 
 # write.csv(mean_SlTa_trares, paste0(saveloc, "Data_kmeans_cluster_summary.csv"), row.names = F) #SD
 write.csv(mean_SlTa_trares, paste0(saveloc, "kmeans/Data_kmeans_cluster_summary.csv"), row.names = F) #VH
@@ -529,11 +552,11 @@ clusters_info %>% dplyr::summarise(
   sdTA_transit = sd(TransitClusterTurnAngleRelDegAbsMean)
 )
 # meanSL_resident sdSL_resident meanTA_resident sdTA_resident
-#        2033.478      1346.395        122.5889      15.76146
+#       2411.978      1390.287        123.6556      15.39027
 # meanSL_transit sdSL_transit meanTA_transit sdTA_transit
-#       2605.722       1527.9           18.4     7.464583
+#        2636.2     1493.845       18.44444     7.396133
 
-
+## comment out line 560-563 if run by VH
 # rm(list = ls()) #remove all objects
 # beep(8) #notify completion
 # lapply(names(sessionInfo()$loadedOnly), require, character.only = TRUE)
@@ -551,11 +574,13 @@ saveloc <- "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/And
 # hammers <- readRDS(file = paste0(saveloc, "/Hammers_KMeans.Rds")) #SD
 hammers <- readRDS(file = paste0(saveloc, "kmeans/Hammers_KMeans.Rds"))#VH
 
-options(timeout = 3000) # increase timeout to 3000 seconds
 cropmap <- gbm.auto::gbm.basemap(grids = hammers,
                       gridslat = 6,
                       gridslon = 3,
                       savedir = saveloc)
+## if already downloaded
+cropmap <- sf::st_read(paste0(saveloc,"/CroppedMap/Crop_Map.shp")) # VH, polygon
+
 bathysavepath <- paste0(saveloc, "/getNOAAbathy/")
 # map2dbpSaveloc <- paste0(saveloc, "/2DbarplotMap/") #SD
 map2dbpSaveloc <- paste0(saveloc, "kmeans/2DbarplotMap/")
@@ -574,6 +599,71 @@ for (i in c(0.25, 0.5, 1)) {
                legendloc = "topright",
                saveloc = map2dbpSaveloc,
                plotname = paste0(lubridate::today(), "_2DBarplot_Count_", i, "deg"))
+}
+
+## plot kmeans clusters by individual by detection
+dir.create(paste0(saveloc, "kmeans/individualPlots/")) #VH
+
+### Prep background shapefile
+library(rnaturalearth)
+bg = ne_countries(scale = "large", continent = 'north america', returnclass = "sf") # needs to be adjusted depending where your study site is
+
+### Prep Bahamian EEZ shapefile
+bah_eez <- read_sf("C:/Users/Vital Heim/switchdrive/Science/Data/Shapefiles/Bahamas/Bahamas_EEZ_boundary.shp")
+st_crs(bah_eez)
+bah_eez <- st_transform(bah_eez, st_crs = proj4string(bathyR))
+# bah_eez_plot <- fortify(bah_eez)
+## only if you want to use the eez shapefile
+xlim_eez <- c(min(hammers$lon), -70.5105)
+ylim_eez <- c(20.3735, max(hammers$lat))
+
+### define your plotting colors
+behav_col <- c("#01AAC7", "#F9DF44")
+# transitcol <- "#F9DF44"
+# residentcol <- "#01AAC7"
+
+### create individual plots for each ptt id and save them
+for (thisshark in unique(hammers$shark)){
+  # filter your shark
+  kplot_df <- hammers %>% dplyr::filter(shark == thisshark)
+  #define factors
+  kplot_df$kmeansCharacter <- as.factor(kplot_df$kmeansCharacter)
+  ## create plot with dark themed background
+  #p = basemap(dt, bathymetry = T, expand.factor = 1.2) + # for bathymetry with ggOceanMaps package
+  p <- ggplot() +
+
+  # lines and points
+  # geom_path(data = kplot_df,
+  #           aes(x=lon,y=lat,group=kmeansCharacter, col = kmeansCharacter),
+  #           alpha = 0.4, linewidth = 1.5)+
+  geom_point(data = kplot_df,
+             aes(x=lon,y=lat, group = kmeansCharacter, fill = kmeansCharacter),
+             alpha = 0.9, shape=21, size = 2)+
+
+  # basemap
+  geom_sf(data = bg, color = "black")+ # color is for border of geom object
+  coord_sf(xlim = range(hammers$lon, na.rm = TRUE),
+           ylim = range(hammers$lat , na.rm = TRUE),
+           expand = T)+
+
+  # bahamas eez shapefile
+  geom_sf(data = bah_eez, colour = "white", fill = NA, linewidth = .75) +
+  coord_sf(xlim = xlim_eez,
+           ylim = ylim_eez+.25,
+           expand = T)+
+
+  # formatting
+  labs(x=NULL, y=NULL,
+       fill = 'kmeans cluster',
+       color = 'kmeans_cluster')+
+  scale_color_manual(values = behav_col) +
+  scale_fill_manual(values = behav_col) +
+  theme_dark()+
+  #theme(panel.background = element_rect(fill = "gray26", linewidth = 0.5, linetype = "solid", color = "black")) +
+  theme(panel.grid = element_blank(), legend.title = element_text(face = "bold"))+
+  ggtitle(paste0("Kmeans-Clusters for PTT ", thisshark))
+
+  ggsave(paste0(saveloc, "kmeans/individualPlots/kmeans_",thisshark,".tiff"), width = 15, height = 10, units = "cm", dpi = 300)
 }
 
 # 5. movegroup dBBMMs ----
@@ -640,7 +730,7 @@ hammers$diffmins <- c(as.numeric(NA), as.numeric(hammers$date[2:length(hammers$d
 # get index of first row per id
 firstrows <- hammers |>
   mutate(Index = 1:nrow(hammers)) |>
-  group_by(id) |>
+  group_by(shark) |>
   summarise(firstrowid = first(Index))
 # use this to blank out the diffmins since it's the time difference between 1 shark ending & another staring which is meaningless
 hammers[firstrows$firstrowid, "diffmins"] <- NA
@@ -697,7 +787,7 @@ hammers |>
 2 * mean(meanMoveLocDist) # 46407.42
 hist(meanMoveLocDist) # very left skewed
 summary(meanMoveLocDist) # median 10371
-# choose 1000 - upüdate 20240827: 10000
+# choose 1000 - update 20240827: 10000
 
 length(unique(hammers$shark))
 # 9
@@ -739,7 +829,7 @@ for (thissubset in mysubsets) { # all worked, had to make edits to hammersubset$
       # Single numeric value. Threshold value in timeDiffUnits designating the length of long breaks in re-locations. Used for bursting a movement track into segments, thereby removing long breaks from the movement track. See ?move::bursted for details.
       timeDiffUnits = "hours",# original: "mins",
       # center = TRUE,
-      buffpct = 1, #0.6, # Buffer extent for raster creation, proportion of 1.
+      buffpct = 10, #0.6, # Buffer extent for raster creation, proportion of 1.
       # rasterExtent = NULL,
       rasterCRS = sp::CRS("+proj=utm +zone=17 +datum=WGS84"),
       rasterResolution = 10000, # changed from 1000 to 10000 on 20240827
@@ -749,7 +839,7 @@ for (thissubset in mysubsets) { # all worked, had to make edits to hammersubset$
       # Higher resolution will lead to more precision in the volume areas calculations.
       # Try using 2*dbblocationerror.
       ##### Why did we choose 1000m?####
-      dbbext = 10, # Ext param in the 'brownian.bridge.dyn' function in the 'move' package. Extends bounding box around track. Numeric single (all edges), double (x & y), or 4 (xmin xmax ymin ymax). Default 0.3. - changed to 3 20240827
+      dbbext = 3, # Ext param in the 'brownian.bridge.dyn' function in the 'move' package. Extends bounding box around track. Numeric single (all edges), double (x & y), or 4 (xmin xmax ymin ymax). Default 0.3. - changed to 3 20240827
       # dbbwindowsize = 23,
       # writeRasterFormat = "ascii",
       # writeRasterExtension = ".asc",
@@ -972,15 +1062,15 @@ hammerssf[hammerssf$Index %in% hammerssfinWinter$Index, "EEZWinter"] <- hammerss
 # hammerssfinBiminiWinter[hammerssfinBiminiWinter$Index %in% hammerssfinEEZBiminiWinter$Index, "EEZBiminiWinter"] <- as.logical(TRUE)
 # hammerssf[hammerssf$Index %in% hammerssfinBiminiWinter$Index, "EEZBiminiWinter"] <- hammerssfinBiminiWinter$EEZBiminiWinter
 
-print(paste0("Percent of days in Bahamas EEZ, all data: ", round(length(which(hammerssf$EEZ)) / length(hammerssf$EEZ) * 100, 1), "%; ", length(hammerssf$EEZ), " days"))
+print(paste0("Percent of detections in Bahamas EEZ, all data: ", round(length(which(hammerssf$EEZ)) / length(hammerssf$EEZ) * 100, 1), "%; ", length(hammerssf$EEZ), " detections"))
 # Percent of days in Bahamas EEZ, all data: 65.6%; 3733 days
 # print(paste0("Percent of days in Bahamas EEZ, Andros-tagged: ", round(length(which(hammerssfinAndros$EEZAndros)) / length(hammerssfinAndros$EEZAndros) * 100, 1), "%; ", length(hammerssfinAndros$EEZAndros), " days"))
 # Percent of days in Bahamas EEZ, Andros-tagged: 68%; 2211 days
 # print(paste0("Percent of days in Bahamas EEZ, Bimini-tagged: ", round(length(which(hammerssfinBimini$EEZBimini)) / length(hammerssfinBimini$EEZBimini) * 100, 1), "%; ", length(hammerssfinBimini$EEZBimini), " days"))
 # Percent of days in Bahamas EEZ, Bimini-tagged: 62%; 1522 days
-print(paste0("Percent of days in Bahamas EEZ, Summer: ", round(length(which(hammerssfinSummer$EEZSummer)) / length(hammerssfinSummer$EEZSummer) * 100, 1), "%; ", length(hammerssfinSummer$EEZSummer), " days"))
+print(paste0("Percent of detections in Bahamas EEZ, Summer: ", round(length(which(hammerssfinSummer$EEZSummer)) / length(hammerssfinSummer$EEZSummer) * 100, 1), "%; ", length(hammerssfinSummer$EEZSummer), " detections"))
 # Percent of days in Bahamas EEZ, Summer: 59.1%; 1659 days
-print(paste0("Percent of days in Bahamas EEZ, Winter: ", round(length(which(hammerssfinWinter$EEZWinter)) / length(hammerssfinWinter$EEZWinter) * 100, 1), "%; ", length(hammerssfinWinter$EEZWinter), " days"))
+print(paste0("Percent of detections in Bahamas EEZ, Winter: ", round(length(which(hammerssfinWinter$EEZWinter)) / length(hammerssfinWinter$EEZWinter) * 100, 1), "%; ", length(hammerssfinWinter$EEZWinter), " detections"))
 # Percent of days in Bahamas EEZ, Winter: 70.7%; 2074 days
 # print(paste0("Percent of days in Bahamas EEZ, Andros-tagged, Summer: ", round(length(which(hammerssfinAndrosSummer$EEZAndrosSummer)) / length(hammerssfinAndrosSummer$EEZAndrosSummer) * 100, 1), "%; ", length(hammerssfinAndrosSummer$EEZAndrosSummer), " days"))
 # Percent of days in Bahamas EEZ, Andros-tagged, Summer: 61.3%; 1013 days
@@ -991,11 +1081,68 @@ print(paste0("Percent of days in Bahamas EEZ, Winter: ", round(length(which(hamm
 # print(paste0("Percent of days in Bahamas EEZ, Bimini-tagged, Winter: ", round(length(which(hammerssfinBiminiWinter$EEZBiminiWinter)) / length(hammerssfinBiminiWinter$EEZBiminiWinter) * 100, 1), "%; ", length(hammerssfinBiminiWinter$EEZBiminiWinter), " days"))
 # Percent of days in Bahamas EEZ, Bimini-tagged, Winter: 66.8%; 876 days
 
+## calcualte detections within EEZ by individual
 
 
+for (thisshark in unique(hammerssf$shark)){ # ALLYEAR
 
-##### TODOLIST####
-# transit shorter steplengthBL than resident. But transit angles all (bar1) smaller.
+  ## subset df
+   sharksubsetssf <- hammerssf |> filter(shark == thisshark)
+
+  # pointsinpolysubset <- points[polygon,] #sf objects subset points occurring in poly
+
+   ## filter within EEZ
+   sharksubsetinEEZ <- sharksubsetssf[EEZ,]
+
+   ## index
+   sharksubsetssf$EEZ <- as.logical(FALSE)
+   sharksubsetssf[sharksubsetssf$Index %in% sharksubsetinEEZ$Index, "EEZ"] <- as.logical(TRUE)
+
+   ## print results
+   print(paste0("This are the metrics for shark ", thisshark))
+   print(paste0("Percent of detections in Bahamas EEZ, all data: ", round(length(which(sharksubsetssf$EEZ)) / length(sharksubsetssf$EEZ) * 100, 1), "%; ", length(sharksubsetssf$EEZ), " detections"))
+}
+
+for (thisshark in unique(hammerssfinSummer$shark)){ ## SUMMER
+  ## susbet df
+  sharksubsetinSummer <- hammerssfinSummer |> filter(shark == thisshark)
+  # pointsinpolysubset <- points[polygon,] #sf objects subset points occurring in poly
+
+  ## filter within EEZ
+  sharksubsetinEEZSummer <- sharksubsetinSummer[EEZ,]
+
+
+  ## index
+  sharksubsetinSummer$EEZSummer <- as.logical(FALSE)
+  sharksubsetinSummer[sharksubsetinSummer$Index %in% sharksubsetinEEZSummer$Index, "EEZSummer"] <- as.logical(TRUE)
+  sharksubsetssf[sharksubsetssf$Index %in% sharksubsetinSummer$Index, "EEZSummer"] <- sharksubsetinSummer$EEZSummer
+
+  ## print results
+  print(paste0("This are the metrics for shark ", thisshark))
+  print(paste0("Percent of detections in Bahamas EEZ, Summer: ", round(length(which(sharksubsetinSummer$EEZSummer)) / length(sharksubsetinSummer$EEZSummer) * 100, 1), "%; ", length(sharksubsetinSummer$EEZSummer), " detections"))
+  }
+
+for (thisshark in unique(hammerssfinWinter$shark)){ # Winter
+  ## susbet df
+  sharksubsetinWinter <- hammerssfinWinter |> filter(shark == thisshark)
+  # pointsinpolysubset <- points[polygon,] #sf objects subset points occurring in poly
+
+  ## filter within EEZ
+  sharksubsetinEEZWinter <- sharksubsetinWinter[EEZ,]
+
+  ## index
+  sharksubsetinWinter$EEZWinter <- as.logical(FALSE)
+  sharksubsetinWinter[sharksubsetinWinter$Index %in% sharksubsetinEEZWinter$Index, "EEZWinter"] <- as.logical(TRUE)
+  sharksubsetssf[sharksubsetssf$Index %in% sharksubsetinWinter$Index, "EEZWinter"] <- sharksubsetinWinter$EEZWinter
+
+  ## print results
+  print(paste0("This are the metrics for shark ", thisshark))
+  print(paste0("Percent of detections in Bahamas EEZ, Winter: ", round(length(which(sharksubsetinWinter$EEZWinter)) / length(sharksubsetinWinter$EEZWinter) * 100, 1), "%; ", length(sharksubsetinWinter$EEZWinter), " detections"))
+}
+
+
+#(#### TODOLIST#### transit shorter steplengthBL than resident. But transit
+#angles all (bar1) smaller.
 
 # if kstar1 & 2 both = 2, great. But what if they both = 3? Or are different? Or are Inf?
 
