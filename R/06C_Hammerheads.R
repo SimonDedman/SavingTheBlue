@@ -962,7 +962,7 @@ for (thissubset in mysubsets) { # all worked, had to make edits to hammersubset$
       # check if the file that needs plotting exists
       if (!file.exists(paste0(saveloc, "dBBMM/", thissubset, "/", TDL, "h/", thisshark, ".asc"))) {
         # If the file does not exist, skip to the next iteration
-        message(paste("File not found, skipping:", thissubset, "-", thisshark,))
+        message(paste("File not found, skipping:", thissubset, "-", thisshark))
         next
       }
       ##### ISSUE####
