@@ -626,6 +626,7 @@ behav_col <- c("#01AAC7", "#F9DF44")
 for (thisshark in unique(hammers$shark)){
   # filter your shark
   kplot_df <- hammers %>% dplyr::filter(shark == thisshark)
+  kplot_df <- kplot_df[!is.na(kplot_df$kmeansCharacter),]
   #define factors
   kplot_df$kmeansCharacter <- as.factor(kplot_df$kmeansCharacter)
   ## create plot with dark themed background
@@ -633,12 +634,12 @@ for (thisshark in unique(hammers$shark)){
   p <- ggplot() +
 
   # lines and points
-  # geom_path(data = kplot_df,
-  #           aes(x=lon,y=lat,group=kmeansCharacter, col = kmeansCharacter),
-  #           alpha = 0.4, linewidth = 1.5)+
+  geom_path(data = kplot_df,
+             aes(x=lon,y=lat),
+             alpha = 1, linewidth = 0.5)+
   geom_point(data = kplot_df,
-             aes(x=lon,y=lat, group = kmeansCharacter, fill = kmeansCharacter),
-             alpha = 0.9, shape=21, size = 2)+
+             aes(x=lon,y=lat, group = kmeansCharacter, fill = kmeansCharacter, shape = kmeansCharacter),
+             alpha = 0.9, size = 2, color = "black")+
 
   # basemap
   geom_sf(data = bg, color = "black")+ # color is for border of geom object
@@ -653,15 +654,18 @@ for (thisshark in unique(hammers$shark)){
            expand = T)+
 
   # formatting
-  labs(x=NULL, y=NULL,
-       fill = 'kmeans cluster',
-       color = 'kmeans_cluster')+
+  # labs(x=NULL, y=NULL,
+  #      fill = 'kmeans cluster',
+  #      color = 'kmeans cluster')+
+  scale_shape_manual(values = c(22,24))+
   scale_color_manual(values = behav_col) +
   scale_fill_manual(values = behav_col) +
+
   theme_dark()+
   #theme(panel.background = element_rect(fill = "gray26", linewidth = 0.5, linetype = "solid", color = "black")) +
   theme(panel.grid = element_blank(), legend.title = element_text(face = "bold"))+
   ggtitle(paste0("Kmeans-Clusters for PTT ", thisshark))
+  p
 
   ggsave(paste0(saveloc, "kmeans/individualPlots/kmeans_",thisshark,".tiff"), width = 15, height = 10, units = "cm", dpi = 300)
 }
