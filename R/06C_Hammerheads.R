@@ -812,6 +812,11 @@ for (thissubset in mysubsets) { # all worked, had to make edits to hammersubset$
   # dir.create(paste0(saveloc, "movegroup dBBMMs/", thissubset, "/")) #SD
   dir.create(paste0(saveloc, "dBBMM/", thissubset, "/")) #VH
 
+  # prevent code from crashing if a shark does not have detections during both seasons, i.e. check if the subset is empty
+  if (nrow(hammersubset) == 0) {
+    # Skip to the next iteration if the subset is empty
+    next
+  }
 
   for (TDL in 1200) { # c(18, 24, 36, 1000)
     # dir.create(paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/")) #SD
@@ -953,6 +958,13 @@ for (thissubset in mysubsets) { # all worked, had to make edits to hammersubset$
 
     # per shark, unscaled:
     for (thisshark in make.names(unique(hammersubset$shark))) {
+
+      # check if the file that needs plotting exists
+      if (!file.exists(paste0(saveloc, "dBBMM/", thissubset, "/", TDL, "h/", thisshark, ".asc"))) {
+        # If the file does not exist, skip to the next iteration
+        message(paste("File not found, skipping:", thissubset, "-", thisshark,))
+        next
+      }
       ##### ISSUE####
       # movegroup said: "processing 7 of 7" i.e. not 8 of 8
       plotraster(
