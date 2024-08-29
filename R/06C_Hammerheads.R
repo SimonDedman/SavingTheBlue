@@ -1156,6 +1156,175 @@ for (thisshark in unique(hammerssfinWinter$shark)){ # Winter
   print(paste0("Percent of detections in Bahamas EEZ, Winter: ", round(length(which(sharksubsetinWinter$EEZWinter)) / length(sharksubsetinWinter$EEZWinter) * 100, 1), "%; ", length(sharksubsetinWinter$EEZWinter), " detections"))
 }
 
+# 5.1: nr. days within Bahamas EEZ by individual ----
+
+# 1st step: check if points are within the EEZ
+### if you have not run 5, run this again:
+# hammerssf <- readRDS(file = "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/InputData/EEZoverlap/Hammers_KMeans.Rds") |> #VH
+#   sf::st_as_sf(coords = c("lon","lat")) |> sf::st_set_crs(4326) |> # Convert points to sf
+#   mutate(Index = row_number()) # for indexing later
+# # maploc = "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Maps & Surveys/Bahamas EEZ Shapefile/" #SD
+# # EEZ <- sf::st_read(paste0(maploc,"eez.shp")) # SD, polygon
+# maploc = "C:/Users/Vital Heim/switchdrive/Science/Data/Shapefiles/Bahamas/" #VH
+# EEZ <- sf::st_read(paste0(maploc,"Bahamas_EEZ.shp")) # VH, polygon
+#
+# hammerssf$EEZ <- st_within(hammerssf, EEZ, sparse = F)
+
+## 2nd step: create overall df with month definitions
+### this will make summaries easier later
+hammerssf <- hammerssf %>%
+  dplyr::mutate( #create season grouping variable
+    season = with(.,case_when(
+      (month(date) %in% c(5:10)) ~ "summer",
+      (month(date)  %in% c(11:12, 1:4)) ~ "winter",
+    ))
+  )
+
+## 3rd step: summarise data and calculate days within EEZ
+
+hammersNew <- as.data.frame(hammerssf)
+
+# class(hammersNew$date) # [1] "POSIXct" "POSIXt" , need to change to as.Date
+hammersNew$date <- as.Date(hammersNew$date)
+
+### count the number days each shark spent within and outside the EEZ
+daysinEEZ <- hammersNew %>%
+  # dplyr::filter( # filter for detections within EEZ
+  #   EEZ == TRUE
+  # ) %>%
+  dplyr::group_by( # by individual
+    shark,
+    EEZ
+  ) %>%
+  dplyr::summarise(
+    days = n_distinct(date)
+  ); write.csv(daysinEEZ, paste0(saveloc, "EEZoverlap/Days_in_and_out_BAH_EEZ_by_shark_all.csv"))
+
+### calculate the percentage of days each shark spent within the EEZ
+
+dal <- hammersNew %>% # we need the entire track duration for each shark first
+  dplyr::group_by( # by individual
+    shark
+  ) %>%
+  dplyr::summarise( # days tracked
+    tagging = first(date),
+    end = last(date),
+    liberty = n_distinct(date)
+  )
+
+withinEEZ <- hammersNew %>% # count days within the EEZ only
+  dplyr::filter ( # filter detections within EEZ only
+    EEZ == TRUE
+  ) %>%
+  dplyr::group_by( # by individual
+    shark
+  ) %>%
+  dplyr::summarise(
+    daysIN = n_distinct(date)
+  )
+
+percentEEZ <- dal %>% # calculate the percentage of days spent within the EEZ for each shark
+  dplyr::left_join(withinEEZ, by = "shark") %>% # combine days at liberty df and df containing the nr. days within
+  dplyr::mutate(
+    nr_days_within = ifelse(is.na(daysIN), 0, daysIN), # deal with individuals
+    percent_days_in = (nr_days_within/liberty)*100
+  ); write.csv(percentEEZ, paste0(saveloc, "EEZoverlap/Percent_within_EEZ_by_shark_mixed.csv"))
+
+
+## ISSUE: as we can see the in and out days sum is sometimes larger than the days at liberty
+## this is a result from having two detections a days and it can be that one is within and one outside of the EEZ on the same day
+## Let's fix this:
+days_clean <- hammersNew %>%
+  dplyr::group_by(
+    shark,
+    date
+  ) %>%
+  dplyr::summarise(
+    daysIN = any(EEZ), .groups = "drop"
+   ) %>%
+# days_clean %<>%
+  dplyr::group_by(
+    shark
+  ) %>%
+  dplyr::summarise(
+    inside = sum(daysIN),
+    outside = sum(!daysIN),
+    nr_days = n()
+  ) %>%
+  dplyr::mutate(
+    percent_days_in = (inside/nr_days)*100
+  ); write.csv(days_clean, paste0(saveloc,"EEZoverlap_percent_days_within_EEZ_by_shark_clean.csv"))
+
+# 5.2: Plot detections within and outside EEZ ----
+
+## define plotting colors
+inoutcols <- c("TRUE" = "#336699", "FALSE" = "#A50021")
+
+## re-source basemaps and original df if needed
+cropmap <- sf::st_read(paste0(saveloc,"/CroppedMap/Crop_Map.shp")) # VH, polygon
+## or
+library(rnaturalearth)
+bg = ne_countries(scale = "large", continent = 'north america', returnclass = "sf") # needs to be adjusted depending where your study site is
+
+bah_eez <- read_sf("C:/Users/Vital Heim/switchdrive/Science/Data/Shapefiles/Bahamas/Bahamas_EEZ_boundary.shp")
+st_crs(bah_eez)
+bah_eez <- st_transform(bah_eez, st_crs = proj4string(bathyR))
+## only if you want to use the eez shapefile
+xlim_eez <- c(min(hammers$lon), -70.5105)
+ylim_eez <- c(20.3735, max(hammers$lat))
+
+hammers <- readRDS(file = "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/InputData/EEZoverlap/Hammers_KMeans.Rds")
+
+## Plot for each individual
+dir.create(paste0(saveloc, "EEZoverlap/individualPlots"))
+for (thisshark in unique(hammerssf$shark)){
+  # thisshark <- "183623"
+  # filter your shark
+  eezplot_df <- hammerssf %>% dplyr::filter(shark == thisshark)
+
+  #define factors
+  eezplot_df$EEZ <- as.factor(eezplot_df$EEZ)
+  ## create plot with dark themed background
+  #p = basemap(dt, bathymetry = T, expand.factor = 1.2) + # for bathymetry with ggOceanMaps package
+  p <- ggplot() +
+
+    # lines and points
+    # geom_path(data = eezplot_df,
+    #           aes(x=lon,y=lat),
+    #           alpha = 1, linewidth = 0.5)+
+    geom_sf(data = eezplot_df,
+               aes(fill = EEZ),
+               alpha = 0.9, size = 1, shape = 21, color = "black") +
+
+
+    # basemap
+    geom_sf(data = bg, color = "black")+ # color is for border of geom object
+    coord_sf(xlim = range(hammers$lon, na.rm = TRUE),
+             ylim = range(hammers$lat , na.rm = TRUE),
+             expand = T)+
+
+    # bahamas eez shapefile
+    geom_sf(data = bah_eez, colour = "white", fill = NA, linewidth = .75) +
+    coord_sf(xlim = xlim_eez,
+             ylim = ylim_eez+.25,
+             expand = T)+
+
+    # formatting
+    # labs(x=NULL, y=NULL,
+    #      fill = 'kmeans cluster',
+    #      color = 'kmeans cluster')+
+    # scale_shape_manual(values = c(22,24))+
+    scale_fill_manual(values = inoutcols) +
+
+
+    theme_dark()+
+    #theme(panel.background = element_rect(fill = "gray26", linewidth = 0.5, linetype = "solid", color = "black")) +
+    theme(panel.grid = element_blank(), legend.title = element_text(face = "bold"))+
+    ggtitle(paste0("Detections within and outside of Bahamian EEZ for ", thisshark))
+  p
+
+  ggsave(paste0(saveloc, "EEZoverlap/individualPlots/EEZoverlap_",thisshark,".tiff"), width = 15, height = 10, units = "cm", dpi = 300)
+}
 
 #(#### TODOLIST#### transit shorter steplengthBL than resident. But transit
 #angles all (bar1) smaller.
