@@ -1016,12 +1016,21 @@ ggsave(filename = paste0(saveloc, "dBBMM/", lubridate::today(), "_timeDiffLong_c
 # see /home/simon/Documents/Si Work/PostDoc Work/movegroup help/Liberty Boyd/Points in UD contours/PointsInWhichUDcontour.R
 # hammerssf <- readRDS(file = paste0(saveloc, "/EEZoverlap/Hammers.Rds")) |> #SD
 hammerssf <- readRDS(file = "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/InputData/EEZoverlap/Hammers_KMeans.Rds") |> #VH
+  dplyr::select(
+    -c(lon025,lat025,lon975,lat975)
+  ) |>
   sf::st_as_sf(coords = c("lon","lat")) |> sf::st_set_crs(4326) |> # Convert points to sf
   mutate(Index = row_number()) # for indexing later
 # maploc = "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Maps & Surveys/Bahamas EEZ Shapefile/" #SD
 # EEZ <- sf::st_read(paste0(maploc,"eez.shp")) # SD, polygon
 maploc = "C:/Users/Vital Heim/switchdrive/Science/Data/Shapefiles/Bahamas/" #VH
-EEZ <- sf::st_read(paste0(maploc,"Bahamas_EEZ.shp")) # VH, polygon
+eez_raw <- sf::st_read(paste0(maploc,"Bahamas_EEZ.shp")) |>
+  sf::st_as_sf(coords = c("lon","lat")) |>sf::st_set_crs(4326) # VH, polygon
+
+## make sure that your EEZ shapefile does not cut around landmass
+# install.packages("nngeo")
+library(nngeo)
+EEZ<- nngeo::st_remove_holes(eez_raw)
 
 # pointsinpolysubset <- points[polygon,] #sf objects subset points occurring in poly
 hammerssfinEEZ <- hammerssf[EEZ,]
@@ -1198,7 +1207,7 @@ daysinEEZ <- hammersNew %>%
   ) %>%
   dplyr::summarise(
     days = n_distinct(date)
-  ); write.csv(daysinEEZ, paste0(saveloc, "EEZoverlap/Days_in_and_out_BAH_EEZ_by_shark_all.csv"))
+  ); write.csv(daysinEEZ, paste0(saveloc, "EEZoverlap/Days_in_and_out_BAH_EEZ_by_shark_all.csv"), row.names = F)
 
 ### calculate the percentage of days each shark spent within the EEZ
 
@@ -1228,7 +1237,7 @@ percentEEZ <- dal %>% # calculate the percentage of days spent within the EEZ fo
   dplyr::mutate(
     nr_days_within = ifelse(is.na(daysIN), 0, daysIN), # deal with individuals
     percent_days_in = (nr_days_within/liberty)*100
-  ); write.csv(percentEEZ, paste0(saveloc, "EEZoverlap/Percent_within_EEZ_by_shark_mixed.csv"))
+  ); write.csv(percentEEZ, paste0(saveloc, "EEZoverlap/Percent_within_EEZ_by_shark_mixed.csv"), row.names = F)
 
 
 ## ISSUE: as we can see the in and out days sum is sometimes larger than the days at liberty
@@ -1253,7 +1262,7 @@ days_clean <- hammersNew %>%
   ) %>%
   dplyr::mutate(
     percent_days_in = (inside/nr_days)*100
-  ); write.csv(days_clean, paste0(saveloc,"EEZoverlap_percent_days_within_EEZ_by_shark_clean.csv"))
+  ); write.csv(days_clean, paste0(saveloc,"EEZoverlap/Percent_days_within_EEZ_by_shark_clean.csv"), row.names = F)
 
 # 5.2: Plot detections within and outside EEZ ----
 
@@ -1283,7 +1292,7 @@ for (thisshark in unique(hammerssf$shark)){
   eezplot_df <- hammerssf %>% dplyr::filter(shark == thisshark)
 
   #define factors
-  eezplot_df$EEZ <- as.factor(eezplot_df$EEZ)
+  eezplot_df$EEZ <- factor(eezplot_df$EEZ, levels = c("TRUE", "FALSE"))
   ## create plot with dark themed background
   #p = basemap(dt, bathymetry = T, expand.factor = 1.2) + # for bathymetry with ggOceanMaps package
   p <- ggplot() +
@@ -1294,7 +1303,7 @@ for (thisshark in unique(hammerssf$shark)){
     #           alpha = 1, linewidth = 0.5)+
     geom_sf(data = eezplot_df,
                aes(fill = EEZ),
-               alpha = 0.9, size = 1, shape = 21, color = "black") +
+               alpha = 0.9, size = 1, shape = 21, color = "black", show.legend = T) +
 
 
     # basemap
@@ -1313,13 +1322,18 @@ for (thisshark in unique(hammerssf$shark)){
     # labs(x=NULL, y=NULL,
     #      fill = 'kmeans cluster',
     #      color = 'kmeans cluster')+
-    # scale_shape_manual(values = c(22,24))+
-    scale_fill_manual(values = inoutcols) +
+    scale_fill_manual(name = "EEZ",
+                      values = inoutcols,
+                      limits = c("TRUE","FALSE"),
+                      labels = c("inside","outside"),
+                      # guide = guide_legend(override.aes = list(alpha = 1, shape = c(21,21), size = 1)),
+                      drop = FALSE) +
+    # scale_shape_manual(values = c(21,21), drop = F)+
 
 
     theme_dark()+
     #theme(panel.background = element_rect(fill = "gray26", linewidth = 0.5, linetype = "solid", color = "black")) +
-    theme(panel.grid = element_blank(), legend.title = element_text(face = "bold"))+
+    theme(panel.grid = element_blank(), plot.title = element_text(face = "bold"), legend.title = element_text(face = "bold"))+
     ggtitle(paste0("Detections within and outside of Bahamian EEZ for ", thisshark))
   p
 
@@ -1364,3 +1378,4 @@ for (thisshark in unique(hammerssf$shark)){
 # Error in .local(object, raster, location.error = location.error, ext = ext,  :
 #                   Higher x grid not large enough, consider extending the raster in that direction or enlarging the ext argument
 # Adjusted extent drastically, still same error
+
