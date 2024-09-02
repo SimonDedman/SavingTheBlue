@@ -34,11 +34,11 @@ library("remotes")
 ## install if first time
 # install.packages("tidyverse")
 # install.packages("magrittr")
-# #install.packages("TMB", type = "source") # if package version inconsistency detected during loading of foieGras
-# install.packages("aniMotum",
-#                  repos = c("https://cloud.r-project.org",
-#                            "https://ianjonsen.r-universe.dev"),
-#                  dependencies = "Suggests") #foiegras was removed from CRAN and replaced with Animotum on 12-12-2022
+# install.packages("TMB", type = "source") # if package version inconsistency detected during loading of foieGras
+install.packages("aniMotum",
+                 repos = c("https://cloud.r-project.org",
+                           "https://ianjonsen.r-universe.dev"),
+                 dependencies = TRUE) #foiegras was removed from CRAN and replaced with Animotum on 12-12-2022
 # install.packages("patchwork")
 # install.packages("sf")
 # install.packages("sp")
@@ -89,22 +89,22 @@ speedfilter <- "Argosfilter" # choices: "Argosfilter" or "TripSDA"
 mydets_f <- list.files(path = "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/InputData/CTCRW/",
                        pattern = paste0(speedfilter,"_.+.R"),
                        full.names = TRUE ) %>%
-  purrr::map_dfr(readRDS) # make sure that there is only the most up to date speedfilter file in the dir
+  purrr::map_dfr(readRDS) # make sure that there is only the most up to date speedfilter file in the directory
 
 ## check the data
 # print(n = 1000, mydets_f %>% group_by(id) %>% dplyr::summarise(n = n()))
-# # A tibble: 9 × 2
+# A tibble: 9 × 2
 # id         n
 # <chr>  <int>
-# 183623   799
-# 200368   657
-# 200369   166
-# 209020   132
-# 222133   577
-# 235283    73
-# 244607    96
-# 244608   582
-# 261743    13
+# 1 183623   799
+# 2 200368   657
+# 3 200369   166
+# 4 209020   132
+# 5 222133   577
+# 6 235283    73
+# 7 244607    96
+# 8 244608   582
+# 9 261743    21
 
 # B2: housekeeping, tidy data and define column classes ----
 
@@ -258,6 +258,8 @@ ggplot() +
   theme() +
   ggtitle("Speedfiltered (argosfilter::sdafilter()) and manually checked Argos Location Paths",
           subtitle = paste("S. mokarran from Andros (n = ", length(unique(det_f$id)), ")"))
+ggsave(paste0(saveloc,"Speedfiltered_Argos_data_all_individuals_clean.tiff"),
+       width = 21, height = 15, units = "cm", device ="tiff", dpi=150)
 
 ### IND
 for (i in 1:length(unique(det_f$id))){
@@ -296,10 +298,33 @@ max(det_f$tdiff.days)
 
 ## Assign different segments if the time difference is larger than the cutoff
 ## we choose a cut off of 10 days
+## Make sure to retain original ptt info and arrange df by timestamp
 det_seg <- det_f %>%
-  group_by(id) %>%
-  mutate(id = paste0(id,"_", 1+cumsum(tdiff.days >= 10)))
+  dplyr::group_by(id) %>%
+  dplyr::mutate(id = paste0(id,"_", 1+cumsum(tdiff.days >= 10))) %>%
+  dplyr::mutate(shark = as.numeric(str_sub(id, start = 1, end = str_locate(id, "\\_")[,1] - 1))) %>%
+  dplyr::arrange( # arrange by timestamp by individual so df can be used for fit_() functions
+    shark,
+    date
+  )
 
+## Let's check if there are sharks that have the tagging data as single segment
+print(n = 1000,
+      det_seg %>%
+        dplyr::group_by(shark)%>%
+        dplyr::slice(1:2)
+)
+## currently two sharks: 235823 and 261743 that have those issue
+## we need to add the tagging event manually later on
+## to do so we extract the tagging location of these sharks
+extra_tagging <- det_seg %>%
+  # dplyr::filter(
+  #   shark %in% c(235283, 261743)
+  # ) %>%
+  dplyr::group_by(
+    shark
+  ) %>%
+  dplyr::slice(1) # only get first row, i.e. tagging date
 
 ## Based on Logan et al. 2020, segments of <20 days should be removed
 ## Count number of rows per id
@@ -317,15 +342,18 @@ print(tracklengths, n = 100)
 #View(tracklengths)
 
 ### Filter out short track segments
-del_obs <- dplyr::filter(tracklengths, num_locs < 12 | tracklength_in_days < 12) # find suitable parameters
+del_obs <- dplyr::filter(tracklengths, num_locs < 8 | tracklength_in_days < 12) # find suitable parameters
+# del_obs <- dplyr::filter(tracklengths, tracklength_in_days < 15) # find suitable parameters
+
 print(n = 100, del_obs); nrow(del_obs); sum(del_obs$num_locs)
-# [1] 30 - lose 30 segments
-# [1] 91 - lose 91 detections
+# [1] 33 segments
+# [1] 112 detections
 
 det_seg_tl <- det_seg %>%
   inner_join(., tracklengths) %>%
   dplyr::filter( # remove tracks shorter than X days and/or less than Y total observations
-    !(tracklength_in_days < 12 | num_locs < 6)
+    !(tracklength_in_days < 12 | num_locs < 8)
+    # !(tracklength_in_days < 12)
   ) %>%
   dplyr::select( #remove unnecessary columns
     -start_date,
@@ -336,7 +364,7 @@ det_seg_tl <- det_seg %>%
 ## Find the distribution of time gaps between detections
 #ddet_f_cleaner$tdiff.days[ddet_f_cleaner$tdiff.days < 0] <- 0
 hist <- hist(det_seg_tl$tdiff.days
-             , breaks = c(seq(from = 0, to = 47, by = .5))
+             , breaks = c(seq(from = 0, to = 60, by = .5))
              , plot = F)
 
 hist$density <- hist$counts / sum(hist$counts)*100
@@ -390,7 +418,7 @@ ggplot(data = world) +
 ## "smaj", "smin", "eor" that contain Argos error ellipse variables (in m for "smaj", "smin" and deg for "eor").
 
 ## Do you want to calculate fitted observations across entire track?
-entire_track <- "Yes" # change between "Yes" and "No", "No" means you are predicting observations at a given time interval using the segmented tracks
+entire_track <- "No" # change between "Yes" and "No", "No" means you are predicting observations at a given time interval using the segmented tracks
 
 if (entire_track == "Yes"){ ## DO NOT change this
   dpf <- det_f
@@ -435,11 +463,11 @@ if(entire_track == "Yes"){
 
 ## Optimizers
 optim = "optim"
-maxit = 1000
+maxit = 2000
 verbose = 2
 
 ## Specify SSM
-mod.crw_pf <- fit_ssm(
+mod.crw_pf <- aniMotum::fit_ssm(
   as.data.frame(dpf), # somehow getting errors if not ran with 'd' in data.frame class
   #vmax = vmax,
   #ang = ang,
@@ -457,6 +485,7 @@ mod.crw_pf <- fit_ssm(
   #map = list(psi = factor(NA))
 )
 # saveRDS(mod.crw_pf, paste0(saveloc, "SSM_fitted.R"))
+## we retain 17 segments
 
 ##Plot the mp model with normalised values
 #tiff(paste0(saveloc, "SSM_MPM_output/SPOT_tracks_",spp.f,"_", model,"_",optim,"_",maxit, "iterations_fitted_with_argosfilter_output.tiff"),
@@ -476,19 +505,24 @@ map(mod.crw_pf, what = if(entire_track == "Yes"){"f"} else ("p"), normalise = TR
 # B8: re-route path to account for land locations
 
 ## Some locations may still on land. Reroute them using route_path()
-
 mod.crw_pf_rr <- route_path(mod.crw_pf,
                             what = if(entire_track == "Yes"){"fitted"} else ("predicted"),
                             map_scale = 10, # scale of rnaturalearth map to use for land mass - if you want 10, you need the package "rnaturalearthhires"
                             dist = 10000, # buffer distance (m) to add around track locations. The convex hull of these buffered locations defines the size of land polygon used to aid re-routing of points on land.
+                            buffer = 2,  # buffer distance > 0 moves the track a bit further away from any land barriers, which can (sometimes) result in a better rerouted solution. Some trial and error with the buffer distance (units in km) is usually needed
+                            centroids = TRUE, # setting centroids = TRUE essentially adds more resolution (& therefore more possible solutions) to the underlying mesh structure used to reroute the track.
                             append = T
                             )
+
 ## check if re-routing track changes nr. observations
-# check_1 <- grab(mod.crw_pf, what = if(entire_track == "Yes"){"fitted"} else ("predicted"))
-# check_1 <- check_1[,c(1:2)]
-# check_rr <- grab(mod.crw_pf_rr, what = "rerouted")
-# check_rr <- check_rr[,c(1:2)]
-# comparison <- anti_join(check_1, check_rr) # shows rows that are not present in check_rr
+check_1 <- grab(mod.crw_pf, what = if(entire_track == "Yes"){"fitted"} else ("predicted"))
+check_1 <- check_1[,c(1:2)]
+check_rr <- grab(mod.crw_pf_rr, what = "rerouted")
+check_rr <- check_rr[,c(1:2)]
+comparison <- anti_join(check_1, check_rr) # shows rows that are not present in check_rr , we lose 20 land locations
+
+## regarding data loss issue: see response ianjonsen
+## https://github.com/ianjonsen/aniMotum/discussions/67#discussioncomment-10418664
 
 ## map the locations to check if it improved
 my.aes <- aes_lst(line = T,
@@ -507,13 +541,20 @@ m2 <- map(mod.crw_pf_rr,
           ext.rng = c(0.3, 0.1),
           silent = TRUE)
 
+
 ### Comparison of locations between fitted vs. fitted & re-routed
 # (m1 + labs(title = "SSM locations") | m2 + labs(title = "SSM re-routed locations")) &
 #   theme(panel.grid = element_line(size=0.1, colour="grey60"))
 
 ### Detailview fitted & re-routed locations
+m1 + labs(title = "Fitted/predicted locations") &
+  theme(panel.grid= element_line (size=0.1, colour="grey60"))
+ggsave(paste0(saveloc,"Predicted_locations_time_step_", time.step,"_h.tiff"), width = 15, height = 12, units = "cm", dpi = 150)
+
+### Detailview fitted & re-routed locations
 m2 + labs(title = "Re-routed locations") &
   theme(panel.grid= element_line (size=0.1, colour="grey60"))
+ggsave(paste0(saveloc,"Rerouted_locations_time_step_", time.step,"_h.tiff"), width = 15, height = 12, units = "cm", dpi = 150)
 
 # B8: check goodness of fit of your ssm/mpm model ----
 
@@ -531,7 +572,6 @@ m2 + labs(title = "Re-routed locations") &
 #plot(mod.crw_pf[1,], what = "predicted")
 
 ## As XY-plots (type 1) and 2-D tracks (type 2)
-
 for (i in 1:2){
 
   plottype = i # change accordingly, save plottype 1 and 2
@@ -566,17 +606,17 @@ for (i in 1:length(IDs)){
   res.s <- osar(mod.crw_pf_rr[i,]) ## change accordingly
 
   # open plot window
-  png(file = paste0(saveloc,"Validation/Prediction_", model,"_residuals_for_validation_", IDs[i],"_fitted_with_", optim, "_",maxit,"iterations_", speedfilter, "_filter.png"), res = 150, height = 20, width = 30, units = "cm")
+  png(file = paste0(saveloc,"Validation/Prediction_", model,"_fitted","_rerouted_residuals_for_validation_", IDs[i],"_fitted_with_", optim, "_",maxit,"iterations_", speedfilter, "_filter.png"), res = 150, height = 20, width = 30, units = "cm")
 
   #plot
-  print((plot(res.s, type = "ts") | plot(res.s, type = "qq")) /
-          (plot(res.s, type = "acf") | plot_spacer()))
+  (plot(res.s, type = "ts") | plot(res.s, type = "qq")) /
+          (plot(res.s, type = "acf") | plot_spacer())
 
   # save it
   dev.off()
 }
 
-# B9: export the model ouput ----
+# B9: export the model output ----
 
 ## what model did you calculate and want to export
 
@@ -602,6 +642,8 @@ locRR.proj <- grab(mod.crw_pf_rr, what = "rerouted", as_sf = T)
 write.table(loc, paste0(saveloc, m_type, "/Data_aniMotum_CTCRW_output_",m_type,"_non-projected_with_",speedfilter, "_data.csv"),row.names=F,sep=",",dec=".")
 saveRDS(loc, paste0(saveloc, m_type, "/Data_aniMotum_CTCRW_output_",m_type,"_non-projected_with_",speedfilter, "_data.rds"))
 saveRDS(loc.proj, paste0(saveloc, m_type, "/Data_aniMotum_CTCRW_output_",m_type,"_projected_with_",speedfilter, "_data.rds"))
+## fitted only
+saveRDS(loc, paste0("C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/InputData/kmeans/Data_aniMotum_CRW_output_","fitted","_with_",speedfilter, "_data.rds"))
 
 # rerouted
 write.table(locRR, paste0(saveloc, "rerouted", "/Data_aniMotum_CTCRW_output_",m_type, "_rerouted","_non-projected_with_",speedfilter, "_data.csv"),row.names=F,sep=",",dec=".")
@@ -707,6 +749,38 @@ colnames(mod.final) <- c("id", "date", "lon", "lon025", "lon975", "lat", "lat025
 ## if MP
 #mod.final <- dplyr::select(mod_CIs, id, date, lon.new, lon025, lon975, lat.new, lat025, lat975,g,g_normalized)
 #colnames(mod.final) <- c("id", "date", "lon", "lon025", "lon975", "lat", "lat025", "lat975", "gamma_t", "gamma_t_normalized")
+
+
+## if you have predicted locations you need to add the tagging locations again
+tagging_selected <- extra_tagging %>%
+  dplyr::select(any_of(names(mod.final)))
+tagging_selected$date <- strptime(tagging_selected$date, format = "%Y-%m-%d %H", tz = "UTC")
+
+if (entire_track == "No")  {
+  mod.final <- mod.final %>%
+    dplyr::full_join(tagging_selected, by = c("id", "date"), suffix = c("", "_new")
+  ) %>%
+    dplyr::mutate(
+      lon = ifelse(is.na(lon), lon_new, lon),
+      lon025 = ifelse(is.na(lon025), lon, lon025), # if tagging date got removed, lon025 will be NA, make sure this is tagging loc
+      lon975 = ifelse(is.na(lon975), lon, lon975), # see above
+      lat = ifelse(is.na(lat), lat_new, lat),     # see above
+      lat025 = ifelse(is.na(lat025), lat, lat025), # see above
+      lat975 = ifelse(is.na(lat975), lat, lat975)  # see above
+    ) %>%
+    dplyr::select( # drop columns that are not needed
+      -lon_new,
+      -lat_new,
+      -shark
+    )
+} else (mod.final <- mod.final)
+
+## make sure that the df is showing dates in ascending order
+
+mod.final %<>%
+  dplyr::mutate(shark = as.numeric(str_sub(id, start = 1, end = str_locate(id, "\\_")[,1] - 1))) %>%
+  dplyr::arrange(shark, date) %>%
+  dplyr::select(-shark)
 
 ### ....................................................................................................
 ### [E] Save movement data for further analyses ----
