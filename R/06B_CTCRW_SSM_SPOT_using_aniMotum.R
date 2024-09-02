@@ -35,10 +35,10 @@ library("remotes")
 # install.packages("tidyverse")
 # install.packages("magrittr")
 # install.packages("TMB", type = "source") # if package version inconsistency detected during loading of foieGras
-install.packages("aniMotum",
-                 repos = c("https://cloud.r-project.org",
-                           "https://ianjonsen.r-universe.dev"),
-                 dependencies = TRUE) #foiegras was removed from CRAN and replaced with Animotum on 12-12-2022
+# install.packages("aniMotum",
+                 # repos = c("https://cloud.r-project.org",
+                           # "https://ianjonsen.r-universe.dev"),
+                 # dependencies = TRUE) #foiegras was removed from CRAN and replaced with Animotum on 12-12-2022
 # install.packages("patchwork")
 # install.packages("sf")
 # install.packages("sp")
@@ -317,14 +317,14 @@ print(n = 1000,
 ## currently two sharks: 235823 and 261743 that have those issue
 ## we need to add the tagging event manually later on
 ## to do so we extract the tagging location of these sharks
-extra_tagging <- det_seg %>%
-  # dplyr::filter(
-  #   shark %in% c(235283, 261743)
-  # ) %>%
-  dplyr::group_by(
-    shark
-  ) %>%
-  dplyr::slice(1) # only get first row, i.e. tagging date
+# extra_tagging <- det_seg %>%
+#   # dplyr::filter(
+#   #   shark %in% c(235283, 261743)
+#   # ) %>%
+#   dplyr::group_by(
+#     shark
+#   ) %>%
+#   dplyr::slice(1) # only get first row, i.e. tagging date
 
 ## Based on Logan et al. 2020, segments of <20 days should be removed
 ## Count number of rows per id
@@ -642,8 +642,6 @@ locRR.proj <- grab(mod.crw_pf_rr, what = "rerouted", as_sf = T)
 write.table(loc, paste0(saveloc, m_type, "/Data_aniMotum_CTCRW_output_",m_type,"_non-projected_with_",speedfilter, "_data.csv"),row.names=F,sep=",",dec=".")
 saveRDS(loc, paste0(saveloc, m_type, "/Data_aniMotum_CTCRW_output_",m_type,"_non-projected_with_",speedfilter, "_data.rds"))
 saveRDS(loc.proj, paste0(saveloc, m_type, "/Data_aniMotum_CTCRW_output_",m_type,"_projected_with_",speedfilter, "_data.rds"))
-## fitted only
-saveRDS(loc, paste0("C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/InputData/kmeans/Data_aniMotum_CRW_output_","fitted","_with_",speedfilter, "_data.rds"))
 
 # rerouted
 write.table(locRR, paste0(saveloc, "rerouted", "/Data_aniMotum_CTCRW_output_",m_type, "_rerouted","_non-projected_with_",speedfilter, "_data.csv"),row.names=F,sep=",",dec=".")
@@ -750,45 +748,49 @@ colnames(mod.final) <- c("id", "date", "lon", "lon025", "lon975", "lat", "lat025
 #mod.final <- dplyr::select(mod_CIs, id, date, lon.new, lon025, lon975, lat.new, lat025, lat975,g,g_normalized)
 #colnames(mod.final) <- c("id", "date", "lon", "lon025", "lon975", "lat", "lat025", "lat975", "gamma_t", "gamma_t_normalized")
 
-
-## if you have predicted locations you need to add the tagging locations again
-tagging_selected <- extra_tagging %>%
-  dplyr::select(any_of(names(mod.final)))
-tagging_selected$date <- strptime(tagging_selected$date, format = "%Y-%m-%d %H", tz = "UTC")
-
-if (entire_track == "No")  {
-  mod.final <- mod.final %>%
-    dplyr::full_join(tagging_selected, by = c("id", "date"), suffix = c("", "_new")
-  ) %>%
-    dplyr::mutate(
-      lon = ifelse(is.na(lon), lon_new, lon),
-      lon025 = ifelse(is.na(lon025), lon, lon025), # if tagging date got removed, lon025 will be NA, make sure this is tagging loc
-      lon975 = ifelse(is.na(lon975), lon, lon975), # see above
-      lat = ifelse(is.na(lat), lat_new, lat),     # see above
-      lat025 = ifelse(is.na(lat025), lat, lat025), # see above
-      lat975 = ifelse(is.na(lat975), lat, lat975)  # see above
-    ) %>%
-    dplyr::select( # drop columns that are not needed
-      -lon_new,
-      -lat_new,
-      -shark
-    )
-} else (mod.final <- mod.final)
-
-## make sure that the df is showing dates in ascending order
-
-mod.final %<>%
-  dplyr::mutate(shark = as.numeric(str_sub(id, start = 1, end = str_locate(id, "\\_")[,1] - 1))) %>%
-  dplyr::arrange(shark, date) %>%
-  dplyr::select(-shark)
+## this causes issues with kmeans in following scripts
+# ## if you have predicted locations you need to add the tagging locations again
+# tagging_selected <- extra_tagging %>%
+#   dplyr::select(any_of(names(mod.final)))
+# tagging_selected$date <- strptime(tagging_selected$date, format = "%Y-%m-%d %H", tz = "UTC")
+#
+# if (entire_track == "No")  {
+#   mod.final <- mod.final %>%
+#     dplyr::full_join(tagging_selected, by = c("id", "date"), suffix = c("", "_new")
+#   ) %>%
+#     dplyr::mutate(
+#       lon = ifelse(is.na(lon), lon_new, lon),
+#       lon025 = ifelse(is.na(lon025), lon, lon025), # if tagging date got removed, lon025 will be NA, make sure this is tagging loc
+#       lon975 = ifelse(is.na(lon975), lon, lon975), # see above
+#       lat = ifelse(is.na(lat), lat_new, lat),     # see above
+#       lat025 = ifelse(is.na(lat025), lat, lat025), # see above
+#       lat975 = ifelse(is.na(lat975), lat, lat975)  # see above
+#     ) %>%
+#     dplyr::select( # drop columns that are not needed
+#       -lon_new,
+#       -lat_new,
+#       -shark
+#     )
+# } else (mod.final <- mod.final)
+#
+# ## make sure that the df is showing dates in ascending order
+#
+# mod.final %<>%
+#   dplyr::mutate(shark = as.numeric(str_sub(id, start = 1, end = str_locate(id, "\\_")[,1] - 1))) %>%
+#   dplyr::arrange(shark, date) %>%
+#   dplyr::select(-shark)
 
 ### ....................................................................................................
 ### [E] Save movement data for further analyses ----
 ### ....................................................................................................
 
 # if based on speedfilter data
-write.table(mod.final, paste0(saveloc, "rerouted", "/Data_aniMotum_CRW_output_","rerouted","_proj_WGS84_converted_with_coord_CIs_with_",speedfilter, "_data.csv"),row.names=F,sep=",",dec=".")
-saveRDS(mod.final, paste0(saveloc, "rerouted", "/Data_aniMotum_CRW_output_","rerouted","_proj_WGS84_converted_with_coord_CIs_with_",speedfilter, "_data.rds"))
+if(entire_track == "Yes"){
+  tracktype = "entire_track"
+} else (tracktype = "segmented")
 
-saveRDS(mod.final, paste0("C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/InputData/kmeans/Data_aniMotum_CRW_output_","rerouted","_proj_WGS84_converted_with_coord_CIs_with_",speedfilter, "_data.rds"))
-saveRDS(mod.final, paste0("C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/InputData/dBBMM/Data_aniMotum_CRW_output_","rerouted","_proj_WGS84_converted_with_coord_CIs_with_",speedfilter, "_data.rds"))
+write.table(mod.final, paste0(saveloc, "rerouted", "/Data_aniMotum_CRW_output_",tracktype,"_rerouted","_proj_WGS84_converted_with_coord_CIs_with_",speedfilter, "_data.csv"),row.names=F,sep=",",dec=".")
+saveRDS(mod.final, paste0(saveloc, "rerouted", "/Data_aniMotum_CRW_output_",tracktype,"_rerouted","_proj_WGS84_converted_with_coord_CIs_with_",speedfilter, "_data.rds"))
+
+saveRDS(mod.final, paste0("C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/InputData/kmeans/Data_aniMotum_CRW_output_",tracktype, "_rerouted","_proj_WGS84_converted_with_coord_CIs_with_",speedfilter, "_data.rds"))
+saveRDS(mod.final, paste0("C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/InputData/dBBMM/Data_aniMotum_CRW_output_",tracktype, "_rerouted","_proj_WGS84_converted_with_coord_CIs_with_",speedfilter, "_data.rds"))
