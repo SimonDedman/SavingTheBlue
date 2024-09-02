@@ -89,7 +89,7 @@ mov_all ="C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andro
 all_csv = dir(mov_all, recursive=T, full.names=T, pattern="\\-Locations.csv$") # import files in folders in path directory all at once
 mydata = lapply(all_csv, read.csv,sep=",",dec=".",stringsAsFactor=F,header=T) # import all .csv files containing TAT-Hiso data, but skip header lines
 mydets <- do.call("rbind",mydata)
-#sort(unique(mydets$Ptt))
+# sort(unique(mydets$Ptt))
 # [1] 183623 200367 200368 200369 209020 222133 235283 244607
 # [9] 244608 261743
 
@@ -111,7 +111,7 @@ tagging_location$smaj <- 50
 tagging_location$smin <- 50
 tagging_location$eor <- 0
 colnames(tagging_location) <- c("id", "date", "lc", "lon", "lat", "smaj", "smin", "eor")
-# > head(tagging_location)
+# head(tagging_location)
 # id                    date lc       lon      lat smaj smin eor
 # 183623 2020-03-13 19:04:00  G -77.69518 24.42892   50   50   0
 # 200368 2021-01-12 19:38:00  G -77.69637 24.43333   50   50   0
@@ -185,7 +185,7 @@ ddet %<>%
 ## this is useful if you have active tags, but need to write a report or plan on submitting a manuscript soon
 
 filter_needed <- "yes" # change this
-max_date <- as.POSIXct("2024-09-01 00:00:00",format="%Y-%m-%d %H:%M:%S", tz="UTC", usetz = T) # change this
+max_date <- as.POSIXct("2024-09-02 00:00:00",format="%Y-%m-%d %H:%M:%S", tz="UTC", usetz = T) # change this
 
 if (filter_needed == "yes"){ # do NOT change this
   ddet <- ddet %>%
@@ -360,9 +360,35 @@ ddet_af <- ddet_af %>%
   )
 
 cat("You removed ", nrow(prefilter_obs)-nrow(ddet_af)," locations.")
-# You removed  450  locations.
+# You removed  452  locations.
 prefilter_obs %>% group_by(id) %>% dplyr::summarise(n = n())
 ddet_af %>% dplyr::summarise(n = n())
+# > prefilter_obs %>% group_by(id) %>% dplyr::summarise(n = n())
+# # A tibble: 9 × 2
+# id         n
+# <chr>  <int>
+#   1 183623   942
+# 2 200368   738
+# 3 200369   199
+# 4 209020   153
+# 5 222133   650
+# 6 235283    86
+# 7 244607   119
+# 8 244608   644
+# 9 261743    24
+# > ddet_af %>% dplyr::summarise(n = n())
+# # A tibble: 9 × 2
+# id         n
+# <chr>  <int>
+#   1 183623   799
+# 2 200368   657
+# 3 200369   166
+# 4 209020   132
+# 5 222133   577
+# 6 235283    73
+# 7 244607    96
+# 8 244608   582
+# 9 261743    21
 
 ## write csv to show new data structure
 write.csv(ddet_af %>% dplyr::summarise(n = n()),
@@ -412,5 +438,5 @@ write.table(ddet_af, paste0(saveloc, "Argosfilter_filtered_Sphyrna_SPOT_tracks_m
 
 ## RDS
 saveRDS(ddet_af, paste0(saveloc, "Argosfilter_filtered_Sphyrna_SPOT_tracks_multiID_", start, "_", end,".R"))
-saveRDS(ddet_af, paste0("C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/InputData/CTCRW/", "Argosfilter_filtered_Sphyrna_SPOT_tracks_multiID_", start, "_", end,".R"))
+saveRDS(ddet_af, paste0("C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/InputData/CTCRW/", "Argosfilter_filtered_Sphyrna_SPOT_tracks_multiID_CTCRW_input.R"))
 
