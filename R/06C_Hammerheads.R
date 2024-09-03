@@ -1003,7 +1003,7 @@ clustersvec %>%
 # could do this more systematically. Could also weight the Tolerance1/2 differently? Leave it for now, perfect enemy of good.
 # See L325 TOT make centres dynamic
 
-# 3.2. Conclude k-means calculations ----
+# *B3.2. Conclude k-means calculations ----
 
 setDF(hammers)
 # hammers$StepLengthBLlog1p <-  expm1(hammers$StepLengthBLlog1p + logmean) # has been taken care of upstream
@@ -1066,7 +1066,7 @@ clusters_info %>% dplyr::summarise(
 # lapply(names(sessionInfo()$loadedOnly), require, character.only = TRUE)
 # invisible(lapply(paste0('package:', names(sessionInfo()$otherPkgs)), detach, character.only = TRUE, unload = TRUE, force = TRUE))
 
-# 4. 2D Barplot maps KMeans ----
+# B4. 2D Barplot maps KMeans ----
 library(mapplots)
 # remotes::install_github("SimonDedman/gbm.auto")
 library(gbm.auto)
@@ -1106,7 +1106,8 @@ for (i in c(0.25, 0.5, 1)) {
                plotname = paste0(lubridate::today(), "_2DBarplot_Count_", i, "deg"))
 }
 
-## plot kmeans clusters by individual by detection
+# B5: plot kmeans clusters by individual by detection ----
+
 dir.create(paste0(saveloc, "kmeans/individualPlots/")) #VH
 
 ### Prep background shapefile
@@ -1181,12 +1182,17 @@ for (thisshark in unique(hammers$shark)){
   ggsave(paste0(saveloc, "kmeans/individualPlots/kmeans_",thisshark,".tiff"), width = 15, height = 10, units = "cm", dpi = 300)
 }
 
-# 5. movegroup dBBMMs ----
+### ....................................................................................................
+### [C] Movegroup dBBMMs ----
+### ....................................................................................................
+
+# C1: import data ----
 
 # hammers <- readRDS(paste0(saveloc, "/Hammers_KMeans.Rds")) #SD
-hammers <- readRDS(paste0(saveloc, "kmeans/Hammers_KMeans.Rds")) #VH
+hammers <- readRDS(paste0(saveloc, "kmeans/predicted/Hammers_KMeans.Rds")) #VH
 
-##### moveLocError ####
+# C2: calculate moveLocError ----
+
 # calcs from /home/simon/Dropbox/Blocklab Monterey/Blocklab/ConfidenceIntervalPointsToPoly.R
 reproject <- function(x, coorda, coordb, latloncrs, projectedcrs) {
   x <- sf::st_as_sf(x, coords = c(coorda, coordb)) |>
@@ -1238,8 +1244,8 @@ meanMoveLocDist <- list(
 # (make overall mean of them?)
 hammers$meanMoveLocDist <- meanMoveLocDist
 
+# C3: calculate timeDiffLong ----
 
-##### timeDiffLong ####
 hammers$diffmins <- c(as.numeric(NA), as.numeric(hammers$date[2:length(hammers$date)] - hammers$date[1:length(hammers$date) - 1]))
 # gives error but still works
 # get index of first row per id
@@ -1249,7 +1255,6 @@ firstrows <- hammers |>
   summarise(firstrowid = first(Index))
 # use this to blank out the diffmins since it's the time difference between 1 shark ending & another staring which is meaningless
 hammers[firstrows$firstrowid, "diffmins"] <- NA
-
 
 # hammers |>
 #   group_by(shark) %T>%
@@ -1289,24 +1294,25 @@ hammers |>
   group_walk(~ {
     p <- ggplot(.x) + geom_histogram(aes(x = diffmins))
     # ggsave(plot = p, filename = paste0(saveloc, "movegroup dBBMMs/timeDiffLong histograms/", lubridate::today(), "_diffMinsHistGG_", .y$id, ".png")) #SD
-    ggsave(plot = p, filename = paste0(saveloc, "dBBMM/timeDiffLong histograms/", lubridate::today(), "_diffMinsHistGG_", .y$id, ".png"))
+    ggsave(plot = p, filename = paste0(saveloc, "dBBMM/timeDiffLong histograms/", lubridate::today(), "_diffMinsHistGG_", .y$shark, ".png"))
 
     .x
   }) |>
   summarise(meandiffmins = mean(diffmins, na.rm = TRUE),
             sd3 = sd(diffmins, na.rm = TRUE) * 3)
 # Following discussion, trying 24 hours, doing in mins since they're already in mins
+# Update 20240903: VH -do 13 hrs so that 12 hour strucutre of predicted locations remains
 
 ##### rasterResolution ####
 # With default = 6: Error: cannot allocate vector of size 2286.7 Gb
-2 * mean(meanMoveLocDist) # 46407.42
+2 * mean(meanMoveLocDist) # 35915.36
 hist(meanMoveLocDist) # very left skewed
-summary(meanMoveLocDist) # median 10371
+summary(meanMoveLocDist) # median 9087
 # choose 1000 - update 20240827: 10000
 
 length(unique(hammers$shark))
-# 9
-saveRDS(hammers,file = paste0(saveloc, "EEZoverlap/Hammers.Rds"))
+# 8
+# saveRDS(hammers,file = paste0(saveloc, "EEZoverlap/Hammers.Rds"))
 
 # mysubsets <- c("All", "Andros", "Bimini", "Summer", "Winter")
 mysubsets <- c("All", "Summer", "Winter") # 2023-08-08 remove Bimini sharks, and thus Andros also since ANdros = All
@@ -1329,7 +1335,7 @@ for (thissubset in mysubsets) { # all worked, had to make edits to hammersubset$
     next
   }
 
-  for (TDL in 1200) { # c(18, 24, 36, 1000)
+  for (TDL in 13) { # c(18, 24, 36, 1000) # update 20240903: change from 1200 to 13 and change units to hours
     # dir.create(paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/")) #SD
     dir.create(paste0(saveloc, "dBBMM/", thissubset, "/", TDL, "h/")) #VH
     movegroup::movegroup(
@@ -1345,7 +1351,7 @@ for (thissubset in mysubsets) { # all worked, had to make edits to hammersubset$
       # sensor = "VR2W",
       moveLocError = hammersubset$meanMoveLocDist,
       ##### timeDiffLong 18 24 36 trials####
-      timeDiffLong = 13, #original (TDL * 60), #adjust
+      timeDiffLong = TDL, #original (TDL * 60), #adjust
       # Single numeric value. Threshold value in timeDiffUnits designating the length of long breaks in re-locations. Used for bursting a movement track into segments, thereby removing long breaks from the movement track. See ?move::bursted for details.
       timeDiffUnits = "hours",# original: "mins",
       # center = TRUE,
@@ -1359,7 +1365,7 @@ for (thissubset in mysubsets) { # all worked, had to make edits to hammersubset$
       # Higher resolution will lead to more precision in the volume areas calculations.
       # Try using 2*dbblocationerror.
       ##### Why did we choose 1000m?####
-      dbbext = 3, # Ext param in the 'brownian.bridge.dyn' function in the 'move' package. Extends bounding box around track. Numeric single (all edges), double (x & y), or 4 (xmin xmax ymin ymax). Default 0.3. - changed to 3 20240827
+      dbbext = .3, # Ext param in the 'brownian.bridge.dyn' function in the 'move' package. Extends bounding box around track. Numeric single (all edges), double (x & y), or 4 (xmin xmax ymin ymax). Default 0.3. - changed to 3 20240827
       # dbbwindowsize = 23,
       # writeRasterFormat = "ascii",
       # writeRasterExtension = ".asc",
@@ -1403,20 +1409,21 @@ for (thissubset in mysubsets) { # all worked, had to make edits to hammersubset$
       # myLocation = NULL,
       googlemap = TRUE,
       # gmapsAPI = NULL,
-      expandfactor = 1,
+      expandfactor = 1.6,
       mapzoom = 7,
       # mapsource = "google",
       # maptype = "satellite",
       # contour1colour = "red",
       # contour2colour = "orange",
       # plottitle = "Aggregated 95% and 50% UD contours",
-      plotsubtitle = "Scaled contours. n = 10",
+      plotsubtitle = "Scaled contours. n = 8",
       # legendtitle = "Percent UD Contours",
       # plotcaption = paste0("movegroup, ", lubridate::today()),
       # axisxlabel = "Longitude",
       # axisylabel = "Latitude",
-      legendposition = c(0.9, 0.89),
-      # fontsize = 12,
+      # legendposition = c(0.9, 0.89),
+      legendposition = c(1.32, 0.89),
+      fontsize = 4,
       # fontfamily = "Times New Roman",
       # filesavename = paste0(lubridate::today(), "_dBBMM-contours.png"),
       # savedir = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/Scaled/Plot"), #SD
@@ -1484,10 +1491,12 @@ for (thissubset in mysubsets) { # all worked, had to make edits to hammersubset$
         x = paste0(saveloc, "dBBMM/", thissubset, "/", TDL, "h/", thisshark, ".asc"), #VH
         crsloc = paste0(saveloc, "dBBMM/", thissubset, "/", TDL, "h/"), #VH
         googlemap = TRUE,
-        expandfactor = 1,
+        expandfactor = 1.6, # original 1
         mapzoom = 7,
-        plotsubtitle = "Scaled contours. n = 10",
-        legendposition = c(0.9, 0.89),
+        # plotsubtitle = "Scaled contours. n = 8",
+        plotsubtitle = paste0("Scaled contours: ",thisshark,"-",thissubset),
+        legendposition = c(1.32, 0.89),
+        fontsize = 4,
         filesavename = paste0(lubridate::today(), "_", thisshark, "_dBBMM-contours.png"),
         # savedir = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/Scaled/Plot"))} #SD
         savedir = paste0(saveloc, "dBBMM/", thissubset, "/", TDL, "h/Scaled/Plot"))} #VH
@@ -1557,48 +1566,4 @@ ggsave(filename = paste0(saveloc, "dBBMM/", lubridate::today(), "_timeDiffLong_c
 #                                 unused argument (projectedCRS = "+init=epsg:32617")
 #  SOLVED (20240827) by commenting out argument and executing "rastersCRS =" argument with UTM17 string
 
-p <- ggplot() +
-
-  # Lines and points
-  geom_path(data = eezplot_df,
-            aes(x = path_coords[, "X"], y = path_coords[, "Y"]),
-            alpha = 1, linewidth = 0.5) +
-
-  # Points with color and shape
-  geom_sf(data = eezplot_df,
-          aes(fill = EEZ, shape = season), # Map shape to season and fill to EEZ
-          alpha = 0.9, size = 3, color = "black", show.legend = TRUE) +
-
-  # Basemap
-  geom_sf(data = bg, color = "black") +
-
-  # EEZ shapefile
-  geom_sf(data = bah_eez, colour = "white", fill = NA, linewidth = 0.75) +
-
-  # Coordinate limits
-  coord_sf(xlim = xlim_eez,
-           ylim = ylim_eez + 0.25,
-           expand = TRUE) +
-
-  # Formatting scales
-  scale_shape_manual(values = seasonsym, # Shape for seasons
-                     name = "Season") +
-  scale_fill_manual(name = "EEZ",
-                    values = inoutcols, # Color for EEZ status
-                    limits = c("inside", "outside"),
-                    labels = c("inside", "outside")) +
-
-  theme_dark() +
-  theme(panel.grid = element_blank(),
-        plot.title = element_text(face = "bold"),
-        legend.title = element_text(face = "bold")) +
-  ggtitle(paste0("Detections within and outside of Bahamian EEZ for ", thisshark))
-
-p
-
-
-# Error 2 with movegroup::movegroup()
-# Error in .local(object, raster, location.error = location.error, ext = ext,  :
-#                   Higher x grid not large enough, consider extending the raster in that direction or enlarging the ext argument
-# Adjusted extent drastically, still same error
 
