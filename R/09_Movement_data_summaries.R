@@ -55,7 +55,7 @@ saveloc <- "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/And
 TAG <- read.csv("C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/InputData/Datasheet_Andros_Smok_Tagging_Metadata.csv", header = T, sep =",", na.strings = c("n.a.",""," ", "#WERT!", "#DIV/0!", "n.a", "na"))
 
 ## Spatail data (here Argos derived movement data)
-DET <- readRDS(file = "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/OutputData/CTCRW/fitted/Data_aniMotum_CTCRW_output_fitted_non-projected_with_Argosfilter_data.rds")
+DET <- readRDS(file = "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/OutputData/CTCRW/rerouted/Data_aniMotum_CRW_output_entire_track_rerouted_proj_WGS84_converted_with_coord_CIs_with_Argosfilter_data.rds")
 DET$date <- as.POSIXct(DET$date,format="%Y-%m-%d %H:%M:%S",tz="UTC")
 DET$species <- "S.mokarran"
 head(DET)
