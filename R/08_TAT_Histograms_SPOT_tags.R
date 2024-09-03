@@ -25,11 +25,13 @@ rm(list = ls())
 # install.packages("dplyr")
 # install.packages("magrittr")
 # install.packages("reshape2")
+# install.packages("png")
 
 ## load
 library(dplyr)
 library(magrittr)
 library(reshape2)
+library(png)
 
 # A3: Specify data and saveloc ----
 saveloc <- "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/OutputData/TATs/" #Adjust this
@@ -234,7 +236,7 @@ summaries <- list(smry_individual, smry_island)
 # D1: choose your data subsets you want to plot ----
 
 #........................................ CHOOSE YOUR SUMMARY DATA FRAME FOR THE PLOT
-sd = 1 # 1 = individual summaries, 2 = island summaries
+sd = 2 # 1 = individual summaries, 2 = island summaries
 # ...................................................................................
 
 ## if you chose 2 or 3 on line 196 ##
@@ -341,8 +343,26 @@ par(mar = c(3,0.5,1.5,2.75), # A numeric vector of length 4, which sets the marg
     mgp = c(2, 0.75,0), # A numeric vector of length 3, which sets the axis label locations relative to the edge of the inner plot window. The first value represents the location the labels (i.e. xlab and ylab in plot), the second the tick-mark labels, and third the tick marks. The default is c(3, 1, 0).
     las = 1) # numeric value indicating the orientation of the tick mark labels and any other text added to a plot after its initialization. The options are as follows: always parallel to the axis (the default, 0), always horizontal (1), always perpendicular to the axis (2), and always vertical (3).
 
-## Barplot
-bp_r <- barplot(height = df_right$mean
+## Barplot (account for the scenario where no data for winter/summer)
+if (nrow(df_right) == 0 || is.null(df_right)) {
+  # Create an empty plot if data_right is empty
+  bp_r <- barplot(height = df_left$mean
+                  , horiz = T
+                  , xlim = c(0,100)
+                  , las = 1
+                  , xlab = "", ylab = ""
+                  #, xaxt = "n"
+                  , yaxt = "n"
+                  , cex.axis = 0.65
+                  , border = "white"
+                  , col = "white"
+  )
+
+  ## add tickmarks and labels
+  axis(2, at = bp_r, labels = NA, cex.axis = 0.65, tck = -0.035, las = 1) # tickmarks and labels
+
+} else {
+  bp_r <- barplot(height = df_right$mean
                   , horiz = T
                   , xlim = c(0,100)
                   , las = 1
@@ -353,17 +373,17 @@ bp_r <- barplot(height = df_right$mean
                   , border = "black"
                   , col = ifelse(df_right$season_bahamas == "summer", summercol, wintercol))
 
+  ## add error bars
+  segments(df_right$mean - df_right$sd, bp_r, df_right$mean + df_right$sd , bp_r,
+           lwd = 1)
 
-## add error bars
-segments(df_right$mean - df_right$sd, bp_r, df_right$mean + df_right$sd , bp_r,
-         lwd = 1)
+  arrows(df_right$mean - df_right$sd, bp_r, df_right$mean + df_right$sd , bp_r,
+         lwd = 1, angle = 90,
+         code = 3, length = 0.05)
 
-arrows(df_right$mean - df_right$sd, bp_r, df_right$mean + df_right$sd , bp_r,
-       lwd = 1, angle = 90,
-       code = 3, length = 0.05)
-
-## add tickmarks to vertical axis
-axis(2, at = bp_r, labels = NA, cex.axis = 0.65, tck = -0.035, las = 1) # tickmarks and labels
+  ## add tickmarks to vertical axis
+  axis(2, at = bp_r, labels = NA, cex.axis = 0.65, tck = -0.035, las = 1) # tickmarks and labels
+  }
 
 ## label horizontal axis
 mtext(expression(bold("[%] of time")), side = 1, line = 1.6, cex = 0.65)
@@ -391,6 +411,7 @@ text(84.5, 1.7, paste0(id_label), cex = .65, font = 4) # add ptt label
 dev.off()
 }
 }
+
 
 # D4: Create the barplots for the entire island group ----
 
@@ -490,7 +511,6 @@ legend("bottomright",
        bty = "n")
 
 ## add the island shape
-library("png")
 shape <- readPNG(ifelse(df_left$group == "Andros"
                         , "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/InputData/Andros_shape.png"
                         , "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/InputData/Bimini_shape.png"))
