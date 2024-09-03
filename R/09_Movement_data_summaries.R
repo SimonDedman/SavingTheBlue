@@ -165,7 +165,11 @@ DET <- DET %>%
 # E1: make final df ----
 
 final_all <- TAG_f %>%
-  left_join(DET, by = "ptt_id")
+  dplyr::left_join(DET, by = "ptt_id") %>%
+  dplyr::mutate( # account for pprm sharks
+    Tracklength_km = ifelse(is.na(Tracklength_km),0,Tracklength_km),
+    trackduration = if_else(is.na(trackduration) | trackduration <= 0, 0, trackduration)
+  )
 
 write.csv(final_all, paste0(saveloc, "Data_summaries_duration_and_tracklengths_all.csv"), row.names = F)
 
@@ -177,7 +181,7 @@ write.csv(final_active, paste0(saveloc, "Data_summaries_duration_and_tracklength
 # E2: Summarise misc. metrics ----
 
 ## tracklengths
-avg_TL <- final_active %>%
+avg_TL <- final_all %>%
   group_by(
     species,
     sex
@@ -190,10 +194,10 @@ avg_TL <- final_active %>%
     maxTL = max(Tracklength_km)
   );avg_TL
 
-write.csv(avg_TL, paste0(saveloc, "Data_summaries_mean_tracklengths_by_species_sex.csv"), row.names = F)
+write.csv(avg_TL, paste0(saveloc, "Data_summaries_mean_tracklengths_by_species_sex_all.csv"), row.names = F)
 
 ## days_at_liberty
-avg_TDur <- final_active %>%
+avg_TDur <- final_all %>%
   group_by(
     species
   ) %>%
@@ -205,7 +209,7 @@ avg_TDur <- final_active %>%
     maxTDur = max(trackduration)
   ); avg_TDur
 
-write.csv(avg_TDur, paste0(saveloc, "Data_summaries_mean_trackdruations_by_species.csv"), row.names = F)
+write.csv(avg_TDur, paste0(saveloc, "Data_summaries_mean_trackdruations_by_species_all.csv"), row.names = F)
 
 ## sizes - take 1 (by species and sex)
 avg_size <- final_all %>%
