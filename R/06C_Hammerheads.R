@@ -750,6 +750,11 @@ hist(hammers$StepLengthBLlog1p)
 moments::skewness(hammers$StepLengthBLlog1p, na.rm = TRUE) # p:-0.22, f: -0.602 = fine
 moments::kurtosis(hammers$StepLengthBLlog1p, na.rm = TRUE) # p:2.81, f: 3.11 = fine
 
+hist(hammers$TurnAngleRelDeg)
+moments::skewness(hammers$TurnAngleRelDeg, na.rm = TRUE) # positive/negative skew, 0 = symmetrical. # p:NA, f: -0.008
+moments::kurtosis(hammers$TurnAngleRelDeg, na.rm = TRUE) # long tailed? Normal distribution = 3. # p: NA, f: 5.033
+## TA data does not need transformation
+
 
 # test outliers, remove >3.3 SDs from the mean
 # if (any(hammers$StepLengthBLlog1p >= mean(hammers$StepLengthBLlog1p, na.rm = TRUE) + sd(hammers$StepLengthBLlog1p, na.rm = TRUE) * 3, na.rm = TRUE)) hammers$StepLengthBLlog1p[which(hammers$StepLengthBLlog1p >= mean(hammers$StepLengthBLlog1p, na.rm = TRUE) + sd(hammers$StepLengthBLlog1p, na.rm = TRUE) * 3)] <- NA  # 17309.58
@@ -773,6 +778,10 @@ moments::kurtosis(hammers$StepLengthBLlog1p, na.rm = TRUE) # p:2.81, f: 3.11 = f
 
 # hammers$StepLengthBLlog1p <- STrange(hammers$StepLengthBLlog1p) # original script, but we need original values later for reverse transform, so you line below that creates new column
 hammers$StepLengthBLlog1pST <- STrange(hammers$StepLengthBLlog1p)
+hammers$TurnAngleRelDegST <- STrange(hammers$TurnAngleRelDeg)
+
+# hammers$StepLengthBLlog1pST <- hammers$StepLengthBL
+# hammers$TurnAngleRelDegST <- hammers$TurnAngleRelDeg
 
 # *B3.1.: calculate k-means ----
 
@@ -792,14 +801,14 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
     # x <- data[,c("ACT1", "ACT2", "SL_METERS", "TURN_DEGRE")]
     # downsample df_i to days
     x <- df_i[!is.na(df_i$StepLengthBLlog1pST),] # omit NA rows
-    x <- x[!is.na(x$TurnAngleRelDeg),] # ditto
+    x <- x[!is.na(x$TurnAngleRelDegST),] # ditto
     if (nrow(x) < 5) next # skip else kmeans will break. fish 28
-    x <- x[,c("StepLengthBLlog1p", "TurnAngleRelDeg")] # , "Date", "Index"
+    x <- x[,c("StepLengthBLlog1pST", "TurnAngleRelDegST")] # , "Date", "Index"
 
     ###take the absolute value from the turning angle, as the direction of turn is not of interest here
     # x$TA <- abs(x$TURN_DEGRE)
     # x$TURN_DEGRE <- NULL #what's the point of this? TURN_DEGRE not used again
-    x$TurnAngleRelDeg <- abs(x$TurnAngleRelDeg)
+    x$TurnAngleRelDegST <- abs(x$TurnAngleRelDegST)
 
     # ###visual inspection of the raw data
     # par(mfrow = c(2,2))
@@ -835,7 +844,7 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
     # #x <- x[,c(1, 2)]        ##use only activity measures
 
     setDF(x) # else things break
-    res <- data.frame(GAP = NA, s = NA, Wo = NA, We = NA) # what are s (SD?) Wo & We?
+    res <- data.frame(GAP = NA, s = NA, Wo = NA, We = NA)
     for (j in 1:5) { ##determine the GAP-statistic for 1 to 4 clusters. Changed from 10 to reduce compute time and we don't anticipate >4 XY XYT movement clusters
       if (j == 1) {  ##clall is the vector (in matrix format) of integers indicating the group to which each datum is assigned
         ones <- rep(1, nrow(x))
@@ -862,7 +871,7 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
     par(mfrow = c(1,1))
     k <- seq(1:length(res$GAP))
     # png(filename = paste0(saveloc, "/KmeansClusters_", i, ".png"), width = 4*480, height = 4*480, units = "px", pointsize = 4*12, bg = "white", res = NA, family = "", type = "cairo-png")
-    png(filename = paste0(saveloc, "kmeans/KmeansClusters_", i, ".png"), width = 4*480, height = 4*480, units = "px", pointsize = 4*12, bg = "white", res = NA, family = "", type = "cairo-png")
+    png(filename = paste0(saveloc, "kmeans/raw/KmeansClusters_", i,"_", today(), ".png"), width = 4*480, height = 4*480, units = "px", pointsize = 4*12, bg = "white", res = NA, family = "", type = "cairo-png")
     plot(k, res$GAP, xlab = "number of clusters k", ylab = "GAP", main = "GAP statistic", type = "b")
     segments(k, c(res$GAP - res$s), k, c(res$GAP + res$s))
     kstar <- min(which(res$GAP[-length(res$GAP)] >= c(res$GAP - res$s)[-1])) # if none of the first set of values are individually smaller than their paired counterparts in the second set of values then which() produces all FALSEs and min() fails.
@@ -873,8 +882,8 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
 
     # var1 vs var2 clustering scatterplots
     # png(filename = paste0(saveloc, "/Kmeans-StepLength-TurnAngle-Scatter_", i, ".png"), width = 4*480, height = 4*480, units = "px", pointsize = 4*12, bg = "white", res = NA, family = "", type = "cairo-png")
-    png(filename = paste0(saveloc, "kmeans/Kmeans-StepLength-TurnAngle-Scatter_", i, ".png"), width = 4*480, height = 4*480, units = "px", pointsize = 4*12, bg = "white", res = NA, family = "", type = "cairo-png")
-        plot(x$StepLengthBLlog1p, x$TurnAngleRelDeg, xlab = "Step Length (Body Lengths)", ylab = "Turn Angle Degrees")
+    png(filename = paste0(saveloc, "kmeans/raw/Kmeans-StepLength-TurnAngle-Scatter_", i, "_", today(),".png"), width = 4*480, height = 4*480, units = "px", pointsize = 4*12, bg = "white", res = NA, family = "", type = "cairo-png")
+        plot(x$StepLengthBLlog1pST, x$TurnAngleRelDegST, xlab = "Step Length [BLs])", ylab = "Turn Angle Degrees")
     dev.off()
 
     # then redo kmeans with selected number of clusters (kmeans output cl1 gets overwritten per i)
@@ -891,10 +900,10 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
     # # 2    0.4993464       0.7817846
     # # these are standardised lognormalised values, not actual steplengths.
     # # Can get actual mean values since cluster bins are now added to extracted.
-    cl1sl <- mean(df_i[which(df_i$kmeans2cluster == 1), "StepLengthBLlog1p"], na.rm = T) # mean(extractedK1$StepLengthBLlog1p) #65.93499
-    cl1ta <- mean(abs(df_i[which(df_i$kmeans2cluster == 1), "TurnAngleRelDeg"]), na.rm = T) # mean(extractedK1$TurnAngleRelDeg) #6.476207
-    cl2sl <- mean(df_i[which(df_i$kmeans2cluster == 2), "StepLengthBLlog1p"], na.rm = T) # mean(extractedK2$StepLengthBLlog1p) #39.47376
-    cl2ta <- mean(abs(df_i[which(df_i$kmeans2cluster == 2), "TurnAngleRelDeg"]), na.rm = T) # mean(extractedK2$TurnAngleRelDeg) #74.15654
+    cl1sl <- mean(df_i[which(df_i$kmeans2cluster == 1), "StepLengthBLlog1pST"], na.rm = T) # mean(extractedK1$StepLengthBLlog1p) #65.93499
+    cl1ta <- mean(abs(df_i[which(df_i$kmeans2cluster == 1), "TurnAngleRelDegST"]), na.rm = T) # mean(extractedK1$TurnAngleRelDeg) #6.476207
+    cl2sl <- mean(df_i[which(df_i$kmeans2cluster == 2), "StepLengthBLlog1pST"], na.rm = T) # mean(extractedK2$StepLengthBLlog1p) #39.47376
+    cl2ta <- mean(abs(df_i[which(df_i$kmeans2cluster == 2), "TurnAngleRelDegST"]), na.rm = T) # mean(extractedK2$TurnAngleRelDeg) #74.15654
     # tuna: Group 1: 66km step, 6deg angle, long and straight, transition/transit/migration
     # tuna: Group 2: 39km step, 74deg angle, short and turny, resident/forage/spawn
 
@@ -936,14 +945,15 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
     ##### reverse transform ####
     #df_i$StepLengthBLlog1p <-  expm1(df_i$StepLengthBLlog1p + logmean) # old, original script
     df_i$StepLengthBLlog1p <-  expm1(rt_STrange(hammers$StepLengthBLlog1p, df_i$StepLengthBLlog1pST))
+    df_i$TurnAngleRelDeg <-  expm1(rt_STrange(hammers$TurnAngleRelDegST, df_i$TurnAngleRelDegST))
 
     #####save metadata clusterinfo.csv####
     clusterinfoadd <- data.frame(nClustersTolerance1 = kstar,
                                  nClustersTolerance2 = kstar2,
-                                 TransitClusterStepLengthBLlog1pMean = mean(df_i[which(df_i$kmeansCharacter == "transit"), "StepLengthBLlog1p"], na.rm = T),
-                                 TransitClusterTurnAngleRelDegAbsMean = mean(abs(df_i[which(df_i$kmeansCharacter == "transit"), "TurnAngleRelDeg"]), na.rm = T),
-                                 ResidentClusterStepLengthBLlog1pMean = mean(df_i[which(df_i$kmeansCharacter == "resident"), "StepLengthBLlog1p"], na.rm = T),
-                                 ResidentClusterTurnAngleRelDegAbsMean = mean(abs(df_i[which(df_i$kmeansCharacter == "resident"), "TurnAngleRelDeg"]), na.rm = T),
+                                 TransitClusterStepLengthBLlog1pMean = mean(df_i[which(df_i$kmeansCharacter == "transit"), "StepLengthBLlog1pST"], na.rm = T),
+                                 TransitClusterTurnAngleRelDegAbsMean = mean(abs(df_i[which(df_i$kmeansCharacter == "transit"), "TurnAngleRelDegST"]), na.rm = T),
+                                 ResidentClusterStepLengthBLlog1pMean = mean(df_i[which(df_i$kmeansCharacter == "resident"), "StepLengthBLlog1pST"], na.rm = T),
+                                 ResidentClusterTurnAngleRelDegAbsMean = mean(abs(df_i[which(df_i$kmeansCharacter == "resident"), "TurnAngleRelDegST"]), na.rm = T),
                                  stringsAsFactors = FALSE)
     if (!exists("clusterinfo")) { #if this is the first i, create sensordates object
       clusterinfo <- clusterinfoadd
@@ -965,7 +975,7 @@ if (!all(is.na(hammers$lat))) { # if not all lats are NA, i.e. there's something
   clusterinfo <- bind_cols(id = fishlist, clusterinfo)
 
   # write.csv(x = clusterinfo, file = paste0(saveloc, "/", today(), "_KmeansClusterinfo.csv"), row.names = FALSE) #SD
-  write.csv(x = clusterinfo, file = paste0(saveloc, "kmeans/", today(), "_KmeansClusterinfo.csv"), row.names = FALSE) #VH
+  write.csv(x = clusterinfo, file = paste0(saveloc, "kmeans/raw/", today(), "_KmeansClusterinfo.csv"), row.names = FALSE) #VH
 } else {# close if (!all(is.na(alldaily$lat)))
   print("all new days missing latitude data, can't get external data, nothing to do")
 }
@@ -991,14 +1001,25 @@ clustersvec %>%
 # 2     1     4
 # 3     3     4
 # 4     4     1
-# fitted
-# A tibble: 4 × 2
+# fitted - only SL log and range ST
+# A tibble: 3 × 2
 # value     n
 # <dbl> <int>
-#    3     7
-#    1     5
-#    2     5
-#    4     1 # interesting: if fitted data, 3 clusters are more frequent clusters most frequent
+# 2     7
+# 3     7
+# 1     4
+# fitted - all standardised
+# A tibble: 1 × 2
+# value     n
+# <dbl> <int>
+# 1    18
+# fitted - raw
+# A tibble: 2 × 2
+# value     n
+# <dbl> <int>
+# 1    13
+# 2     5
+
 
 # could do this more systematically. Could also weight the Tolerance1/2 differently? Leave it for now, perfect enemy of good.
 # See L325 TOT make centres dynamic
@@ -1014,7 +1035,7 @@ saveRDS(object = hammers, file = paste0(saveloc, "kmeans/predicted/Hammers_KMean
 saveRDS(object = hammers, file = paste0("C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/InputData/dBBMM/Hammers_KMeans.Rds")) #VH
 ## if with fitted data at original observation times
 dir.create(paste0(saveloc,"kmeans/fitted"))
-saveRDS(object = hammers, file = paste0(saveloc, "kmeans/fitted/Hammers_KMeans.Rds")) #VH
+saveRDS(object = hammers, file = paste0(saveloc, "kmeans/raw/Hammers_KMeans.Rds")) #VH
 
 ## summarise steplength and TAs by cluster
 mean_SlTa_trares <- hammers %>%
@@ -1038,11 +1059,13 @@ mean_SlTa_trares <- hammers %>%
 ## predicted
 write.csv(mean_SlTa_trares, paste0(saveloc, "kmeans/predicted/Data_kmeans_cluster_summary.csv"), row.names = F) #VH
 ## fitted
-write.csv(mean_SlTa_trares, paste0(saveloc, "kmeans/fitted/Data_kmeans_cluster_summary.csv"), row.names = F) #VH
+write.csv(mean_SlTa_trares, paste0(saveloc, "kmeans/raw/Data_kmeans_cluster_summary.csv"), row.names = F) #VH
 
 # clusters_info <- read.csv(paste0(saveloc, today(), "_KmeansClusterinfo.csv")) #SD
 ## predicted
-clusters_info <- read.csv(paste0(saveloc, "kmeans/", today(), "_KmeansClusterinfo.csv")) #VH
+clusters_info <- read.csv(paste0(saveloc, "kmeans/predicted/", today(), "_KmeansClusterinfo.csv")) #VH
+## fitted
+clusters_info <- read.csv(paste0(saveloc, "kmeans/raw/", today(), "_KmeansClusterinfo.csv")) #VH
 
 ## summarise
 clusters_info %>% dplyr::summarise(
@@ -1076,7 +1099,7 @@ library(gbm.auto)
 ## if run by VH
 saveloc <- "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/OutputData/"
 # hammers <- readRDS(file = paste0(saveloc, "/Hammers_KMeans.Rds")) #SD
-hammers <- readRDS(file = paste0(saveloc, "kmeans/predicted/Hammers_KMeans.Rds"))#VH
+hammers <- readRDS(file = paste0(saveloc, "kmeans/fitted/Hammers_KMeans.Rds"))#VH
 
 cropmap <- gbm.auto::gbm.basemap(grids = hammers,
                       gridslat = 6,
