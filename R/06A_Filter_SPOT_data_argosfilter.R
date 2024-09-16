@@ -185,7 +185,7 @@ ddet %<>%
 ## this is useful if you have active tags, but need to write a report or plan on submitting a manuscript soon
 
 filter_needed <- "yes" # change this
-max_date <- as.POSIXct("2024-09-02 00:00:00",format="%Y-%m-%d %H:%M:%S", tz="UTC", usetz = T) # change this
+max_date <- as.POSIXct("2024-09-17 00:00:00",format="%Y-%m-%d %H:%M:%S", tz="UTC", usetz = T) # change this
 
 if (filter_needed == "yes"){ # do NOT change this
   ddet <- ddet %>%
@@ -363,7 +363,6 @@ cat("You removed ", nrow(prefilter_obs)-nrow(ddet_af)," locations.")
 # You removed  452  locations.
 prefilter_obs %>% group_by(id) %>% dplyr::summarise(n = n())
 ddet_af %>% dplyr::summarise(n = n())
-# > prefilter_obs %>% group_by(id) %>% dplyr::summarise(n = n())
 # # A tibble: 9 × 2
 # id         n
 # <chr>  <int>
@@ -375,7 +374,7 @@ ddet_af %>% dplyr::summarise(n = n())
 # 6 235283    86
 # 7 244607   119
 # 8 244608   644
-# 9 261743    24
+# 9 261743    51
 # > ddet_af %>% dplyr::summarise(n = n())
 # # A tibble: 9 × 2
 # id         n
@@ -388,7 +387,7 @@ ddet_af %>% dplyr::summarise(n = n())
 # 6 235283    73
 # 7 244607    96
 # 8 244608   582
-# 9 261743    21
+# 9 261743    46
 
 ## write csv to show new data structure
 write.csv(ddet_af %>% dplyr::summarise(n = n()),
