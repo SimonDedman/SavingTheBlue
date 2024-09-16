@@ -297,11 +297,11 @@ max(det_f$tdiff.days)
 # [1] 57.43806
 
 ## Assign different segments if the time difference is larger than the cutoff
-## we choose a cut off of 10 days
+## we choose a cut off of 10 days - change from 10 to 12 on Sept 16 2024
 ## Make sure to retain original ptt info and arrange df by timestamp
 det_seg <- det_f %>%
   dplyr::group_by(id) %>%
-  dplyr::mutate(id = paste0(id,"_", 1+cumsum(tdiff.days >= 10))) %>%
+  dplyr::mutate(id = paste0(id,"_", 1+cumsum(tdiff.days >= 20))) %>%
   dplyr::mutate(shark = as.numeric(str_sub(id, start = 1, end = str_locate(id, "\\_")[,1] - 1))) %>%
   dplyr::arrange( # arrange by timestamp by individual so df can be used for fit_() functions
     shark,
@@ -342,17 +342,17 @@ print(tracklengths, n = 100)
 #View(tracklengths)
 
 ### Filter out short track segments
-del_obs <- dplyr::filter(tracklengths, num_locs < 8 | tracklength_in_days < 12) # find suitable parameters
+del_obs <- dplyr::filter(tracklengths, num_locs < 12 | tracklength_in_days < 20) # find suitable parameters
 # del_obs <- dplyr::filter(tracklengths, tracklength_in_days < 15) # find suitable parameters
 
 print(n = 100, del_obs); nrow(del_obs); sum(del_obs$num_locs)
-# [1] 33 segments
-# [1] 112 detections
+# [1] 14 segments
+# [1] 25 detections
 
 det_seg_tl <- det_seg %>%
   inner_join(., tracklengths) %>%
   dplyr::filter( # remove tracks shorter than X days and/or less than Y total observations
-    !(tracklength_in_days < 12 | num_locs < 8)
+    !(tracklength_in_days < 20 | num_locs < 12)
     # !(tracklength_in_days < 12)
   ) %>%
   dplyr::select( #remove unnecessary columns
@@ -377,7 +377,7 @@ plot(hist, freq = F
 # B7: fit SSM using aniMotum ----
 
 ### make a map of your raw data before model fitting
-world <- ne_countries(scale = "medium", returnclass = "sf")
+world <- ne_countries(scale = 10, returnclass = "sf")
 
 ggplot(data = world) +
   geom_sf() +
@@ -493,6 +493,7 @@ mod.crw_pf <- aniMotum::fit_ssm(
 map(mod.crw_pf, what = if(entire_track == "Yes"){"f"} else ("p"), normalise = TRUE, silent = TRUE)
 #dev.off()
 
+
 # The `normalise` argument rescales the estimates to span the interval 0,1.
 # Move persistence estimates from `fit_ssm()` tend to be smoothed more extremely compared
 # those obtained from `fit_mpm()` and can lack contrast. Normalising the estimates provides a
@@ -508,18 +509,29 @@ map(mod.crw_pf, what = if(entire_track == "Yes"){"f"} else ("p"), normalise = TR
 mod.crw_pf_rr <- route_path(mod.crw_pf,
                             what = if(entire_track == "Yes"){"fitted"} else ("predicted"),
                             map_scale = 10, # scale of rnaturalearth map to use for land mass - if you want 10, you need the package "rnaturalearthhires"
-                            dist = 10000, # buffer distance (m) to add around track locations. The convex hull of these buffered locations defines the size of land polygon used to aid re-routing of points on land.
-                            buffer = 2,  # buffer distance > 0 moves the track a bit further away from any land barriers, which can (sometimes) result in a better rerouted solution. Some trial and error with the buffer distance (units in km) is usually needed
+                            dist = 50000, # buffer distance (m) to add around track locations. The convex hull of these buffered locations defines the size of land polygon used to aid re-routing of points on land.
+                            buffer = .5,  # buffer distance > 0 moves the track a bit further away from any land barriers, which can (sometimes) result in a better rerouted solution. Some trial and error with the buffer distance (units in km) is usually needed
                             centroids = TRUE, # setting centroids = TRUE essentially adds more resolution (& therefore more possible solutions) to the underlying mesh structure used to reroute the track.
                             append = T
                             )
 
 ## check if re-routing track changes nr. observations
 check_1 <- grab(mod.crw_pf, what = if(entire_track == "Yes"){"fitted"} else ("predicted"))
-check_1 <- check_1[,c(1:2)]
+check_1 <- check_1[,c(1:4)]
 check_rr <- grab(mod.crw_pf_rr, what = "rerouted")
-check_rr <- check_rr[,c(1:2)]
-comparison <- anti_join(check_1, check_rr) # shows rows that are not present in check_rr , we lose 20 land locations
+check_rr <- check_rr[,c(1:4)]
+comparison <- anti_join(check_1, select(check_rr, -c(lon, lat))) # shows rows that are not present in check_rr , we lose 20 land locations
+## plot deleted observations
+ggplot(data = world) +
+  geom_sf() +
+  geom_point(data = comparison, aes(x = lon, y = lat, colour = id), size = 2, shape = 4) +
+  coord_sf(xlim = c(min(comparison$lon - 0.5), max(comparison$lon + 0.5)),
+           ylim = c(min(comparison$lat - 0.5), max(comparison$lat + 0.5)), expand = F) +
+  labs(title = "Predicted locations without re-routed solutions",
+       x = "Longitude",
+       y = "Latitude"); ggsave(paste0(saveloc,"Predicted_locaations_no_rerouted_solutions.tiff"),
+                               width = 21, height = 15, units = "cm", device ="tiff", dpi=150)
+
 
 ## regarding data loss issue: see response ianjonsen
 ## https://github.com/ianjonsen/aniMotum/discussions/67#discussioncomment-10418664
