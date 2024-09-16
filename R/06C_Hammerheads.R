@@ -1212,7 +1212,9 @@ for (thisshark in unique(hammers$shark)){
 # C1: import data ----
 
 # hammers <- readRDS(paste0(saveloc, "/Hammers_KMeans.Rds")) #SD
-hammers <- readRDS(paste0(saveloc, "kmeans/predicted/Hammers_KMeans.Rds")) #VH
+# hammers <- readRDS(paste0(saveloc, "kmeans/predicted/Hammers_KMeans.Rds")) #VH
+hammers <- readRDS("C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/InputData/dBBMM/Data_aniMotum_CRW_output_segmented_rerouted_proj_WGS84_converted_with_coord_CIs_with_Argosfilter_data.rds") %>%
+  mutate(shark = as.numeric(str_sub(id, start = 1, end = str_locate(id, "\\_")[,1] - 1)))
 
 # C2: calculate moveLocError ----
 
@@ -1317,7 +1319,7 @@ hammers |>
   group_walk(~ {
     p <- ggplot(.x) + geom_histogram(aes(x = diffmins))
     # ggsave(plot = p, filename = paste0(saveloc, "movegroup dBBMMs/timeDiffLong histograms/", lubridate::today(), "_diffMinsHistGG_", .y$id, ".png")) #SD
-    ggsave(plot = p, filename = paste0(saveloc, "dBBMM/timeDiffLong histograms/", lubridate::today(), "_diffMinsHistGG_", .y$shark, ".png"))
+    ggsave(plot = p, filename = paste0(saveloc, "timeDiffLong histograms/", lubridate::today(), "_diffMinsHistGG_", .y$shark, ".png"))
 
     .x
   }) |>
@@ -1328,9 +1330,9 @@ hammers |>
 
 ##### rasterResolution ####
 # With default = 6: Error: cannot allocate vector of size 2286.7 Gb
-2 * mean(meanMoveLocDist) # 35915.36
+2 * mean(meanMoveLocDist) # 55601.91
 hist(meanMoveLocDist) # very left skewed
-summary(meanMoveLocDist) # median 9087
+summary(meanMoveLocDist) # median 12068.77
 # choose 1000 - update 20240827: 10000
 
 length(unique(hammers$shark))
@@ -1439,14 +1441,14 @@ for (thissubset in mysubsets) { # all worked, had to make edits to hammersubset$
       # contour1colour = "red",
       # contour2colour = "orange",
       # plottitle = "Aggregated 95% and 50% UD contours",
-      plotsubtitle = "Scaled contours. n = 8",
+      plotsubtitle = "Scaled contours. n = 9",
       # legendtitle = "Percent UD Contours",
       # plotcaption = paste0("movegroup, ", lubridate::today()),
       # axisxlabel = "Longitude",
       # axisylabel = "Latitude",
       # legendposition = c(0.9, 0.89),
-      legendposition = c(1.32, 0.89),
-      fontsize = 4,
+      legendposition = c(1.12, .75),
+      fontsize = 12,
       # fontfamily = "Times New Roman",
       # filesavename = paste0(lubridate::today(), "_dBBMM-contours.png"),
       # savedir = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/Scaled/Plot"), #SD
@@ -1518,8 +1520,8 @@ for (thissubset in mysubsets) { # all worked, had to make edits to hammersubset$
         mapzoom = 7,
         # plotsubtitle = "Scaled contours. n = 8",
         plotsubtitle = paste0("Scaled contours: ",thisshark,"-",thissubset),
-        legendposition = c(1.32, 0.89),
-        fontsize = 4,
+        legendposition = c(1.15, 0.75),
+        fontsize = 12,
         filesavename = paste0(lubridate::today(), "_", thisshark, "_dBBMM-contours.png"),
         # savedir = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/Scaled/Plot"))} #SD
         savedir = paste0(saveloc, "dBBMM/", thissubset, "/", TDL, "h/Scaled/Plot"))} #VH
