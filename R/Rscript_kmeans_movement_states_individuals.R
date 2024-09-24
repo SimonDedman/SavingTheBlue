@@ -55,7 +55,7 @@ library(sf)
 # A3: define saveloc ----
 
 ## if run by SD
-saveloc <- "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement"
+# saveloc <- "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement"
 ## if run by VH
 saveloc <- "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/OutputData/kmeans/predicted/"
 
@@ -84,15 +84,15 @@ rt_STrange <- function(x,y) {
 ### START: if run by SD ###
 #  movement data
 #  use the regularised movement data output from the 12h CTCRW
-hammers <- readRDS("/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/CTCRW/Data_aniMotum_CRW_output_segmented_rerouted_proj_WGS84_converted_with_coord_CIs_with_Argosfilter_data.rds") |> # 2023-07-07 & post
-  mutate(shark = as.numeric(str_sub(id, start = 1, end = str_locate(id, "\\_")[,1] - 1)))
-
-# metadata for length measurements
-meta <- read_csv("../../Data/Hammerhead SPOT tags/Datasheet_Bahamas_Smok_Tagging_Metadata_NEW.csv") |>
-  rename(shark = ptt_id,
-         FishLengthCm = stl)
-hammers %<>% left_join(meta)  # , by = join_by(shark == id) # doesn't work naming columns, has gotten worse.
-hammers %<>% filter(group != "Bimini") # 2023-08-08 remove Bimini sharks
+# hammers <- readRDS("/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement/CTCRW/Data_aniMotum_CRW_output_segmented_rerouted_proj_WGS84_converted_with_coord_CIs_with_Argosfilter_data.rds") |> # 2023-07-07 & post
+#   mutate(shark = as.numeric(str_sub(id, start = 1, end = str_locate(id, "\\_")[,1] - 1)))
+#
+# # metadata for length measurements
+# meta <- read_csv("../../Data/Hammerhead SPOT tags/Datasheet_Bahamas_Smok_Tagging_Metadata_NEW.csv") |>
+#   rename(shark = ptt_id,
+#          FishLengthCm = stl)
+# hammers %<>% left_join(meta)  # , by = join_by(shark == id) # doesn't work naming columns, has gotten worse.
+# hammers %<>% filter(group != "Bimini") # 2023-08-08 remove Bimini sharks
 ### END: if run by SD ###
 
 ### START: if run by VH ###
@@ -576,9 +576,9 @@ clustersvec %>%
 # A tibble: 3 × 2
 # value     n
 # <dbl> <int>
-# 1     2    14
-# 2     1     2
-# 3     3     2
+# 1     2    15
+# 2     3     2
+# 3     1     1
 
 # could do this more systematically. Could also weight the Tolerance1/2 differently? Leave it for now, perfect enemy of good.
 # See L325 TOT make centres dynamic
