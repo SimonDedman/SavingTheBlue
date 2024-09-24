@@ -354,11 +354,10 @@ png(filename = paste0(saveloc, "Standardised_Kmeans-StepLength-TurnAngle-Scatter
 plot(df_i$StepLengthBLlog1pST, df_i$TurnAngleRelDeglog1pST, xlab = "Standardised log(Step Length [BLs])", ylab = "Standardised log(abs(Turn Angle Relative Degrees))")
 dev.off()
 
-
 # *B3.1.: calculate k-means ----
 
 # hammers <- hammers_clean
-hammers <- df_i # covert back if above steps work correctly
+hammers <- df_i # convert back if above steps work correctly
 
 setDT(hammers) # convert to data.table without copy
 
@@ -574,11 +573,12 @@ clustersvec %>%
   summarise(n = n()) %>%
   arrange(desc(n))
 # for all log transformed and all range standardies predicted movement data at 12h time interval
-# A tibble: 2 × 2
+# A tibble: 3 × 2
 # value     n
 # <dbl> <int>
-# 2    17
-# 1     1
+# 1     2    14
+# 2     1     2
+# 3     3     2
 
 # could do this more systematically. Could also weight the Tolerance1/2 differently? Leave it for now, perfect enemy of good.
 # See L325 TOT make centres dynamic
@@ -700,7 +700,8 @@ for (i in c(0.25, 0.5, 1)) {
                baseplot = cropmap,
                bathysavepath = bathysavepath,
                cellsize = c(i, i),
-               mycolours = c("#D55E00", "#0072B2"),
+               # mycolours = c("#015475", "#F6D408"),
+               mycolours = c("#0072B2", "#D55E00"),
                legendloc = "topright",
                legendtitle = NULL,
                saveloc = map2dbpSaveloc,
@@ -725,7 +726,7 @@ xlim_eez <- c(min(hammers$lon), -70.5105)
 ylim_eez <- c(20.3735, max(hammers$lat))
 
 ### define your plotting colors
-behav_col <- c("#01AAC7", "#F9DF44") # needs to be adjusted if more than 2 clusters
+behav_col <- c("#0274A2", "#EACA08") # needs to be adjusted if more than 2 clusters
 
 
 ### create individual plots for each ptt id and save them
