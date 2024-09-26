@@ -236,7 +236,7 @@ summaries <- list(smry_individual, smry_island)
 # D1: choose your data subsets you want to plot ----
 
 #........................................ CHOOSE YOUR SUMMARY DATA FRAME FOR THE PLOT
-sd = 2 # 1 = individual summaries, 2 = island summaries
+sd = 1 # 1 = individual summaries, 2 = island summaries
 # ...................................................................................
 
 ## if you chose 2 or 3 on line 196 ##
@@ -520,3 +520,4 @@ rasterImage(shape,ifelse(df_left$group == "Andros", 55, 67.5), 1.25,100,5.75, in
 dev.off()
 
 }
+

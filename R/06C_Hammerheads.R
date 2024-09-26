@@ -34,6 +34,9 @@ source("C:/Users/Vital Heim/switchdrive/Science/Rscripts/vanMoorter-et-al_2010/p
 library(sf)
 # remotes::install_github("SimonDedman/movegroup")
 library(movegroup)
+## to deal with shapefiles for EEZ
+# install.packages("nngeo")
+library(nngeo)
 ## if run by SD
 saveloc <- "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement"
 ## if run by VH
@@ -78,8 +81,6 @@ eez_raw <- sf::st_read(paste0(maploc,"Bahamas_EEZ.shp")) |>
   sf::st_as_sf(coords = c("lon","lat")) |>sf::st_set_crs(4326) # VH, polygon
 
 ## make sure that your EEZ shapefile does not cut around landmass
-# install.packages("nngeo")
-library(nngeo)
 EEZ<- nngeo::st_remove_holes(eez_raw)
 
 # A2. Calculate nr. detections within EEZ----
@@ -396,7 +397,7 @@ max_lon <- max(coords[, "X"])
 cropmap <- sf::st_read(paste0(saveloc,"/CroppedMap/Crop_Map.shp")) # VH, polygon
 ## or
 library(rnaturalearth)
-bg = ne_countries(scale = "large", continent = 'north america', returnclass = "sf") # needs to be adjusted depending where your study site is
+bg = ne_countries(scale = 10, continent = 'north america', returnclass = "sf") # needs to be adjusted depending where your study site is
 
 bah_eez <- read_sf("C:/Users/Vital Heim/switchdrive/Science/Data/Shapefiles/Bahamas/Bahamas_EEZ_boundary.shp")
 st_crs(bah_eez)
@@ -463,7 +464,7 @@ for (thisshark in unique(hammersSanctuary$id)){
                       ) +
 
 
-    theme_dark()+
+    theme_light()+
     #theme(panel.background = element_rect(fill = "gray26", linewidth = 0.5, linetype = "solid", color = "black")) +
     labs(x = "Longitude", y = "Latitude") +
     theme(panel.grid = element_blank(), plot.title = element_text(face = "bold"), legend.title = element_text(face = "bold"), )+
