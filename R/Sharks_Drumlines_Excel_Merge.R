@@ -514,6 +514,14 @@ write.csv(x = check,
           file = "../../Data/2024-03_NewDbaseFormat/dbMergeCheck.csv",
           row.names = FALSE)
 
+dbclean <- dbclean |>
+  dplyr::select(
+    DBSOURCE:event_ts, # move PIT later
+    gear:bite_off, # remove shark_no
+    common:species,
+    pit_tag_full_id_no, # move PIT later
+    casey_tag_no:data_enterer_name # remove index
+  )
 
 write.csv(x = dbclean,
           file = "../../Data/2024-03_NewDbaseFormat/dbclean.csv",
