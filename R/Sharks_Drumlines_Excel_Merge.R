@@ -9,15 +9,75 @@ db <- readxl::read_xlsx(
   range = NULL,
   col_names = TRUE,
   col_types = c( # "logical", "numeric", "date", "guess", "text"
-    "text", "numeric", "date", "date", "text", "text", "numeric", "numeric", "numeric", "numeric",
-    "text", "text", "text", "text", "numeric", "numeric", "numeric", "numeric", "numeric",
-    "numeric", "text", "text", "logical", "logical", "numeric", "text", "text", "text",
-    "text", "numeric", "numeric", "numeric", "numeric", "numeric", "logical", "text", "text",
-    "numeric", "text", "text", "numeric", "numeric", "numeric", "numeric", "logical", "numeric",
-    "numeric", "numeric", "logical", "logical", "logical", "logical", "logical", "logical",
-    "logical", "logical", "text", "logical", "text", "text", "text", "logical", "logical",
-    "logical", "logical", "text", "text"
-
+    "text", # DBSOURCE
+    "numeric", # id
+    "date", # event_dt
+    "date", # event_ts
+    "text", # gear
+    "text", # set_no
+    "numeric", # hook_bouy_no
+    "numeric", # time_in
+    "numeric", # time_out
+    "numeric", # soak_time  10
+    "text", # bottom_top
+    "text", # site
+    "text", # habitat
+    "text", # substrate
+    "numeric", # latitude
+    "numeric", # longitude
+    "numeric", # depth_m
+    "numeric", # temperature_C
+    "numeric", # salinity_ppt
+    "numeric", # do_mg_l   20
+    "text", # tide
+    "text", # bait_type
+    "logical", # bait_present
+    "logical", # bite_off
+    "numeric", # shark_no
+    "text", # common
+    "text", # species
+    "text", # pit_tag_full_id_no
+    "numeric", # casey_tag_no
+    "numeric", # roto_tag_no   30
+    "numeric", # acoustic_tag_id
+    "numeric", # acoustic_tag_serial
+    "numeric", # satellite_tag_id_no
+    "numeric", # shark_recapture_no
+    "logical", # recap
+    "text", # external_tag_no
+    "text", # tag_owner
+    "numeric", # cam_tag_length_hrs
+    "text", # sex
+    "text", # claspers_calcified  40
+    "numeric", # pcl
+    "numeric", # fl
+    "numeric", # tl
+    "numeric", # stl
+    "logical", # estimate
+    "numeric", # girth
+    "numeric", # disc_width
+    "numeric", # anal_fin_length
+    "text", # umbilical_scar
+    "logical", # mating_scars  50
+    "logical", # ultrasound
+    "logical", # fin_genetics
+    "logical", # fin_isotopes
+    "logical", # muscle_isotopes
+    "logical", # whole_blood_isotopes
+    "logical", # plasma_isotopes
+    "logical", # rbc_isotopes
+    "text", # condition_note
+    "logical", # lost
+    "logical", # cut_hook  60
+    "text", # other_crew
+    "text", # adoptee_name
+    "text", # shark_name
+    "logical", # not_standardised
+    "text", # tagging_problem # changed from logical
+    "logical", # non_stb_recap
+    "logical", # depredation
+    "text", # comments
+    "text" # data_enterer_name  69
   ),
   na = c("", "xxx", "NA"),
   trim_ws = TRUE,
@@ -27,6 +87,7 @@ db <- readxl::read_xlsx(
   progress = readxl_progress(),
   .name_repair = "unique"
 )
+
 
 # Clean data ####
 db <- db |>
@@ -138,7 +199,7 @@ dbfixpit <- dbfixpit |>
                    tag_owner = dplyr::last(tag_owner, na_rm = TRUE),
                    cam_tag_length_hrs = dplyr::last(cam_tag_length_hrs, na_rm = TRUE),
                    sex = dplyr::last(sex, na_rm = TRUE),
-                   mature = dplyr::last(mature, na_rm = TRUE),
+                   claspers_calcified = dplyr::last(claspers_calcified, na_rm = TRUE),
                    pcl = dplyr::last(pcl, na_rm = TRUE),
                    fl = dplyr::last(fl, na_rm = TRUE),
                    tl = dplyr::last(tl, na_rm = TRUE),
@@ -148,6 +209,7 @@ dbfixpit <- dbfixpit |>
                    disc_width = dplyr::last(disc_width, na_rm = TRUE),
                    anal_fin_length = dplyr::last(anal_fin_length, na_rm = TRUE),
                    umbilical_scar = dplyr::last(umbilical_scar, na_rm = TRUE),
+                   mating_scars = dplyr::last(depredation, na_rm = TRUE),
                    ultrasound = dplyr::last(ultrasound, na_rm = TRUE),
                    fin_genetics = dplyr::last(fin_genetics, na_rm = TRUE),
                    fin_isotopes = dplyr::last(fin_isotopes, na_rm = TRUE),
@@ -157,7 +219,8 @@ dbfixpit <- dbfixpit |>
                    rbc_isotopes = dplyr::last(rbc_isotopes, na_rm = TRUE),
                    condition_note = dplyr::last(condition_note, na_rm = TRUE),
                    lost = dplyr::last(lost, na_rm = TRUE),
-                   film_crew = dplyr::last(film_crew, na_rm = TRUE),
+                   cut_hook = dplyr::last(lost, na_rm = TRUE),
+                   other_crew = dplyr::last(other_crew, na_rm = TRUE),
                    adoptee_name = dplyr::last(adoptee_name, na_rm = TRUE),
                    shark_name = dplyr::last(shark_name, na_rm = TRUE),
                    not_standardised = dplyr::last(not_standardised, na_rm = TRUE),
@@ -237,7 +300,7 @@ dbfixcasey <- dbfixcasey |>
                    tag_owner = dplyr::last(tag_owner, na_rm = TRUE),
                    cam_tag_length_hrs = dplyr::last(cam_tag_length_hrs, na_rm = TRUE),
                    sex = dplyr::last(sex, na_rm = TRUE),
-                   mature = dplyr::last(mature, na_rm = TRUE),
+                   claspers_calcified = dplyr::last(claspers_calcified, na_rm = TRUE),
                    pcl = dplyr::last(pcl, na_rm = TRUE),
                    fl = dplyr::last(fl, na_rm = TRUE),
                    tl = dplyr::last(tl, na_rm = TRUE),
@@ -247,6 +310,7 @@ dbfixcasey <- dbfixcasey |>
                    disc_width = dplyr::last(disc_width, na_rm = TRUE),
                    anal_fin_length = dplyr::last(anal_fin_length, na_rm = TRUE),
                    umbilical_scar = dplyr::last(umbilical_scar, na_rm = TRUE),
+                   mating_scars = dplyr::last(lost, na_rm = TRUE),
                    ultrasound = dplyr::last(ultrasound, na_rm = TRUE),
                    fin_genetics = dplyr::last(fin_genetics, na_rm = TRUE),
                    fin_isotopes = dplyr::last(fin_isotopes, na_rm = TRUE),
@@ -256,7 +320,8 @@ dbfixcasey <- dbfixcasey |>
                    rbc_isotopes = dplyr::last(rbc_isotopes, na_rm = TRUE),
                    condition_note = dplyr::last(condition_note, na_rm = TRUE),
                    lost = dplyr::last(lost, na_rm = TRUE),
-                   film_crew = dplyr::last(film_crew, na_rm = TRUE),
+                   cut_hook = dplyr::last(lost, na_rm = TRUE),
+                   other_crew = dplyr::last(other_crew, na_rm = TRUE),
                    adoptee_name = dplyr::last(adoptee_name, na_rm = TRUE),
                    shark_name = dplyr::last(shark_name, na_rm = TRUE),
                    not_standardised = dplyr::last(not_standardised, na_rm = TRUE),
@@ -348,7 +413,7 @@ dbfixremainder <- dbfixremainder |>
     tag_owner = dplyr::last(tag_owner, na_rm = TRUE),
     cam_tag_length_hrs = dplyr::last(cam_tag_length_hrs, na_rm = TRUE),
     sex = dplyr::last(sex, na_rm = TRUE),
-    mature = dplyr::last(mature, na_rm = TRUE),
+    claspers_calcified = dplyr::last(claspers_calcified, na_rm = TRUE),
     pcl = dplyr::last(pcl, na_rm = TRUE),
     fl = dplyr::last(fl, na_rm = TRUE),
     tl = dplyr::last(tl, na_rm = TRUE),
@@ -358,6 +423,7 @@ dbfixremainder <- dbfixremainder |>
     disc_width = dplyr::last(disc_width, na_rm = TRUE),
     anal_fin_length = dplyr::last(anal_fin_length, na_rm = TRUE),
     umbilical_scar = dplyr::last(umbilical_scar, na_rm = TRUE),
+    mating_scars = dplyr::last(lost, na_rm = TRUE),
     ultrasound = dplyr::last(ultrasound, na_rm = TRUE),
     fin_genetics = dplyr::last(fin_genetics, na_rm = TRUE),
     fin_isotopes = dplyr::last(fin_isotopes, na_rm = TRUE),
@@ -367,7 +433,8 @@ dbfixremainder <- dbfixremainder |>
     rbc_isotopes = dplyr::last(rbc_isotopes, na_rm = TRUE),
     condition_note = dplyr::last(condition_note, na_rm = TRUE),
     lost = dplyr::last(lost, na_rm = TRUE),
-    film_crew = dplyr::last(film_crew, na_rm = TRUE),
+    cut_hook = dplyr::last(lost, na_rm = TRUE),
+    other_crew = dplyr::last(other_crew, na_rm = TRUE),
     adoptee_name = dplyr::last(adoptee_name, na_rm = TRUE),
     shark_name = dplyr::last(shark_name, na_rm = TRUE),
     not_standardised = dplyr::last(not_standardised, na_rm = TRUE),
@@ -394,7 +461,7 @@ dbfixremainder <- dbfixremainder |>
 #           row.names = FALSE)
 
 
-
+# Join extras to check ####
 # There will likely be more to do due to things without PITs, etc.
 # Subset dbsafe for those rows to see what they look like & if anything can be done. Possibly same action using casey or whatever.
 dbsafeextra <- db |>
@@ -420,6 +487,7 @@ write.csv(x = dbsafeextra,
 # All Sharks tab, no drumline tab, no time, PIT, casey. Fine to use/keep as is.
 
 
+# Join all results ####
 # Join results to save other subset, dbsafe
 dbclean <- dbfixpit |>
   dplyr::bind_rows(dbfixcasey,
@@ -459,6 +527,7 @@ dbclean <- dbfixpit |>
     event_ts
   )
 
+# Build ID# & populate recap ####
 # for loop
 dbclean$id <- as.numeric(NA)
 counter <- 1
@@ -490,6 +559,26 @@ for (i in 1:nrow(dbclean)) { # nrow(dbclean)
   counter <- counter + 1 # increment counter
 }
 
+
+# Populate external_tag_recap ####
+dbclean$external_tag_recap <- as.logical(FALSE)
+counter <- 1
+for (i in 1:nrow(dbclean)) { # nrow(dbclean)
+  # first ID = 1
+  if (counter == 1) {
+    next # skip the first one, won't match
+  } else {
+    # subsequent IDs: if external_tag_no %in% (existing) external_tag_no (and isn't NA, else NAs will match to the first NA)
+    if (!is.na(dbclean$external_tag_no[i]) & (dbclean$external_tag_no[i] %in% dbclean$external_tag_no[1:(i - 1)])) {
+      dbclean$external_tag_recap[i] <- TRUE
+      # Ditto casey_tag_no
+    } # close nested if chain
+  } # close if counter==1 if else
+  counter <- counter + 1 # increment counter
+}
+
+
+# Final checks & save results ####
 # Data enterer name values missing in dbclean?
 length(which(!is.na(dbclean$data_enterer_name))) # 363; 391 in MERGED but likely includes dupes. Happy with this.
 
@@ -520,7 +609,8 @@ dbclean <- dbclean |>
     gear:bite_off, # remove shark_no
     common:species,
     pit_tag_full_id_no, # move PIT later
-    casey_tag_no:data_enterer_name # remove index
+    casey_tag_no:data_enterer_name, # remove index
+    external_tag_recap
   )
 
 write.csv(x = dbclean,
