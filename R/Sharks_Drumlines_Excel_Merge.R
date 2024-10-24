@@ -611,7 +611,7 @@ dbclean <- dbclean |>
     common:species,
     pit_tag_full_id_no, # move PIT later
     casey_tag_no:disc_width, # remove anal_fin_length
-    mating_scars:data_enterer_name, # remove index
+    umbilical_scar:data_enterer_name, # remove index
     external_tag_recap
   )
 
