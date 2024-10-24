@@ -606,10 +606,12 @@ write.csv(x = check,
 dbclean <- dbclean |>
   dplyr::select(
     DBSOURCE:event_ts, # move PIT later
-    gear:bite_off, # remove shark_no
+    gear:soak_time, # remove bottom_top
+    site:bite_off, # remove shark_no
     common:species,
     pit_tag_full_id_no, # move PIT later
-    casey_tag_no:data_enterer_name, # remove index
+    casey_tag_no:disc_width, # remove anal_fin_length
+    mating_scars:data_enterer_name, # remove index
     external_tag_recap
   )
 
