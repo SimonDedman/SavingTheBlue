@@ -610,9 +610,9 @@ dbclean <- dbclean |>
     site:bite_off, # remove shark_no
     common:species,
     pit_tag_full_id_no, # move PIT later
-    casey_tag_no:disc_width, # remove anal_fin_length
+    casey_tag_no:tag_owner, # insert external_tag_recap
+    external_tag_recap:disc_width, # remove anal_fin_length
     umbilical_scar:data_enterer_name, # remove index
-    external_tag_recap
   )
 
 write.csv(x = dbclean,
