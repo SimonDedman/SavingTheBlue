@@ -17,7 +17,8 @@ library(beepr)
 ## if run by SD
 source('~/Dropbox/Blocklab Monterey/Blocklab/liRolling.R') #my own function for rolling Linearity Index values
 ## if run by VH
-source("C:/Users/Vital Heim/switchdrive/Science/Rscripts/vanMoorter-et-al_2010/liRolling.R") # Simon's function for rolling Linearity Index values
+# source("C:/Users/Vital Heim/switchdrive/Science/Rscripts/vanMoorter-et-al_2010/liRolling.R") # Simon's function for rolling Linearity Index values
+source("//Sharktank/Science/Rscripts/vanMoorter-et-al_2010/liRolling.R") # Simon's function for rolling Linearity Index values
 options(error = function() beep(9))  # give warning noise if it fails
 options(timeout = 3000) # manually increase time out threshold (needed when downloading basemap)
 # for data cleaning
@@ -29,7 +30,8 @@ library(clusterSim)
 ## if run by SD
 source('/home/simon/Dropbox/Blocklab Monterey/Blocklab/vanMoorter.etal.2010/p7_gap.statistic.r')
 ## if run by VH
-source("C:/Users/Vital Heim/switchdrive/Science/Rscripts/vanMoorter-et-al_2010/p7_gap.statistic.r")
+# source("C:/Users/Vital Heim/switchdrive/Science/Rscripts/vanMoorter-et-al_2010/p7_gap.statistic.r")
+source("//Sharktank/Science/Rscripts/vanMoorter-et-al_2010/p7_gap.statistic.r")
 # for movegroup
 library(sf)
 # remotes::install_github("SimonDedman/movegroup")
@@ -40,7 +42,9 @@ library(nngeo)
 ## if run by SD
 saveloc <- "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement"
 ## if run by VH
-saveloc <- "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/OutputData/"
+# saveloc <- "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/OutputData/"
+saveloc <- "//Sharktank/Science/Projects_current/Andros_Hammerheads/Data_output/"
+
 
 options(warn=1) #set this to two if you have warnings that need to be addressed as errors via traceback()
 
@@ -68,7 +72,7 @@ rt_STrange <- function(x,y) {
 # ▪ Do we have EEZ shapefile? TG www.marineregions.org
 # see /home/simon/Documents/Si Work/PostDoc Work/movegroup help/Liberty Boyd/Points in UD contours/PointsInWhichUDcontour.R
 # hammerssf <- readRDS(file = paste0(saveloc, "/EEZoverlap/Hammers.Rds")) |> #SD
-hammersSanctuary <- readRDS(file = "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/OutputData/CTCRW/rerouted/Data_aniMotum_CRW_output_entire_track_rerouted_proj_WGS84_converted_with_coord_CIs_with_Argosfilter_data.rds") |> #VH
+hammersSanctuary <- readRDS(file = "//Sharktank/Science/Projects_current/Andros_Hammerheads/Data_output/CTCRW/rerouted/Data_aniMotum_CRW_output_entire_track_rerouted_proj_WGS84_converted_with_coord_CIs_with_Argosfilter_data.rds") |> #VH
   dplyr::select(
     c(id, date, lon, lat)
   ) |>
@@ -76,7 +80,7 @@ hammersSanctuary <- readRDS(file = "C:/Users/Vital Heim/switchdrive/Science/Proj
   mutate(Index = row_number()) # for indexing later
 # maploc = "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Maps & Surveys/Bahamas EEZ Shapefile/" #SD
 # EEZ <- sf::st_read(paste0(maploc,"eez.shp")) # SD, polygon
-maploc = "C:/Users/Vital Heim/switchdrive/Science/Data/Shapefiles/Bahamas/" #VH
+maploc = "//Sharktank/Science/Data_raw/Shapefiles/Bahamas/" #VH
 eez_raw <- sf::st_read(paste0(maploc,"Bahamas_EEZ.shp")) |>
   sf::st_as_sf(coords = c("lon","lat")) |>sf::st_set_crs(4326) # VH, polygon
 
@@ -141,25 +145,10 @@ hammersSanctuary[hammersSanctuary$Index %in% hammerssfinWinter$Index, "EEZWinter
 # hammerssf[hammerssf$Index %in% hammerssfinBiminiWinter$Index, "EEZBiminiWinter"] <- hammerssfinBiminiWinter$EEZBiminiWinter
 
 print(paste0("Percent of detections in Bahamas EEZ, all data: ", round(length(which(hammersSanctuary$EEZ)) / length(hammersSanctuary$EEZ) * 100, 1), "%; ", length(hammersSanctuary$EEZ), " detections"))
-# Percent of days in Bahamas EEZ, all data: 65.6%; 3733 days
-# print(paste0("Percent of days in Bahamas EEZ, Andros-tagged: ", round(length(which(hammerssfinAndros$EEZAndros)) / length(hammerssfinAndros$EEZAndros) * 100, 1), "%; ", length(hammerssfinAndros$EEZAndros), " days"))
-# Percent of days in Bahamas EEZ, Andros-tagged: 68%; 2211 days
-# print(paste0("Percent of days in Bahamas EEZ, Bimini-tagged: ", round(length(which(hammerssfinBimini$EEZBimini)) / length(hammerssfinBimini$EEZBimini) * 100, 1), "%; ", length(hammerssfinBimini$EEZBimini), " days"))
-# Percent of days in Bahamas EEZ, Bimini-tagged: 62%; 1522 days
 print(paste0("Percent of detections in Bahamas EEZ, Summer: ", round(length(which(hammerssfinSummer$EEZSummer)) / length(hammerssfinSummer$EEZSummer) * 100, 1), "%; ", length(hammerssfinSummer$EEZSummer), " detections"))
-# Percent of days in Bahamas EEZ, Summer: 59.1%; 1659 days
 print(paste0("Percent of detections in Bahamas EEZ, Winter: ", round(length(which(hammerssfinWinter$EEZWinter)) / length(hammerssfinWinter$EEZWinter) * 100, 1), "%; ", length(hammerssfinWinter$EEZWinter), " detections"))
-# Percent of days in Bahamas EEZ, Winter: 70.7%; 2074 days
-# print(paste0("Percent of days in Bahamas EEZ, Andros-tagged, Summer: ", round(length(which(hammerssfinAndrosSummer$EEZAndrosSummer)) / length(hammerssfinAndrosSummer$EEZAndrosSummer) * 100, 1), "%; ", length(hammerssfinAndrosSummer$EEZAndrosSummer), " days"))
-# Percent of days in Bahamas EEZ, Andros-tagged, Summer: 61.3%; 1013 days
-# print(paste0("Percent of days in Bahamas EEZ, Andros-tagged, Winter: ", round(length(which(hammerssfinAndrosWinter$EEZAndrosWinter)) / length(hammerssfinAndrosWinter$EEZAndrosWinter) * 100, 1), "%; ", length(hammerssfinAndrosWinter$EEZAndrosWinter), " days"))
-# Percent of days in Bahamas EEZ, Andros-tagged, Winter: 73.6%; 1198 days
-# print(paste0("Percent of days in Bahamas EEZ, Bimini-tagged, Summer: ", round(length(which(hammerssfinBiminiSummer$EEZBiminiSummer)) / length(hammerssfinBiminiSummer$EEZBiminiSummer) * 100, 1), "%; ", length(hammerssfinBiminiSummer$EEZBiminiSummer), " days"))
-# Percent of days in Bahamas EEZ, Bimini-tagged, Summer: 55.6%; 646 days
-# print(paste0("Percent of days in Bahamas EEZ, Bimini-tagged, Winter: ", round(length(which(hammerssfinBiminiWinter$EEZBiminiWinter)) / length(hammerssfinBiminiWinter$EEZBiminiWinter) * 100, 1), "%; ", length(hammerssfinBiminiWinter$EEZBiminiWinter), " days"))
-# Percent of days in Bahamas EEZ, Bimini-tagged, Winter: 66.8%; 876 days
 
-## calcualte detections within EEZ by individual
+## calculate detections within EEZ by individual
 
 for (thisshark in unique(hammersSanctuary$id)){ # ALLYEAR
 
@@ -399,7 +388,7 @@ cropmap <- sf::st_read(paste0(saveloc,"/CroppedMap/Crop_Map.shp")) # VH, polygon
 library(rnaturalearth)
 bg = ne_countries(scale = 10, continent = 'north america', returnclass = "sf") # needs to be adjusted depending where your study site is
 
-bah_eez <- read_sf("C:/Users/Vital Heim/switchdrive/Science/Data/Shapefiles/Bahamas/Bahamas_EEZ_boundary.shp")
+bah_eez <- read_sf("//Sharktank/Science/Data_raw/Shapefiles/Bahamas/Bahamas_EEZ_boundary.shp")
 st_crs(bah_eez)
 bah_eez <- st_transform(bah_eez, st_crs = proj4string(bathyR))
 ## only if you want to use the eez shapefile
@@ -431,7 +420,7 @@ for (thisshark in unique(hammersSanctuary$id)){
                alpha = 1, linewidth = 0.5)+
     geom_point(data = eezplot_df,
             aes(x = lon, y = lat, group = season, fill = EEZ, shape = season),
-            alpha = 0.9, size = 2, color = "black", show.legend = T
+            alpha = 0.9, size = 3, color = "black", show.legend = T
             ) +
 
 
@@ -442,7 +431,7 @@ for (thisshark in unique(hammersSanctuary$id)){
              expand = T)+
 
     # bahamas eez shapefile
-    geom_sf(data = bah_eez, colour = "white", fill = NA, linewidth = .75) +
+    geom_sf(data = bah_eez, colour = "black", fill = NA, linewidth = .75) +
     coord_sf(xlim = xlim_eez,
              ylim = ylim_eez+.25,
              expand = T)+
@@ -502,7 +491,7 @@ library(beepr)
 ## if run by SD
 source('~/Dropbox/Blocklab Monterey/Blocklab/liRolling.R') #my own function for rolling Linearity Index values
 ## if run by VH
-source("C:/Users/Vital Heim/switchdrive/Science/Rscripts/vanMoorter-et-al_2010/liRolling.R") # Simon's function for rolling Linearity Index values
+source("//Sharktank/Science/Rscripts/vanMoorter-et-al_2010/liRolling.R") # Simon's function for rolling Linearity Index values
 # for data cleaning
 library(moments)
 # for vanmoorter
@@ -511,7 +500,7 @@ library(clusterSim)
 ## if run by SD
 source('/home/simon/Dropbox/Blocklab Monterey/Blocklab/vanMoorter.etal.2010/p7_gap.statistic.r')
 ## if run by VH
-source("C:/Users/Vital Heim/switchdrive/Science/Rscripts/vanMoorter-et-al_2010/p7_gap.statistic.r")
+source("//Sharktank/Science/Rscripts/vanMoorter-et-al_2010/p7_gap.statistic.r")
 # for movegroup
 library(sf)
 # remotes::install_github("SimonDedman/movegroup")
@@ -521,7 +510,7 @@ library(sf)
 ## if run by SD
 # saveloc <- "/home/simon/Documents/Si Work/PostDoc Work/Saving The Blue/Projects/2022-09 Great Hammerhead habitat movement"
 ## if run by VH
-saveloc <- "C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/OutputData/kmeans/predicted/"
+saveloc <- "//Sharktank/Science/Projects_current/Andros_Hammerheads/Data_output/kmeans/predicted/"
 
 ## define needed functions, universal variables etc.
 
@@ -1145,7 +1134,7 @@ library(rnaturalearth)
 bg = ne_countries(scale = 10, continent = 'north america', returnclass = "sf") # needs to be adjusted depending where your study site is
 
 ### Prep Bahamian EEZ shapefile
-bah_eez <- read_sf("C:/Users/Vital Heim/switchdrive/Science/Data/Shapefiles/Bahamas/Bahamas_EEZ_boundary.shp")
+bah_eez <- read_sf("//Sharktank/Science/Data_raw/Shapefiles/Bahamas/Bahamas_EEZ_boundary.shp")
 st_crs(bah_eez)
 bah_eez <- st_transform(bah_eez, st_crs = proj4string(bathyR))
 # bah_eez_plot <- fortify(bah_eez)
@@ -1179,7 +1168,7 @@ for (thisshark in unique(hammers$shark)){
                aes(x=lon,y=lat, group = kmeansCharacter, fill = kmeansCharacter, shape = kmeansCharacter), # 2 clusters
                # aes(x=lon,y=lat, group = kmeans2cluster, fill = kmeans2cluster, shape = kmeans2cluster), # 3+ clusters
 
-               alpha = 0.75, size = 1.5, color = "black")+
+               alpha = 0.75, size = 3, color = "black")+
 
     # basemap
     geom_sf(data = bg, color = "black")+ # color is for border of geom object
@@ -1188,7 +1177,7 @@ for (thisshark in unique(hammers$shark)){
              expand = T)+
 
     # bahamas eez shapefile
-    geom_sf(data = bah_eez, colour = "white", fill = NA, linewidth = .75) +
+    geom_sf(data = bah_eez, colour = "black", fill = NA, linewidth = .75) +
     coord_sf(xlim = xlim_eez,
              ylim = ylim_eez+.25,
              expand = T)+
@@ -1219,11 +1208,14 @@ for (thisshark in unique(hammers$shark)){
 ### [C] Movegroup dBBMMs ----
 ### ....................................................................................................
 
+# C0: re-set saveloc
+saveloc <- "//Sharktank/Science/Projects_current/Andros_Hammerheads/Data_output/"
+
 # C1: import data ----
 
 # hammers <- readRDS(paste0(saveloc, "/Hammers_KMeans.Rds")) #SD
 # hammers <- readRDS(paste0(saveloc, "kmeans/predicted/Hammers_KMeans.Rds")) #VH
-hammers <- readRDS("C:/Users/Vital Heim/switchdrive/Science/Projects_and_Manuscripts/Andros_Hammerheads/InputData/dBBMM/Data_aniMotum_CRW_output_segmented_rerouted_proj_WGS84_converted_with_coord_CIs_with_Argosfilter_data.rds") %>%
+hammers <- readRDS("//Sharktank/Science/Projects_current/Andros_Hammerheads/Data_input/dBBMM/Data_aniMotum_CRW_output_segmented_rerouted_proj_WGS84_converted_with_coord_CIs_with_Argosfilter_data.rds") %>%
   mutate(shark = as.numeric(str_sub(id, start = 1, end = str_locate(id, "\\_")[,1] - 1)))
 
 # C2: calculate moveLocError ----
