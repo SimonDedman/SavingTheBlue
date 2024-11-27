@@ -420,7 +420,7 @@ for (thisshark in unique(hammersSanctuary$id)){
                alpha = 1, linewidth = 0.5)+
     geom_point(data = eezplot_df,
             aes(x = lon, y = lat, group = season, fill = EEZ, shape = season),
-            alpha = 0.9, size = 3, color = "black", show.legend = T
+            alpha = 0.8, size = 3.25, color = "black", show.legend = T
             ) +
 
 
@@ -431,7 +431,7 @@ for (thisshark in unique(hammersSanctuary$id)){
              expand = T)+
 
     # bahamas eez shapefile
-    geom_sf(data = bah_eez, colour = "black", fill = NA, linewidth = .75) +
+    geom_sf(data = bah_eez, colour = "black", fill = NA, linewidth = .25) +
     coord_sf(xlim = xlim_eez,
              ylim = ylim_eez+.25,
              expand = T)+
@@ -456,11 +456,14 @@ for (thisshark in unique(hammersSanctuary$id)){
     theme_light()+
     #theme(panel.background = element_rect(fill = "gray26", linewidth = 0.5, linetype = "solid", color = "black")) +
     labs(x = "Longitude", y = "Latitude") +
-    theme(panel.grid = element_blank(), plot.title = element_text(face = "bold"), legend.title = element_text(face = "bold"), )+
+    theme(panel.grid = element_blank(),
+          plot.title = element_text(face = "bold"),
+          legend.title = element_text(face = "bold"),
+          axis.text = element_text(size = 8)) +  # adjust size of lat/lon axis labels+
     ggtitle(paste0("Detections within and outside of Bahamian EEZ for ", thisshark))
   p
 
-  ggsave(paste0(saveloc, "EEZoverlap/individualPlots/EEZoverlap_",thisshark,".tiff"), width = 15, height = 10, units = "cm", dpi = 300)
+  ggsave(paste0(saveloc, "EEZoverlap/individualPlots/EEZoverlap_",thisshark,"_", Sys.Date(), ".tiff"), width = 15, height = 10, units = "cm", dpi = 300)
 }
 
 ### ....................................................................................................
@@ -1138,7 +1141,7 @@ bah_eez <- read_sf("//Sharktank/Science/Data_raw/Shapefiles/Bahamas/Bahamas_EEZ_
 st_crs(bah_eez)
 bah_eez <- st_transform(bah_eez, st_crs = proj4string(bathyR))
 # bah_eez_plot <- fortify(bah_eez)
-## only if you want to use the eez shapefile
+## only if you want to use the eez shapefile and represent the entire area
 xlim_eez <- c(min(hammers$lon), -70.5105)
 ylim_eez <- c(20.3735, max(hammers$lat))
 
@@ -1168,18 +1171,32 @@ for (thisshark in unique(hammers$shark)){
                aes(x=lon,y=lat, group = kmeansCharacter, fill = kmeansCharacter, shape = kmeansCharacter), # 2 clusters
                # aes(x=lon,y=lat, group = kmeans2cluster, fill = kmeans2cluster, shape = kmeans2cluster), # 3+ clusters
 
-               alpha = 0.75, size = 3, color = "black")+
+               alpha = 0.8, size = 3.25, color = "black")+
+    # if you create individually tailored plots, you will undoubtedly run into overlapping axis labels
+    # depending on the range of your lon/lat values for a specific animal
+    # here we can adjust the nr. breaks for each axis
+    # breaks_x <- seq(min(kplot_df$lon), max(kplot_df$lon), length.out = 3)
+    scale_x_continuous(
+      breaks = seq(min(kplot_df$lon), max(kplot_df$lon), length.out = 3),
+      labels = function(x) paste0(number_format(accuracy = 0.1)(x), "°W")  # Append 'W' to each label as we lose the °W info when we scale the axis
+    ) +
 
     # basemap
     geom_sf(data = bg, color = "black")+ # color is for border of geom object
-    coord_sf(xlim = range(hammers$lon, na.rm = TRUE),
-             ylim = range(hammers$lat , na.rm = TRUE),
-             expand = T)+
+    ## comment out the next three lines if you want to plot maps tailored to the movement extent of individual sharks
+    ## and use L1187-1189 instead)
+    # coord_sf(xlim = range(hammers$lon, na.rm = TRUE),
+    #          ylim = range(hammers$lat , na.rm = TRUE),
+    #          expand = T)+
 
     # bahamas eez shapefile
-    geom_sf(data = bah_eez, colour = "black", fill = NA, linewidth = .75) +
-    coord_sf(xlim = xlim_eez,
-             ylim = ylim_eez+.25,
+    geom_sf(data = bah_eez, colour = "black", fill = NA, linewidth = .25) +
+    ## for individuall tailored plots comment out L1184-1186 and use L1187-1189 instead
+    # coord_sf(xlim = xlim_eez,
+    #          ylim = ylim_eez+.25,
+    #          expand = T)+
+    coord_sf(xlim = c(min(kplot_df$lon)-0.2, max(kplot_df$lon)+0.2),
+             ylim = c(min(kplot_df$lat)-0.2, max(kplot_df$lat)+0.2),
              expand = T)+
 
     # formatting
@@ -1191,11 +1208,13 @@ for (thisshark in unique(hammers$shark)){
     scale_color_manual(values = behav_col) +
     scale_fill_manual(values = behav_col) +
 
+    # theme
     theme_light()+
     #theme(panel.background = element_rect(fill = "gray26", linewidth = 0.5, linetype = "solid", color = "black")) +
     theme(panel.grid = element_blank(), # remove grid lines
-          legend.title = element_blank(),
-          plot.title = element_text(face = "bold", size = 11.5)) + # remove legend title
+          legend.title = element_blank(), # remove legend title
+          plot.title = element_text(face = "bold", size = 11.5),
+          axis.text = element_text(size = 8)) +  # adjust size of lat/lon axis labels
     labs(x = "Longitude", y = "Latitude") +
     ggtitle(paste0("Kmeans derived movement states for shark id ", thisshark))
   p
