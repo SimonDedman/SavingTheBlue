@@ -58,6 +58,12 @@ rt_STrange <- function(x,y) {
   y*(max(x, na.rm = TRUE)-min(x, na.rm = TRUE)) + min(x, na.rm = TRUE)
 }
 
+## if you want to use stamen/stadia and/or google maps for plotting your UD rasters, you need to register your corresponding API key first
+## for google maps this can be done in the movegroup::plotraster() function with the gmapsAPI = "YOUR_KEY_HERE" argument.
+## For stamen/stadia maps you can register your key here (this will be updated in the movegroup package in the near future)
+
+ggmap::register_stadiamaps("YOUR_API_KEY_HERE", write = F)
+
 ### ....................................................................................................
 ### [A] Calculate time within Bahamian EEZ ----
 ### ....................................................................................................
@@ -1453,14 +1459,15 @@ for (thissubset in mysubsets) { # all worked, had to make edits to hammersubset$
       crsloc = paste0(saveloc, "dBBMM/", thissubset, "/", TDL, "h/"), #VH
       # trim = TRUE,
       # myLocation = NULL,
-      googlemap = TRUE,
+      googlemap = FALSE,
       # gmapsAPI = NULL,
-      expandfactor = 1.6,
+      # expandfactor = 1.6,
+      expandfactor = 1.2,
       mapzoom = 7,
-      # mapsource = "google",
-      # maptype = "satellite",
-      # contour1colour = "red",
-      # contour2colour = "orange",
+      mapsource = "stadia",
+      maptype = "stamen_toner_background",
+      contour1colour = "orange",
+      contour2colour = "red",
       # plottitle = "Aggregated 95% and 50% UD contours",
       plotsubtitle = "Scaled contours. n = 9",
       # legendtitle = "Percent UD Contours",
