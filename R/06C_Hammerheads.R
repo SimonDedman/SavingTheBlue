@@ -1363,7 +1363,7 @@ summary(meanMoveLocDist) # median 12068.77
 # choose 1000 - update 20240827: 10000
 
 length(unique(hammers$shark))
-# 8
+# 9
 # saveRDS(hammers,file = paste0(saveloc, "EEZoverlap/Hammers.Rds"))
 
 # mysubsets <- c("All", "Andros", "Bimini", "Summer", "Winter")
@@ -1457,13 +1457,12 @@ for (thissubset in mysubsets) { # all worked, had to make edits to hammersubset$
       # crsloc = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/"), #SD
       x = paste0(saveloc, "dBBMM/", thissubset, "/", TDL, "h/Scaled/All_Rasters_Scaled_Weighted_UDScaled.asc"), #VH
       crsloc = paste0(saveloc, "dBBMM/", thissubset, "/", TDL, "h/"), #VH
-      # trim = TRUE,
-      # myLocation = NULL,
+      trim = TRUE,
+      myLocation = c(-83.5, 23, -75.5, 29),
       googlemap = FALSE,
       # gmapsAPI = NULL,
-      # expandfactor = 1.6,
-      expandfactor = 1.2,
-      mapzoom = 7,
+      expandfactor = 1,
+      mapzoom = 8,
       mapsource = "stadia",
       maptype = "stamen_toner_background",
       contour1colour = "orange",
@@ -1543,9 +1542,15 @@ for (thissubset in mysubsets) { # all worked, had to make edits to hammersubset$
         # crsloc = paste0(saveloc, "movegroup dBBMMs/", thissubset, "/", TDL, "h/"), #SD
         x = paste0(saveloc, "dBBMM/", thissubset, "/", TDL, "h/", thisshark, ".asc"), #VH
         crsloc = paste0(saveloc, "dBBMM/", thissubset, "/", TDL, "h/"), #VH
-        googlemap = TRUE,
-        expandfactor = 1.6, # original 1
-        mapzoom = 7,
+        trim = TRUE,
+        myLocation = c(-83.5, 22.5, -74.2, 29),
+        expandfactor = 1, # original 1
+        mapzoom = 8,
+        googlemap = F,
+        mapsource = "stadia",
+        maptype = "stamen_toner_background",
+        contour1colour = "orange",
+        contour2colour = "red",
         # plotsubtitle = "Scaled contours. n = 8",
         plotsubtitle = paste0("Scaled contours: ",thisshark,"-",thissubset),
         legendposition = c(1.15, 0.75),
