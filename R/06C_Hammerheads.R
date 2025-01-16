@@ -1458,7 +1458,7 @@ for (thissubset in mysubsets) { # all worked, had to make edits to hammersubset$
       x = paste0(saveloc, "dBBMM/", thissubset, "/", TDL, "h/Scaled/All_Rasters_Scaled_Weighted_UDScaled.asc"), #VH
       crsloc = paste0(saveloc, "dBBMM/", thissubset, "/", TDL, "h/"), #VH
       trim = TRUE,
-      myLocation = c(-83.5, 23, -75.5, 29),
+      myLocation = c(-84.5, 22.5, -74.2, 30),
       googlemap = FALSE,
       # gmapsAPI = NULL,
       expandfactor = 1,
@@ -1543,7 +1543,7 @@ for (thissubset in mysubsets) { # all worked, had to make edits to hammersubset$
         x = paste0(saveloc, "dBBMM/", thissubset, "/", TDL, "h/", thisshark, ".asc"), #VH
         crsloc = paste0(saveloc, "dBBMM/", thissubset, "/", TDL, "h/"), #VH
         trim = TRUE,
-        myLocation = c(-83.5, 22.5, -74.2, 29),
+        myLocation = c(-84.5, 22.5, -74.2, 30),
         expandfactor = 1, # original 1
         mapzoom = 8,
         googlemap = F,
